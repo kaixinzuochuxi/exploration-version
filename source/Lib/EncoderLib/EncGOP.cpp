@@ -3335,7 +3335,24 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
 #if EXTENSION_360_VIDEO
   m_ext360.calculatePSNRs(pcPic);
 #endif
+#if PrintSSIM
+  double  MSSSIM[MAX_NUM_COMPONENT] = { 0,0,0 };
+  for (int chan = 0; chan<::getNumberValidComponents(formatD); chan++)
+  {
+    const ComponentID compID = ComponentID(chan);
 
+    const CPelBuf&    p = picC.get(compID);
+    const CPelBuf&    o = org.get(compID);
+    const int   orgStride = o.stride;
+
+    const int   recStride = p.stride;
+    const uint32_t   width = p.width - (m_pcEncLib->getPad(0) >> ::getComponentScaleX(compID, format));
+    const uint32_t   height = p.height - (m_pcEncLib->getPad(1) >> (!!bPicIsField + ::getComponentScaleY(compID, format)));
+    const uint32_t    bitDepth = sps.getBitDepth(toChannelType(compID));
+
+    MSSSIM[compID] = xCalculateMSSSIM(o, orgStride, p, recStride, width, height, bitDepth);
+  }
+#endif
   /* calculate the size of the access unit, excluding:
    *  - any AnnexB contributions (start_code_prefix, zero_byte, etc.,)
    *  - SEI NAL units
@@ -3370,17 +3387,25 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
   m_vRVM_RP.push_back( uibits );
 
   //===== add PSNR =====
+#if PrintSSIM
+  m_gcAnalyzeAll.addResult(dPSNR, (double)uibits, MSEyuvframe, MSSSIM, isEncodeLtRef);
+#else
   m_gcAnalyzeAll.addResult(dPSNR, (double)uibits, MSEyuvframe
     , isEncodeLtRef
   );
+#endif
 #if EXTENSION_360_VIDEO
   m_ext360.addResult(m_gcAnalyzeAll);
 #endif
   if (pcSlice->isIntra())
   {
+#if PrintSSIM
+    m_gcAnalyzeI.addResult(dPSNR, (double)uibits, MSEyuvframe, MSSSIM, isEncodeLtRef);
+#else
     m_gcAnalyzeI.addResult(dPSNR, (double)uibits, MSEyuvframe
       , isEncodeLtRef
     );
+#endif
     *PSNR_Y = dPSNR[COMPONENT_Y];
 #if EXTENSION_360_VIDEO
     m_ext360.addResult(m_gcAnalyzeI);
@@ -3388,9 +3413,13 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
   }
   if (pcSlice->isInterP())
   {
+#if PrintSSIM
+    m_gcAnalyzeP.addResult(dPSNR, (double)uibits, MSEyuvframe, MSSSIM, isEncodeLtRef);
+#else
     m_gcAnalyzeP.addResult(dPSNR, (double)uibits, MSEyuvframe
       , isEncodeLtRef
     );
+#endif
     *PSNR_Y = dPSNR[COMPONENT_Y];
 #if EXTENSION_360_VIDEO
     m_ext360.addResult(m_gcAnalyzeP);
@@ -3398,9 +3427,13 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
   }
   if (pcSlice->isInterB())
   {
+#if PrintSSIM
+    m_gcAnalyzeB.addResult(dPSNR, (double)uibits, MSEyuvframe, MSSSIM, isEncodeLtRef);
+#else
     m_gcAnalyzeB.addResult(dPSNR, (double)uibits, MSEyuvframe
       , isEncodeLtRef
     );
+#endif
     *PSNR_Y = dPSNR[COMPONENT_Y];
 #if EXTENSION_360_VIDEO
     m_ext360.addResult(m_gcAnalyzeB);
@@ -3409,7 +3442,11 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
 #if WCG_WPSNR
   if (useLumaWPSNR)
   {
+#if PrintSSIM
+    m_gcAnalyzeB.addResult(dPSNRWeighted, (double)uibits, MSEyuvframeWeighted, MSSSIM, isEncodeLtRef);
+#else
     m_gcAnalyzeWPSNR.addResult(dPSNRWeighted, (double)uibits, MSEyuvframeWeighted, isEncodeLtRef);
+#endif
   }
 #endif
 
@@ -3449,7 +3486,9 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
       m_ext360.printPerPOCInfo(NOTICE, true);
 #endif
     }
-
+#if PrintSSIM
+    msg(NOTICE," [MS-SSIM Y %1.6lf    U %1.6lf    V %1.6lf]", MSSSIM[COMPONENT_Y], MSSSIM[COMPONENT_Cb], MSSSIM[COMPONENT_Cr]);
+#endif
     if( printFrameMSE )
     {
       msg( NOTICE, " [Y MSE %6.4lf  U MSE %6.4lf  V MSE %6.4lf]", MSEyuvframe[COMPONENT_Y], MSEyuvframe[COMPONENT_Cb], MSEyuvframe[COMPONENT_Cr] );
@@ -3480,6 +3519,179 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
     std::cout.flush();
   }
 }
+
+#if PrintSSIM
+double EncGOP::xCalculateMSSSIM(const CPelBuf pOrg, const uint32_t orgStride, const CPelBuf pRec, const uint32_t recStride, const uint32_t width, const uint32_t height, const uint32_t bitDepth)
+{
+  const int MAX_MSSSIM_SCALE = 5;
+  const int WEIGHTING_MID_TAP = 5;
+  const int WEIGHTING_SIZE = WEIGHTING_MID_TAP * 2 + 1;
+
+  uint32_t maxScale;
+
+  // For low resolution videos determine number of scales 
+  if (width < 22 || height < 22)
+  {
+    maxScale = 1;
+  }
+  else if (width < 44 || height < 44)
+  {
+    maxScale = 2;
+  }
+  else if (width < 88 || height < 88)
+  {
+    maxScale = 3;
+  }
+  else if (width < 176 || height < 176)
+  {
+    maxScale = 4;
+  }
+  else
+  {
+    maxScale = 5;
+  }
+
+  assert(maxScale>0 && maxScale <= MAX_MSSSIM_SCALE);
+
+  //Normalized Gaussian mask design, 11*11, s.d. 1.5
+  double weights[WEIGHTING_SIZE][WEIGHTING_SIZE];
+  {
+    double coeffSum = 0.0;
+    for (int y = 0; y<WEIGHTING_SIZE; y++)
+    {
+      for (int x = 0; x<WEIGHTING_SIZE; x++)
+      {
+        weights[y][x] = exp(-((y - WEIGHTING_MID_TAP)*(y - WEIGHTING_MID_TAP) + (x - WEIGHTING_MID_TAP)*(x - WEIGHTING_MID_TAP)) / (WEIGHTING_MID_TAP - 0.5));
+        coeffSum += weights[y][x];
+      }
+    }
+
+    for (int y = 0; y<WEIGHTING_SIZE; y++)
+    {
+      for (int x = 0; x<WEIGHTING_SIZE; x++)
+      {
+        weights[y][x] /= coeffSum;
+      }
+    }
+  }
+
+  //Resolution based weights
+  const double exponentWeights[MAX_MSSSIM_SCALE][MAX_MSSSIM_SCALE] = { { 1.0,    0,      0,      0,      0 },
+  { 0.1356, 0.8644, 0,      0,      0 },
+  { 0.0711, 0.4530, 0.4760, 0,      0 },
+  { 0.0517, 0.3295, 0.3462, 0.2726, 0 },
+  { 0.0448, 0.2856, 0.3001, 0.2363, 0.1333 } };
+
+  //Downsampling of data:
+  std::vector<double> original[MAX_MSSSIM_SCALE];
+  std::vector<double> recon[MAX_MSSSIM_SCALE];
+
+  for (uint32_t scale = 0; scale<maxScale; scale++)
+  {
+    const int scaledHeight = height >> scale;
+    const int scaledWidth = width >> scale;
+    original[scale].resize(scaledHeight*scaledWidth, double(0));
+    recon[scale].resize(scaledHeight*scaledWidth, double(0));
+  }
+
+  // Initial [0] arrays to be a copy of the source data (but stored in array "Double", not Pel array).
+  for (int y = 0; y<height; y++)
+  {
+    for (int x = 0; x<width; x++)
+    {
+      original[0][y*width + x] = pOrg.buf[y*orgStride + x];
+      recon[0][y*width + x] = pRec.buf[y*recStride + x];
+
+    }
+  }
+
+  // Set up other arrays to be average value of each 2x2 sample.
+  for (uint32_t scale = 1; scale<maxScale; scale++)
+  {
+    const int scaledHeight = height >> scale;
+    const int scaledWidth = width >> scale;
+    for (int y = 0; y<scaledHeight; y++)
+    {
+      for (int x = 0; x<scaledWidth; x++)
+      {
+        original[scale][y*scaledWidth + x] = (original[scale - 1][2 * y   *(2 * scaledWidth) + 2 * x] +
+          original[scale - 1][2 * y   *(2 * scaledWidth) + 2 * x + 1] +
+          original[scale - 1][(2 * y + 1)*(2 * scaledWidth) + 2 * x] +
+          original[scale - 1][(2 * y + 1)*(2 * scaledWidth) + 2 * x + 1]) / 4.0;
+        recon[scale][y*scaledWidth + x] = (recon[scale - 1][2 * y   *(2 * scaledWidth) + 2 * x] +
+          recon[scale - 1][2 * y   *(2 * scaledWidth) + 2 * x + 1] +
+          recon[scale - 1][(2 * y + 1)*(2 * scaledWidth) + 2 * x] +
+          recon[scale - 1][(2 * y + 1)*(2 * scaledWidth) + 2 * x + 1]) / 4.0;
+      }
+    }
+  }
+
+  // Calculate MS-SSIM:
+  const uint32_t   maxValue = (1 << bitDepth) - 1;
+  const double c1 = (0.01*maxValue)*(0.01*maxValue);
+  const double c2 = (0.03*maxValue)*(0.03*maxValue);
+
+  double finalMSSSIM = 1.0;
+
+  for (uint32_t scale = 0; scale<maxScale; scale++)
+  {
+    const int scaledHeight = height >> scale;
+    const int scaledWidth = width >> scale;
+    const int blocksPerRow = scaledWidth - WEIGHTING_SIZE + 1;
+    const int blocksPerColumn = scaledHeight - WEIGHTING_SIZE + 1;
+    const int totalBlocks = blocksPerRow * blocksPerColumn;
+
+    double meanSSIM = 0.0;
+
+    for (int blockIndexY = 0; blockIndexY<blocksPerColumn; blockIndexY++)
+    {
+      for (int blockIndexX = 0; blockIndexX<blocksPerRow; blockIndexX++)
+      {
+        double muOrg = 0.0;
+        double muRec = 0.0;
+        double muOrigSqr = 0.0;
+        double muRecSqr = 0.0;
+        double muOrigMultRec = 0.0;
+
+        for (int y = 0; y<WEIGHTING_SIZE; y++)
+        {
+          for (int x = 0; x<WEIGHTING_SIZE; x++)
+          {
+            const double gaussianWeight = weights[y][x];
+            const int    sampleOffset = (blockIndexY + y)*scaledWidth + (blockIndexX + x);
+            const double orgPel = original[scale][sampleOffset];
+            const double recPel = recon[scale][sampleOffset];
+
+            muOrg += orgPel * gaussianWeight;
+            muRec += recPel * gaussianWeight;
+            muOrigSqr += orgPel * orgPel*gaussianWeight;
+            muRecSqr += recPel * recPel*gaussianWeight;
+            muOrigMultRec += orgPel * recPel*gaussianWeight;
+          }
+        }
+
+        const double sigmaSqrOrig = muOrigSqr - (muOrg*muOrg);
+        const double sigmaSqrRec = muRecSqr - (muRec*muRec);
+        const double sigmaOrigRec = muOrigMultRec - (muOrg*muRec);
+
+        double blockSSIMVal = ((2.0*sigmaOrigRec + c2) / (sigmaSqrOrig + sigmaSqrRec + c2));
+        if (scale == maxScale - 1)
+        {
+          blockSSIMVal *= (2.0*muOrg*muRec + c1) / (muOrg*muOrg + muRec * muRec + c1);
+        }
+
+        meanSSIM += blockSSIMVal;
+      }
+    }
+
+    meanSSIM /= totalBlocks;
+
+    finalMSSSIM *= pow(meanSSIM, exponentWeights[maxScale - 1][scale]);
+  }
+
+  return finalMSSSIM;
+}
+#endif
 
 void EncGOP::xCalculateInterlacedAddPSNR( Picture* pcPicOrgFirstField, Picture* pcPicOrgSecondField,
                                           PelUnitBuf cPicRecFirstField, PelUnitBuf cPicRecSecondField,
@@ -3544,13 +3756,50 @@ void EncGOP::xCalculateInterlacedAddPSNR( Picture* pcPicOrgFirstField, Picture* 
     dPSNR[ch]         = uiSSDtemp ? 10.0 * log10(fRefValue / (double)uiSSDtemp) : 999.99;
     MSEyuvframe[ch]   = (double)uiSSDtemp / size;
   }
+#if PrintSSIM
+  //===== calculate MS-SSIM =====
+  double MSSSIM[MAX_NUM_COMPONENT] = { 0,0,0 };
+  /*
 
+  for (int chan = 0; chan<numValidComponents; chan++)
+  {
+  const ComponentID ch = ComponentID(chan);
+  assert(acPicRecFields[0]->getWidth(ch) == acPicRecFields[1]->getWidth(ch));
+  assert(acPicRecFields[0]->getHeight(ch) == acPicRecFields[1]->getHeight(ch));
+
+  double sumOverFieldsMSSSIM = 0.0;
+  const uint32_t width = acPicRecFields[0].get(ch).width - (m_pcEncLib->getPad(0) >> ::getComponentScaleX(ch, format));
+  const uint32_t height = acPicRecFields[0].get(ch).height - ((m_pcEncLib->getPad(1) >> 1) >> ::getComponentScaleY(ch, format));
+
+  for (uint32_t fieldNum = 0; fieldNum<2; fieldNum++)
+  {
+  Picture    pcPic = *apcPicOrgFields[fieldNum];
+  PelUnitBuf pcPicD = acPicRecFields[fieldNum];
+  const CPelBuf&    p = pcPic.get(ch);
+  const CPelBuf&    o = pcPicD.get(ch);
+  const Pel*  pOrg = (conversion != IPCOLOURSPACE_UNCHANGED) ? pcPic.getPicYuvTrueOrg()->getAddr(ch) : pcPic->getPicYuvOrg()->getAddr(ch);
+  const uint32_t   orgStride = (conversion != IPCOLOURSPACE_UNCHANGED) ? pcPic->getPicYuvTrueOrg()->getStride(ch) : pcPic->getPicYuvOrg()->getStride(ch);
+  Pel*        pRec = pcPicD->getAddr(ch);
+  const uint32_t   recStride = pcPicD->getStride(ch);
+  const uint32_t  bitDepth = sps.getBitDepth(toChannelType(ch));
+
+  sumOverFieldsMSSSIM += xCalculateMSSSIM(pOrg, orgStride, pRec, recStride, width, height, bitDepth);
+  }
+
+  MSSSIM[ch] = sumOverFieldsMSSSIM / 2;
+  }
+  */
+#endif
   uint32_t uibits = 0; // the number of bits for the pair is not calculated here - instead the overall total is used elsewhere.
 
   //===== add PSNR =====
-  m_gcAnalyzeAll_in.addResult (dPSNR, (double)uibits, MSEyuvframe
+#if PrintSSIM
+  m_gcAnalyzeAll_in.addResult(dPSNR, (double)uibits, MSEyuvframe, MSSSIM, isEncodeLtRef);
+#else
+  m_gcAnalyzeAll_in.addResult(dPSNR, (double)uibits, MSEyuvframe
     , isEncodeLtRef
   );
+#endif
 
   *PSNR_Y = dPSNR[COMPONENT_Y];
 

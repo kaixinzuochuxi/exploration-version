@@ -245,7 +245,9 @@ protected:
                                      const InputColourSpaceConversion snr_conversion, const bool printFrameMSE, double* PSNR_Y
                                     , bool isEncodeLtRef
   );
-
+#if PrintSSIM
+  double xCalculateMSSSIM(const CPelBuf pcPic, const uint32_t orgStride, const CPelBuf cPicD, const uint32_t recStride, const uint32_t width, const uint32_t height, const uint32_t bitDepth);
+#endif
   uint64_t xFindDistortionPlane(const CPelBuf& pic0, const CPelBuf& pic1, const uint32_t rshift
 #if ENABLE_QPA
                             , const uint32_t chromaShift = 0

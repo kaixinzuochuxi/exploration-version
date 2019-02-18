@@ -72,14 +72,20 @@ private:
 #if EXTENSION_360_VIDEO
   TExt360EncAnalyze m_ext360;
 #endif
-
+#if PrintSSIM
+  double    m_MSSSIM[MAX_NUM_COMPONENT];
+#endif
 public:
   virtual ~Analyze()  {}
   Analyze() { clear(); }
 
-  void  addResult( double psnr[MAX_NUM_COMPONENT], double bits, const double MSEyuvframe[MAX_NUM_COMPONENT]
+#if PrintSSIM 
+  void  addResult(double psnr[MAX_NUM_COMPONENT], double bits, const double MSEyuvframe[MAX_NUM_COMPONENT], const double MSSSIM[MAX_NUM_COMPONENT], bool isEncodeLtRef)
+#else
+  void  addResult(double psnr[MAX_NUM_COMPONENT], double bits, const double MSEyuvframe[MAX_NUM_COMPONENT]
     , bool isEncodeLtRef
   )
+#endif
   {
     m_dAddBits  += bits;
     if (isEncodeLtRef)
@@ -88,12 +94,18 @@ public:
     {
       m_dPSNRSum[i] += psnr[i];
       m_MSEyuvframe[i] += MSEyuvframe[i];
+#if PrintSSIM
+      m_MSSSIM[i] += MSSSIM[i];
+#endif
     }
 
     m_uiNumPic++;
   }
 #if ENABLE_QPA
   double  getWPSNR      (const ComponentID compID) const { return m_dPSNRSum[compID] / (double)m_uiNumPic; }
+#endif
+#if PrintSSIM
+  double   getMsssim(ComponentID compID) const { return  m_MSSSIM[compID]; }
 #endif
   double  getPsnr(ComponentID compID) const { return  m_dPSNRSum[compID];  }
   double  getBits()                   const { return  m_dAddBits;   }
@@ -111,6 +123,9 @@ public:
     {
       m_dPSNRSum[i] = 0;
       m_MSEyuvframe[i] = 0;
+#if PrintSSIM
+      m_MSSSIM[i] = 0;
+#endif
     }
     m_uiNumPic = 0;
 #if EXTENSION_360_VIDEO
@@ -214,7 +229,9 @@ public:
           {
             msg(e_msg_level, "xY-PSNR           ");
           }
-
+#if PrintSSIM          
+          msg(e_msg_level, "    Y-MS-SSIM");
+#endif
           if (printSequenceMSE)
           {
             msg( e_msg_level, "    Y-MSE\n" );
@@ -245,7 +262,9 @@ public:
 
             msg(e_msg_level, "   %16" PRIx64 " ", xPsnr);
           }
-
+#if PrintSSIM
+          msg(e_msg_level, "    %8.6lf", getMsssim(COMPONENT_Y) / (double)getNumPic());
+#endif
           if (printSequenceMSE)
           {
             msg( e_msg_level, "  %8.4lf\n", m_MSEyuvframe[COMPONENT_Y] / (double)getNumPic() );
@@ -273,7 +292,9 @@ public:
           {
             msg(e_msg_level, "xY-PSNR           ");
           }
-
+#if PrintSSIM          
+          msg(e_msg_level, "    Y-MS-SSIM");
+#endif
           if (printSequenceMSE)
           {
             msg( e_msg_level, "    Y-MSE\n" );
@@ -304,7 +325,9 @@ public:
 
             msg(e_msg_level, "   %16" PRIx64 " ", xPsnr);
           }
-
+#if PrintSSIM
+          msg(e_msg_level, "    %8.6lf", getMsssim(COMPONENT_Y) / (double)getNumPic());
+#endif
           if (printSequenceMSE)
           {
             msg( e_msg_level, "  %8.4lf\n", m_MSEyuvframe[COMPONENT_Y] / (double)getNumPic() );
@@ -337,7 +360,10 @@ public:
             {
               msg(e_msg_level, "xY-PSNR           "  "xU-PSNR           "  "xV-PSNR           ");
             }
-
+#if PrintSSIM
+            //printf("   Y-MS-SSIM    " "U-MS-SSIM    " "V-MS-SSIM ");
+            msg(e_msg_level, "    Y-MS-SSIM     "  "U-MS-SSIM     "  "V-MS-SSIM     ");
+#endif
             if (printSequenceMSE)
             {
               msg( e_msg_level, " Y-MSE     "  "U-MSE     "  "V-MSE    "  "YUV-MSE \n" );
@@ -379,7 +405,18 @@ public:
               }
               msg(e_msg_level, "   %16" PRIx64 "  %16" PRIx64 "  %16" PRIx64, xPsnr[COMPONENT_Y], xPsnr[COMPONENT_Cb], xPsnr[COMPONENT_Cr]);
             }
-
+#if PrintSSIM
+            /*
+            printf("    %8.6lf     " "%8.6lf     " "%8.6lf ",
+            getMsssim(COMPONENT_Y) / (double)getNumPic(),
+            getMsssim(COMPONENT_Cb) / (double)getNumPic(),
+            getMsssim(COMPONENT_Cr) / (double)getNumPic());
+            */
+            msg(e_msg_level, "    %8.6lf     " "%8.6lf     " "%8.6lf ",
+              getMsssim(COMPONENT_Y) / (double)getNumPic(),
+              getMsssim(COMPONENT_Cb) / (double)getNumPic(),
+              getMsssim(COMPONENT_Cr) / (double)getNumPic());
+#endif
             if (printSequenceMSE)
             {
               msg( e_msg_level, "  %8.4lf  "   "%8.4lf  "    "%8.4lf  "   "%8.4lf\n",
@@ -417,7 +454,10 @@ public:
             {
               msg(e_msg_level, "xY-PSNR           "  "xU-PSNR           "  "xV-PSNR           ");
             }
-
+#if PrintSSIM
+            //printf("   Y-MS-SSIM    " "U-MS-SSIM    " "V-MS-SSIM ");
+            msg(e_msg_level, "    Y-MS-SSIM     "  "U-MS-SSIM     "  "V-MS-SSIM     ");
+#endif
             if (printSequenceMSE)
             {
               msg( e_msg_level, " Y-MSE     "  "U-MSE     "  "V-MSE    "  "YUV-MSE \n" );
@@ -463,7 +503,18 @@ public:
               }
               msg(e_msg_level, "   %16" PRIx64 "  %16" PRIx64 "  %16" PRIx64 , xPsnr[COMPONENT_Y], xPsnr[COMPONENT_Cb], xPsnr[COMPONENT_Cr]);
             }
-
+#if PrintSSIM
+            /*
+            printf("    %8.6lf     " "%8.6lf     " "%8.6lf ",
+            getMsssim(COMPONENT_Y) / (double)getNumPic(),
+            getMsssim(COMPONENT_Cb) / (double)getNumPic(),
+            getMsssim(COMPONENT_Cr) / (double)getNumPic());
+            */
+            msg(e_msg_level, "    %8.6lf     " "%8.6lf     " "%8.6lf ",
+              getMsssim(COMPONENT_Y) / (double)getNumPic(),
+              getMsssim(COMPONENT_Cb) / (double)getNumPic(),
+              getMsssim(COMPONENT_Cr) / (double)getNumPic());
+#endif
             if (printSequenceMSE)
             {
               msg( e_msg_level, "  %8.4lf  "   "%8.4lf  "    "%8.4lf  "   "%8.4lf\n",
