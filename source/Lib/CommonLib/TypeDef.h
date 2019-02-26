@@ -53,7 +53,7 @@
 
 #define PrintSSIM 1
 
-
+#define PrintTemporalResult                               1
 
 #define JVET_M0055_DEBUG_CTU                              1 // DebugCTU encoder debug option
 

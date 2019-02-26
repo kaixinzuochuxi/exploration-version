@@ -2056,6 +2056,11 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       m_pcRateCtrl->initRCPic( frameLevel );
       estimatedBits = m_pcRateCtrl->getRCPic()->getTargetBits();
 
+#if PrintTemporalResult  
+      printf("RC BEFORE: %d\t", estimatedBits);
+#endif 
+
+
 #if U0132_TARGET_BITS_SATURATION
       if (m_pcRateCtrl->getCpbSaturationEnabled() && frameLevel != 0)
       {
@@ -2146,6 +2151,10 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         m_pcRateCtrl->getRCPic()->getLCUInitTargetBits();
         lambda  = m_pcRateCtrl->getRCPic()->estimatePicLambda( listPreviousPicture, pcSlice->isIRAP());
         sliceQP = m_pcRateCtrl->getRCPic()->estimatePicQP( lambda, listPreviousPicture );
+
+#if PrintTemporalResult  
+        printf("%f\t", lambda);
+#endif   
       }
       else    // normal case
       {

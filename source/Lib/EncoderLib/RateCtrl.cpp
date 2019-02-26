@@ -1256,6 +1256,9 @@ void EncRCPic::updateAfterPicture( int actualHeaderBits, int actualTotalBits, do
     beta  = Clip3( g_RCBetaMinValue,  g_RCBetaMaxValue,  beta  );
   }
 
+#if PrintTemporalResult  
+  printf("\t%f\t%f\t\n", alpha, beta);
+#endif
   TRCParameter rcPara;
   rcPara.m_alpha = alpha;
   rcPara.m_beta  = beta;
@@ -1306,6 +1309,9 @@ int EncRCPic::getRefineBitsForIntra( int orgBits )
 
 double EncRCPic::calculateLambdaIntra(double alpha, double beta, double MADPerPixel, double bitsPerPixel)
 {
+#if PrintTemporalResult 
+  printf("%f\t%f\t%f\t", MADPerPixel, bitsPerPixel, MADPerPixel / bitsPerPixel);
+#endif
   return ( (alpha/256.0) * pow( MADPerPixel/bitsPerPixel, beta ) );
 }
 
@@ -1314,6 +1320,13 @@ void EncRCPic::updateAlphaBetaIntra(double *alpha, double *beta)
   double lnbpp = log(pow(m_totalCostIntra / (double)m_numberOfPixel, BETA1));
   double diffLambda = (*beta)*(log((double)m_picActualBits)-log((double)m_targetBits));
 
+
+  double bpp_real = (double)m_picActualBits / (double)m_numberOfPixel;
+  double bpp_comp = (double)m_targetBits / (double)m_numberOfPixel;
+#if PrintTemporalResult  
+  printf("\t%f\t%f\t", bpp_comp, bpp_real);
+  printf("\t%f\t%f\t", (*alpha)*pow(bpp_comp, (*beta)), (*alpha)*pow(bpp_real, (*beta)));
+#endif
   diffLambda = Clip3(-0.125, 0.125, 0.25*diffLambda);
   *alpha    =  (*alpha) * exp(diffLambda);
   *beta     =  (*beta) + diffLambda / lnbpp;
