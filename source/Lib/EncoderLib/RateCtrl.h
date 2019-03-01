@@ -242,7 +242,9 @@ public:
 
   void updateAfterCTU( int LCUIdx, int bits, int QP, double lambda, bool updateLCUParameter = true );
   void updateAfterPicture( int actualHeaderBits, int actualTotalBits, double averageQP, double averageLambda, bool isIRAP);
-
+#if CTU_IRAP_UPDATE
+  void EncRCPic::updateAfterCTUintra(int LCUIdx, int bits, int QP, double lambda, bool updateLCUParameter);
+#endif
   void addToPictureLsit( list<EncRCPic*>& listPreviousPictures );
   double calAverageQP();
   double calAverageLambda();

@@ -751,6 +751,9 @@ double EncRCPic::estimatePicLambda( list<EncRCPic*>& listPreviousPictures, bool 
   else
   {
     estLambda = alpha * pow( bpp, beta );
+#if PrintTemporalResult 
+    printf("|[inter bpp  %f  ", bpp);
+#endif
   }
 
   double lastLevelLambda = -1.0;
@@ -974,6 +977,9 @@ double EncRCPic::getLCUEstLambda( double bpp )
 
   //Avoid different results in different platforms. The problem is caused by the different results of pow() in different platforms.
   estLambda = double(int64_t(estLambda * (double)LAMBDA_PREC + 0.5)) / (double)LAMBDA_PREC;
+#if PrintTemporalResult  
+  printf("|[inter ctu_bpp  %f    ctu_lambda  %f  ",bpp, estLambda);
+#endif 
   return estLambda;
 }
 
@@ -1004,9 +1010,103 @@ int EncRCPic::getLCUEstQP( double lambda, int clipPicQP )
   }
 
   estQP = Clip3( clipPicQP - 2, clipPicQP + 2, estQP );
-
+#if PrintTemporalResult  
+  printf("ctu_QP  %d  ", estQP);
+#endif 
   return estQP;
 }
+#if CTU_IRAP_UPDATE
+void EncRCPic::updateAfterCTUintra(int LCUIdx, int bits, int QP, double lambda, bool updateLCUParameter)
+{
+  m_LCUs[LCUIdx].m_actualBits = bits;
+  m_LCUs[LCUIdx].m_QP = QP;
+  m_LCUs[LCUIdx].m_lambda = lambda;
+  m_LCUs[LCUIdx].m_actualSSE = m_LCUs[LCUIdx].m_actualMSE * m_LCUs[LCUIdx].m_numberOfPixel;
+
+  m_LCULeft--;
+  m_bitsLeft -= bits;
+  m_pixelsLeft -= m_LCUs[LCUIdx].m_numberOfPixel;
+
+  if (!updateLCUParameter)
+  {
+    return;
+  }
+
+  if (!m_encRCSeq->getUseLCUSeparateModel())
+  {
+    return;
+  }
+
+  double alpha = m_encRCSeq->getLCUPara(m_frameLevel, LCUIdx).m_alpha;
+  double beta = m_encRCSeq->getLCUPara(m_frameLevel, LCUIdx).m_beta;
+
+#if PrintTemporalResult  
+  double bpp_real = (double)m_picActualBits / (double)m_numberOfPixel;
+  double bpp_comp = (double)m_targetBits / (double)m_numberOfPixel;
+
+  printf("ctu_update  %f  %f", bpp_comp, bpp_real);
+  printf("  %f  %f]  ", (alpha)*pow(bpp_comp, (beta)), (alpha)*pow(bpp_real, (beta)));
+#endif
+
+  //////////
+  double lnbpp = log(pow(m_LCUs[LCUIdx].m_costIntra / (double)m_LCUs[LCUIdx].m_numberOfPixel, BETA1));
+  double diffLambda = (beta)*(log((double)m_LCUs[LCUIdx].m_actualBits) - log((double)m_LCUs[LCUIdx].m_targetBits));
+
+  diffLambda = Clip3(-0.125, 0.125, 0.25*diffLambda);
+  alpha = (alpha)* exp(diffLambda);
+  beta = (beta)+diffLambda / lnbpp;
+  /*
+  m_LCUs[LCUIdx].m_costIntra;
+  m_LCUs[LCUIdx].m_actualBits;
+  m_LCUs[LCUIdx].m_numberOfPixel;
+  m_LCUs[LCUIdx].m_targetBits;
+  */
+  //////////
+
+
+  int LCUActualBits = m_LCUs[LCUIdx].m_actualBits;
+  int LCUTotalPixels = m_LCUs[LCUIdx].m_numberOfPixel;
+  double bpp = (double)LCUActualBits / (double)LCUTotalPixels;
+  double calLambda = alpha * pow(bpp, beta);
+  double inputLambda = m_LCUs[LCUIdx].m_lambda;
+
+
+
+
+
+  alpha = Clip3(g_RCAlphaMinValue, g_RCAlphaMaxValue, alpha);
+  beta = Clip3(g_RCBetaMinValue, g_RCBetaMaxValue, beta);
+
+  TRCParameter rcPara;
+  rcPara.m_alpha = alpha;
+  rcPara.m_beta = beta;
+  if (QP == g_RCInvalidQPValue && m_encRCSeq->getAdaptiveBits() == 1)
+  {
+    rcPara.m_validPix = 0;
+  }
+  else
+  {
+    rcPara.m_validPix = LCUTotalPixels;
+  }
+
+  double MSE = m_LCUs[LCUIdx].m_actualMSE;
+  double updatedK = bpp * inputLambda / MSE;
+  double updatedC = MSE / pow(bpp, -updatedK);
+  rcPara.m_alpha = updatedC * updatedK;
+  rcPara.m_beta = -updatedK - 1.0;
+
+  if (bpp > 0 && updatedK > 0.0001)
+  {
+    m_encRCSeq->setLCUPara(m_frameLevel, LCUIdx, rcPara);
+  }
+  else
+  {
+    rcPara.m_alpha = Clip3(0.0001, g_RCAlphaMaxValue, rcPara.m_alpha);
+    m_encRCSeq->setLCUPara(m_frameLevel, LCUIdx, rcPara);
+  }
+  
+}
+#endif
 
 void EncRCPic::updateAfterCTU( int LCUIdx, int bits, int QP, double lambda, bool updateLCUParameter )
 {
@@ -1031,6 +1131,14 @@ void EncRCPic::updateAfterCTU( int LCUIdx, int bits, int QP, double lambda, bool
 
   double alpha = m_encRCSeq->getLCUPara( m_frameLevel, LCUIdx ).m_alpha;
   double beta  = m_encRCSeq->getLCUPara( m_frameLevel, LCUIdx ).m_beta;
+
+#if PrintTemporalResult  
+  double bpp_real = (double)m_picActualBits / (double)m_numberOfPixel;
+  double bpp_comp = (double)m_targetBits / (double)m_numberOfPixel;
+
+  printf("ctu_update  %f  %f", bpp_comp, bpp_real);
+  printf("  %f  %f]  |", (alpha)*pow(bpp_comp, (beta)), (alpha)*pow(bpp_real, (beta)));
+#endif
 
   int LCUActualBits   = m_LCUs[LCUIdx].m_actualBits;
   int LCUTotalPixels  = m_LCUs[LCUIdx].m_numberOfPixel;
@@ -1202,6 +1310,13 @@ void EncRCPic::updateAfterPicture( int actualHeaderBits, int actualTotalBits, do
   double alpha = m_encRCSeq->getPicPara( m_frameLevel ).m_alpha;
   double beta  = m_encRCSeq->getPicPara( m_frameLevel ).m_beta;
 
+#if PrintTemporalResult  
+  double bpp_real = (double)m_picActualBits / (double)m_numberOfPixel;
+  double bpp_comp = (double)m_targetBits / (double)m_numberOfPixel;
+
+  printf("  |[pic_update:  %f  %f", bpp_comp, bpp_real);
+  printf("  %f  %f]  |", (alpha)*pow(bpp_comp, (beta)), (alpha)*pow(bpp_real, (beta)));
+#endif
   if (isIRAP)
   {
     updateAlphaBetaIntra(&alpha, &beta);
@@ -1257,7 +1372,7 @@ void EncRCPic::updateAfterPicture( int actualHeaderBits, int actualTotalBits, do
   }
 
 #if PrintTemporalResult  
-  printf("\t%f\t%f\t\n", alpha, beta);
+  printf("|[frame-level-para  %f  %f]  \n", alpha, beta);
 #endif
   TRCParameter rcPara;
   rcPara.m_alpha = alpha;
@@ -1310,7 +1425,7 @@ int EncRCPic::getRefineBitsForIntra( int orgBits )
 double EncRCPic::calculateLambdaIntra(double alpha, double beta, double MADPerPixel, double bitsPerPixel)
 {
 #if PrintTemporalResult 
-  printf("%f\t%f\t%f\t", MADPerPixel, bitsPerPixel, MADPerPixel / bitsPerPixel);
+  printf("|[IRAP madpp  %f  bpp  %f  bpp_1  %f  ", MADPerPixel, bitsPerPixel, MADPerPixel / bitsPerPixel);
 #endif
   return ( (alpha/256.0) * pow( MADPerPixel/bitsPerPixel, beta ) );
 }
@@ -1320,13 +1435,6 @@ void EncRCPic::updateAlphaBetaIntra(double *alpha, double *beta)
   double lnbpp = log(pow(m_totalCostIntra / (double)m_numberOfPixel, BETA1));
   double diffLambda = (*beta)*(log((double)m_picActualBits)-log((double)m_targetBits));
 
-
-  double bpp_real = (double)m_picActualBits / (double)m_numberOfPixel;
-  double bpp_comp = (double)m_targetBits / (double)m_numberOfPixel;
-#if PrintTemporalResult  
-  printf("\t%f\t%f\t", bpp_comp, bpp_real);
-  printf("\t%f\t%f\t", (*alpha)*pow(bpp_comp, (*beta)), (*alpha)*pow(bpp_real, (*beta)));
-#endif
   diffLambda = Clip3(-0.125, 0.125, 0.25*diffLambda);
   *alpha    =  (*alpha) * exp(diffLambda);
   *beta     =  (*beta) + diffLambda / lnbpp;
@@ -1391,6 +1499,9 @@ double EncRCPic::getLCUEstLambdaAndQP(double bpp, int clipPicQP, int *estQP)
   *estQP = int(4.2005 * log(estLambda / pow(2.0, bitdepth_luma_scale)) + 13.7122 + 0.5);
   *estQP = Clip3(minQP, maxQP, *estQP);
 
+#if PrintTemporalResult  
+  printf("ctu_lambda  %f  ctu_QP  %d  ",  estLambda, *estQP);
+#endif 
   return estLambda;
 }
 

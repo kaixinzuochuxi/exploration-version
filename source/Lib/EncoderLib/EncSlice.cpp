@@ -1764,8 +1764,38 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
         actualQP = cu->qp;
       }
       pRdCost->setLambda(oldLambda, pcSlice->getSPS()->getBitDepths());
+#if CTU_IRAP_UPDATE
+      if (pcSlice->isIRAP())
+      {
+        printf("1\n");
+        pRateCtrl->getRCPic()->updateAfterCTUintra(pRateCtrl->getRCPic()->getLCUCoded(), actualBits, actualQP, actualLambda,
+          pCfg->getLCULevelRC());
+      }
+      else
+      {
+        pRateCtrl->getRCPic()->updateAfterCTU(pRateCtrl->getRCPic()->getLCUCoded(), actualBits, actualQP, actualLambda,
+          pcSlice->isIRAP() ? 0 : pCfg->getLCULevelRC());
+      }
+#else
       pRateCtrl->getRCPic()->updateAfterCTU( pRateCtrl->getRCPic()->getLCUCoded(), actualBits, actualQP, actualLambda,
                                              pcSlice->isIRAP() ? 0 : pCfg->getLCULevelRC() );
+#endif
+      
+#if PrintTemporalResult  
+      
+      if (!pCfg->getLCULevelRC())
+      {
+        printf("|[no-ctu_rc]  |");
+      }
+      else
+      {
+        if (pcSlice->isIRAP())
+        {
+          printf("no-update]  |");
+        }
+      }
+#endif  
+
     }
 #if ENABLE_QPA
     else if (pCfg->getUsePerceptQPA() && pcSlice->getPPS()->getUseDQP())

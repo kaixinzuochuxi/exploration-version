@@ -2057,7 +2057,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       estimatedBits = m_pcRateCtrl->getRCPic()->getTargetBits();
 
 #if PrintTemporalResult  
-      printf("RC BEFORE: %d\t", estimatedBits);
+      printf("RC  |Pic_comp_bits: %d  |frame_level: ", estimatedBits);
 #endif 
 
 
@@ -2152,9 +2152,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         lambda  = m_pcRateCtrl->getRCPic()->estimatePicLambda( listPreviousPicture, pcSlice->isIRAP());
         sliceQP = m_pcRateCtrl->getRCPic()->estimatePicQP( lambda, listPreviousPicture );
 
-#if PrintTemporalResult  
-        printf("%f\t", lambda);
-#endif   
+
       }
       else    // normal case
       {
@@ -2162,7 +2160,9 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         lambda  = m_pcRateCtrl->getRCPic()->estimatePicLambda( listPreviousPicture, pcSlice->isIRAP());
         sliceQP = m_pcRateCtrl->getRCPic()->estimatePicQP( lambda, listPreviousPicture );
       }
-
+#if PrintTemporalResult  
+      printf("pic_lambda:%f  pic_QP:%d]  |ctu_level: ", lambda, sliceQP);
+#endif   
       sliceQP = Clip3( -pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, sliceQP );
       m_pcRateCtrl->getRCPic()->setPicEstQP( sliceQP );
 
