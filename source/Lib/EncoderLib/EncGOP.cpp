@@ -2056,9 +2056,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       m_pcRateCtrl->initRCPic( frameLevel );
       estimatedBits = m_pcRateCtrl->getRCPic()->getTargetBits();
 
-#if PrintTemporalResult  
-      printf("RC  |Pic_comp_bits: %d  |frame_level: ", estimatedBits);
-#endif 
+
 
 
 #if U0132_TARGET_BITS_SATURATION
@@ -2108,13 +2106,13 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       {
         m_pcSliceEncoder->calCostSliceI(pcPic); // TODO: This only analyses the first slice segment - what about the others?
 
-        if ( m_pcCfg->getIntraPeriod() != 1 )   // do not refine allocated bits for all intra case
+        if (m_pcCfg->getIntraPeriod() != 1)   // do not refine allocated bits for all intra case
         {
           int bits = m_pcRateCtrl->getRCSeq()->getLeftAverageBits();
-          bits = m_pcRateCtrl->getRCPic()->getRefineBitsForIntra( bits );
+          bits = m_pcRateCtrl->getRCPic()->getRefineBitsForIntra(bits);
 
 #if U0132_TARGET_BITS_SATURATION
-          if (m_pcRateCtrl->getCpbSaturationEnabled() )
+          if (m_pcRateCtrl->getCpbSaturationEnabled())
           {
             int estimatedCpbFullness = m_pcRateCtrl->getCpbState() + m_pcRateCtrl->getBufferingRate();
 
@@ -2140,12 +2138,22 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
           }
 #endif
 
-          if ( bits < 200 )
+          if (bits < 200)
           {
             bits = 200;
           }
-          m_pcRateCtrl->getRCPic()->setTargetBits( bits );
+          m_pcRateCtrl->getRCPic()->setTargetBits(bits);
+
+#if PrintTemporalResult  
+          printf("RC  |Pic_comp_bits: %d  |frame_level: ", bits);
         }
+        else
+        { 
+          printf("RC  |Pic_comp_bits: %d  |frame_level: ", estimatedBits);
+#endif
+        }
+
+
 
         list<EncRCPic*> listPreviousPicture = m_pcRateCtrl->getPicList();
         m_pcRateCtrl->getRCPic()->getLCUInitTargetBits();
@@ -2156,12 +2164,17 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       }
       else    // normal case
       {
+#if PrintTemporalResult  
+        printf("RC  |Pic_comp_bits: %d  |frame_level: ", estimatedBits);
+#endif 
         list<EncRCPic*> listPreviousPicture = m_pcRateCtrl->getPicList();
         lambda  = m_pcRateCtrl->getRCPic()->estimatePicLambda( listPreviousPicture, pcSlice->isIRAP());
         sliceQP = m_pcRateCtrl->getRCPic()->estimatePicQP( lambda, listPreviousPicture );
+
       }
+
 #if PrintTemporalResult  
-      printf("pic_lambda:%f  pic_QP:%d]  |ctu_level: ", lambda, sliceQP);
+      printf("pic_lambda: %f  pic_QP: %d]  |ctu_level: ", lambda, sliceQP);
 #endif   
       sliceQP = Clip3( -pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, sliceQP );
       m_pcRateCtrl->getRCPic()->setPicEstQP( sliceQP );

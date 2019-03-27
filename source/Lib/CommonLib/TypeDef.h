@@ -53,7 +53,7 @@
 
 #define PrintSSIM 1
 
-#define PrintTemporalResult                               1
+#define PrintTemporalResult                               0
 
 #define CTU_IRAP_UPDATE                                   0
 

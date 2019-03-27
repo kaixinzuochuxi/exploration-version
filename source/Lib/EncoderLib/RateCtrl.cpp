@@ -1133,8 +1133,8 @@ void EncRCPic::updateAfterCTU( int LCUIdx, int bits, int QP, double lambda, bool
   double beta  = m_encRCSeq->getLCUPara( m_frameLevel, LCUIdx ).m_beta;
 
 #if PrintTemporalResult  
-  double bpp_real = (double)m_picActualBits / (double)m_numberOfPixel;
-  double bpp_comp = (double)m_targetBits / (double)m_numberOfPixel;
+  double bpp_real = (double)m_LCUs[LCUIdx].m_actualBits / (double)m_LCUs[LCUIdx].m_numberOfPixel;
+  double bpp_comp = (double)m_LCUs[LCUIdx].m_targetBits / (double)m_LCUs[LCUIdx].m_numberOfPixel;
 
   printf("ctu_update  %f  %f", bpp_comp, bpp_real);
   printf("  %f  %f]  |", (alpha)*pow(bpp_comp, (beta)), (alpha)*pow(bpp_real, (beta)));
