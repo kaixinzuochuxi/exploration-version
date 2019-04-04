@@ -681,7 +681,6 @@ PelStorage::PelStorage()
     m_origin[i] = nullptr;
   }
 }
-
 PelStorage::~PelStorage()
 {
   destroy();

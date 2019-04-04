@@ -57,6 +57,7 @@
 
 #define CTU_IRAP_UPDATE                                   0
 
+#define PreAnalyze 1
 
 
 #define JVET_M0055_DEBUG_CTU                              1 // DebugCTU encoder debug option

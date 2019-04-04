@@ -68,6 +68,8 @@ EncApp::~EncApp()
 {
 }
 
+
+
 void EncApp::xInitLibCfg()
 {
 #if HEVC_VPS
@@ -634,8 +636,10 @@ void EncApp::xInitLib(bool isFieldCoding)
  - destroy internal class
  .
  */
+
 void EncApp::encode()
 {
+  
   m_bitstream.open(m_bitstreamFileName.c_str(), fstream::binary | fstream::out);
   if (!m_bitstream)
   {
@@ -665,11 +669,26 @@ void EncApp::encode()
 
   orgPic.create( unitArea );
   trueOrgPic.create( unitArea );
+  
 #if EXTENSION_360_VIDEO
   TExt360AppEncTop           ext360(*this, m_cEncLib.getGOPEncoder()->getExt360Data(), *(m_cEncLib.getGOPEncoder()), orgPic);
 #endif
 
-  while ( !bEos )
+#if PreAnalyze
+  trueOrgPic.destroy();
+  orgPic.destroy();
+  
+  int ngop = 9*4;
+  int BufSize;
+  int actualBufSize = 0;
+  PelStorage temp;
+  PelStorage tempori;
+  temp.create(unitArea);
+  tempori.create(unitArea);
+  //vector<PelStorage> lookaheadbuf(BufSize, temp);
+  //vector<PelStorage> trueoribufbuf(BufSize, tempori);
+  
+  while (!bEos)
   {
     // read input YUV file
 #if EXTENSION_360_VIDEO
@@ -682,17 +701,98 @@ void EncApp::encode()
       m_cVideoIOYuvInputFile.read(orgPic, trueOrgPic, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range);
     }
 #else
-    m_cVideoIOYuvInputFile.read( orgPic, trueOrgPic, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range );
+    
+    printf("\ntest\n");
+    
+    int bufsize = 0;
+    if (m_iFrameRcvd == 0)
+    {
+      BufSize = ngop + 1;
+    }
+    else
+    {
+      BufSize = ngop;
+    }
+    vector<PelStorage> lookaheadbuf(BufSize);
+    vector<PelStorage> trueoribufbuf(BufSize);
+    for (int i = 0; i < BufSize; i++)
+    {
+      lookaheadbuf[i].create(unitArea);
+      trueoribufbuf[i].create(unitArea);
+    }
+    while (bufsize < BufSize)
+    {
+      
+      printf("%d\t", bufsize);
+      PelStorage temptrueOrgPic;
+      PelStorage temporgPic;
+      (temporgPic).create(unitArea);
+      (temptrueOrgPic).create(unitArea);
+      
+      m_cVideoIOYuvInputFile.read(temporgPic, temptrueOrgPic, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range);
+      printf("finishread\t");
+      lookaheadbuf[bufsize].swap(temporgPic);
+      trueoribufbuf[bufsize].swap(temptrueOrgPic);
+      temptrueOrgPic.destroy();
+      temptrueOrgPic.destroy();
+      //lookaheadbuf.push_back(temporgPic);
+      //printf("finishpush1\t");
+      //trueoribufbuf.push_back(temptrueOrgPic);
+      bufsize += 1;
+      printf("%d\n", bufsize);
+      
+      
+      if (m_cVideoIOYuvInputFile.isEof())
+      {
+        break;
+      }
+      
+    }
+    int tempbuf = 0;
+    while (tempbuf < bufsize)
+    {
+
+      
+      PelStorage trueOrgPic;
+      PelStorage orgPic;
+      orgPic.createFromBuf( lookaheadbuf[tempbuf].getBuf(unitArea));
+      trueOrgPic.createFromBuf(trueoribufbuf[tempbuf].getBuf(unitArea));
+      tempbuf += 1;
+#endif
+#else
+  while (!bEos)
+  {
+    // read input YUV file
+#if EXTENSION_360_VIDEO
+    if (ext360.isEnabled())
+    {
+      ext360.read(m_cVideoIOYuvInputFile, orgPic, trueOrgPic, ipCSC);
+    }
+    else
+    {
+      m_cVideoIOYuvInputFile.read(orgPic, trueOrgPic, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range);
+    }
+#else
+    m_cVideoIOYuvInputFile.read(orgPic, trueOrgPic, ipCSC, m_aiPad, m_InputChromaFormatIDC, m_bClipInputVideoToRec709Range);
 #endif
 
+
+
+
+
+#endif
     // increase number of received frames
     m_iFrameRcvd++;
 
-    bEos = (m_isField && (m_iFrameRcvd == (m_framesToBeEncoded >> 1) )) || ( !m_isField && (m_iFrameRcvd == m_framesToBeEncoded) );
+    bEos = (m_isField && (m_iFrameRcvd == (m_framesToBeEncoded >> 1))) || (!m_isField && (m_iFrameRcvd == m_framesToBeEncoded));
 
     bool flush = 0;
     // if end of file (which is only detected on a read failure) flush the encoder of any queued pictures
+#if PreAnalyze
+    if (bufsize < BufSize)
+#else
     if (m_cVideoIOYuvInputFile.isEof())
+#endif
     {
       flush = true;
       bEos = true;
@@ -701,41 +801,44 @@ void EncApp::encode()
     }
 
     // call encoding function for one frame
-    if ( m_isField )
+    if (m_isField)
     {
-      m_cEncLib.encode( bEos, flush ? 0 : &orgPic, flush ? 0 : &trueOrgPic, snrCSC, recBufList,
-                        iNumEncoded, m_isTopFieldFirst );
+      m_cEncLib.encode(bEos, flush ? 0 : &orgPic, flush ? 0 : &trueOrgPic, snrCSC, recBufList,
+        iNumEncoded, m_isTopFieldFirst);
     }
     else
     {
-      m_cEncLib.encode( bEos, flush ? 0 : &orgPic, flush ? 0 : &trueOrgPic, snrCSC, recBufList,
-                        iNumEncoded );
+      m_cEncLib.encode(bEos, flush ? 0 : &orgPic, flush ? 0 : &trueOrgPic, snrCSC, recBufList,
+        iNumEncoded);
     }
 
     // write bistream to file if necessary
-    if ( iNumEncoded > 0 )
+    if (iNumEncoded > 0)
     {
-      xWriteOutput( iNumEncoded, recBufList
+      xWriteOutput(iNumEncoded, recBufList
       );
     }
     // temporally skip frames
-    if( m_temporalSubsampleRatio > 1 )
+    if (m_temporalSubsampleRatio > 1)
     {
 #if EXTENSION_360_VIDEO
       m_cVideoIOYuvInputFile.skipFrames(m_temporalSubsampleRatio - 1, m_inputFileWidth, m_inputFileHeight, m_InputChromaFormatIDC);
 #else
-      m_cVideoIOYuvInputFile.skipFrames(m_temporalSubsampleRatio-1, m_iSourceWidth - m_aiPad[0], m_iSourceHeight - m_aiPad[1], m_InputChromaFormatIDC);
+      m_cVideoIOYuvInputFile.skipFrames(m_temporalSubsampleRatio - 1, m_iSourceWidth - m_aiPad[0], m_iSourceHeight - m_aiPad[1], m_InputChromaFormatIDC);
 #endif
     }
+    }
+#if PreAnalyze
+  
   }
-
+#endif
   m_cEncLib.printSummary(m_isField);
 
 
   // delete used buffers in encoder class
   m_cEncLib.deletePicBuffer();
 
-  for( auto &p : recBufList )
+  for (auto &p : recBufList)
   {
     delete p;
   }
@@ -748,6 +851,7 @@ void EncApp::encode()
   printRateSummary();
 
   return;
+
 }
 
 // ====================================================================================================================

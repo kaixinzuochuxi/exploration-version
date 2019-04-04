@@ -717,7 +717,7 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
 #endif
 
   bool sdr = false;
-
+  
   po::Options opts;
   opts.addOptions()
   ("help",                                            do_help,                                          false, "this help text")
@@ -1701,7 +1701,7 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
     }
   }
 #endif
-
+  
   for(uint32_t ch=0; ch<MAX_NUM_CHANNEL_TYPE; ch++)
   {
     if (saoOffsetBitShift[ch]<0)
@@ -2419,7 +2419,7 @@ bool EncAppCfg::xCheckParameter()
       xConfirmPara( ui != 1 , "Height should be 2^n");
     }
   }
-
+  
   /* if this is an intra-only sequence, ie IntraPeriod=1, don't verify the GOP structure
    * This permits the ability to omit a GOP structure specification */
   if (m_iIntraPeriod == 1 && m_GOPList[0].m_POC == -1)
@@ -2920,7 +2920,7 @@ bool EncAppCfg::xCheckParameter()
     m_tmctsSEIEnabled = false;
   }
 #endif
-
+  
   if(m_timeCodeSEIEnabled)
   {
     xConfirmPara(m_timeCodeSEINumTs > MAX_TIMECODE_SEI_SETS, "Number of time sets cannot exceed 3");

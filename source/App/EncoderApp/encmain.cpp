@@ -82,6 +82,7 @@ static void printMacroSettings()
 
 int main(int argc, char* argv[])
 {
+  
   // print information
   fprintf( stdout, "\n" );
   fprintf( stdout, "VVCSoftware: VTM Encoder Version %s ", VTM_VERSION );
@@ -115,30 +116,34 @@ int main(int argc, char* argv[])
   fprintf( stdout, "]" );
 #endif
   fprintf( stdout, "\n" );
-
+  
   EncApp* pcEncApp = new EncApp;
   // create application encoder class
   pcEncApp->create();
-
+  
   // parse configuration
   try
   {
+    
     if(!pcEncApp->parseCfg( argc, argv ))
     {
+      
       pcEncApp->destroy();
       return 1;
     }
+    
   }
+
   catch (df::program_options_lite::ParseFailure &e)
   {
     std::cerr << "Error parsing option \""<< e.arg <<"\" with argument \""<< e.val <<"\"." << std::endl;
     return 1;
   }
-
+  printf("\ntest\n");
 #if PRINT_MACRO_VALUES
   printMacroSettings();
 #endif
-
+  
   // starting time
   auto startTime  = std::chrono::steady_clock::now();
   std::time_t startTime2 = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
@@ -150,6 +155,7 @@ int main(int argc, char* argv[])
   try
   {
 #endif
+    
     pcEncApp->encode();
 #ifndef _DEBUG
   }
