@@ -446,6 +446,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
     , tempMotCandLUTs
     , bestMotCandLUTs
   );
+  
+
 
   // all signals were already copied during compression if the CTU was split - at this point only the structures are copied to the top level CS
 #if JVET_M0427_INLOOP_RESHAPER
@@ -472,7 +474,9 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       , tempMotCandLUTs
       , bestMotCandLUTs
     );
+  
 
+    
 #if JVET_M0427_INLOOP_RESHAPER
     const bool copyUnsplitCTUSignals = bestCS->cus.size() == 1;
 #else
@@ -480,6 +484,41 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #endif
     cs.useSubStructure( *bestCS, partitioner->chType, CS::getArea( *bestCS, area, partitioner->chType ), copyUnsplitCTUSignals, false, false, copyUnsplitCTUSignals );
   }
+
+  #if printresi
+        //const UnitArea currCsArea = clipArea( CS::getArea( *bestCS, area, partitioner->chType ), *tempCS->picture );
+        //CodingStructure *cs1 = pcPic->cs->bestCS;
+        auto picori = bestCS->picture->getTrueOrigBuf(area.Y());
+        //auto picori = bestCS->picture->getTrueOrigBuf(area);
+        auto picpred = bestCS->getPredBuf(area);
+        auto picresi = bestCS->getRecoBuf(area);
+        //auto picresiori = bestCS->picture->getOrgResiBuf(bestCS->area);
+      
+        int x = bestCS->area.Y().lumaPos().x;
+        int y = bestCS->area.Y().lumaPos().y;
+        int height = min(bestCS->area.lheight(), bestCS->picture->lheight()-y);
+        int width = min(bestCS->area.lwidth(), bestCS->picture->lwidth() - x);
+        //printf("%d,%d\t%d\t%d\t%d\t\n",
+          //x,y,
+            //picori.Y().at(0, 0), picpred.Y().at(0, 0),
+            //picresi.Y().at(0, 0));
+        //picori.bufs[0].buf[0], picpred.bufs[0].buf[0],
+          //picresi.bufs[0].buf[0]);
+        printf("%d,%d\n",x,y);
+
+        //for (int i = 0; i < height*width; i++)
+        //  printf("%d\t", picori.Y().buf[x + y * 416]);
+        for (int j = 0; j < 10; j++)
+        {
+          for (int i = 0; i < 10; i++)
+          {
+            printf("%d\t", picori.at( i,  j));
+
+          }
+          printf("\n");
+        }
+        printf("\n");
+  #endif
 
   if (m_pcEncCfg->getUseRateCtrl())
   {
@@ -889,6 +928,26 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
   }
 #endif
 
+
+  //#if printresi
+  //  //CodingStructure *cs1 = pcPic->cs->bestCS;
+  //  auto picori = bestCS->getOrgBuf(currCsArea);
+  //  auto picpred = bestCS->getPredBuf(currCsArea);
+  //  auto picresi = bestCS->getResiBuf(currCsArea);
+  //  auto picreco = bestCS->getRecoBuf(currCsArea);
+  //  //auto picresiori = bestCS->picture->getOrgResiBuf(currCsArea);
+  //  int x = bestCS->area.Y().lumaPos().x;
+  //  int y = bestCS->area.Y().lumaPos().y;
+  //
+  //    printf("%d\t%d\t%d\t%d\n", 
+  //      picori.Y().buf[0], picpred.Y().buf[0],
+  //      picresi.Y().buf[0], picreco.Y().buf[0]);
+  //
+  //
+  //#endif 
+
+
+
   //////////////////////////////////////////////////////////////////////////
   // Finishing CU
 #if ENABLE_SPLIT_PARALLELISM
@@ -936,6 +995,9 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
   }
 
 #endif
+  
+
+
   // Assert if Best prediction mode is NONE
   // Selected mode's RD-cost must be not MAX_DOUBLE.
   CHECK( bestCS->cus.empty()                                   , "No possible encoding found" );

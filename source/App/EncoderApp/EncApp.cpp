@@ -674,7 +674,7 @@ void EncApp::encode()
   TExt360AppEncTop           ext360(*this, m_cEncLib.getGOPEncoder()->getExt360Data(), *(m_cEncLib.getGOPEncoder()), orgPic);
 #endif
 
-#if PreAnalyze
+#if PreAnalyzeyuv
   trueOrgPic.destroy();
   orgPic.destroy();
   
@@ -788,7 +788,7 @@ void EncApp::encode()
 
     bool flush = 0;
     // if end of file (which is only detected on a read failure) flush the encoder of any queued pictures
-#if PreAnalyze
+#if PreAnalyzeyuv
     if (bufsize < BufSize)
 #else
     if (m_cVideoIOYuvInputFile.isEof())
@@ -828,7 +828,7 @@ void EncApp::encode()
 #endif
     }
     }
-#if PreAnalyze
+#if PreAnalyzeyuv
   
   }
 #endif

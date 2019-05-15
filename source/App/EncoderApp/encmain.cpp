@@ -139,7 +139,7 @@ int main(int argc, char* argv[])
     std::cerr << "Error parsing option \""<< e.arg <<"\" with argument \""<< e.val <<"\"." << std::endl;
     return 1;
   }
-  printf("\ntest\n");
+  
 #if PRINT_MACRO_VALUES
   printMacroSettings();
 #endif

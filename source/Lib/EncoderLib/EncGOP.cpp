@@ -58,6 +58,7 @@
 
 #include "DecoderLib/DecLib.h"
 
+
 #define ENCODE_SUB_SET 0
 
 using namespace std;
@@ -2350,6 +2351,8 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       {
         m_pcSliceEncoder->precompressSlice( pcPic );
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
+        
+
 
 #if HEVC_DEPENDENT_SLICES
         const uint32_t curSliceSegmentEnd = pcSlice->getSliceSegmentCurEndCtuTsAddr();
@@ -2403,7 +2406,23 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         nextCtuTsAddr = curSliceEnd;
 #endif
       }
-
+      
+      
+//#if printresi
+////CodingStructure &cs1 = *pcPic->cs;
+//auto picori = pcPic->getOrigBuf();
+//auto picpred = pcPic->getPredBuf();
+//auto picresi = pcPic->getResiBuf();
+//auto picrecon = pcPic->getRecoBuf();
+//
+//
+//printf("%" d "\t%" d "\t%" d "\t%" d "\n",
+//  picori.Y().buf[x], picpred.Y().buf[x],
+//  picresi.Y().buf[x], picrecon.Y().buf[x]);
+//
+//
+//#endif
+      
       duData.clear();
 
       CodingStructure& cs = *pcPic->cs;

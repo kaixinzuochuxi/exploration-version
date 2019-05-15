@@ -1138,7 +1138,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 {
   // if bCompressEntireSlice is true, then the entire slice (not slice segment) is compressed,
   //   effectively disabling the slice-segment-mode.
-
+  
   Slice* const pcSlice    = pcPic->slices[getSliceSegmentIdx()];
 #if HEVC_TILES_WPP
   const TileMap&  tileMap = *pcPic->tileMap;
@@ -1521,6 +1521,8 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   }
   checkDisFracMmvd( pcPic, startCtuTsAddr, boundingCtuTsAddr );
 #endif
+
+
   // for every CTU in the slice segment (may terminate sooner if there is a byte limit on the slice-segment)
   for( uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++ )
   {
