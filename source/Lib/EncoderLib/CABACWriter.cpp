@@ -2479,29 +2479,38 @@ void CABACWriter::mvd_coding( const Mv &rMvd, uint8_t imv )
 
 void CABACWriter::transform_unit( const TransformUnit& tu, CUCtx& cuCtx, ChromaCbfs& chromaCbfs )
 {
+  // data: tu affliated cu
   CodingUnit& cu        = *tu.cu;
+  // only have luma? 400 or cb is not valid
   bool        lumaOnly  = ( cu.chromaFormat == CHROMA_400 || !tu.blocks[COMPONENT_Cb].valid() );
+  // validate channel indicator, derived luma and chorma
   bool        cbf[3]    = { TU::getCbf( tu, COMPONENT_Y ), chromaCbfs.Cb, chromaCbfs.Cr };
   bool        cbfLuma   = ( cbf[ COMPONENT_Y ] != 0 );
   bool        cbfChroma = false;
 
 #if JVET_M0102_INTRA_SUBPARTITIONS
+  // both have luma and chorma
   if( !lumaOnly )
 #else
   if( cu.chromaFormat != CHROMA_400 )
 #endif
   {
+    // tu.blocks[COMPONENT_Cb].valid()
     if( tu.blocks[COMPONENT_Cb].valid() )
     {
+      // TU::getCbf( tu, COMPONENT_Cb )
       cbf   [ COMPONENT_Cb  ] = TU::getCbf( tu, COMPONENT_Cb );
       cbf   [ COMPONENT_Cr  ] = TU::getCbf( tu, COMPONENT_Cr );
     }
     cbfChroma = ( cbf[ COMPONENT_Cb ] || cbf[ COMPONENT_Cr ] );
+    //adjust cbfchorma
   }
   if( cbfLuma || cbfChroma )
   {
+    // use dqp and **cuctx not dqp coded 
     if( cu.cs->pps->getUseDQP() && !cuCtx.isDQPCoded )
     {
+      // not dual tree or is luma channel
       if (!CS::isDualITree(*tu.cs) || isLuma(tu.chType))
       {
         cu_qp_delta(cu, cuCtx.qp, cu.qp);
@@ -2509,23 +2518,29 @@ void CABACWriter::transform_unit( const TransformUnit& tu, CUCtx& cuCtx, ChromaC
         cuCtx.isDQPCoded = true;
       }
     }
+    // chorma aqp and have chorma component and not ?transQuantBypass and cuctx not chorma aqp
     if( cu.cs->slice->getUseChromaQpAdj() && cbfChroma && !cu.transQuantBypass && !cuCtx.isChromaQpAdjCoded )
     {
+      // chorma qp offset
       cu_chroma_qp_offset( cu );
       cuCtx.isChromaQpAdjCoded = true;
     }
     if( cbfLuma )
     {
+      // luma residual coding
       residual_coding( tu, COMPONENT_Y );
     }
     if( !lumaOnly )
     {
       for( ComponentID compID = COMPONENT_Cb; compID <= COMPONENT_Cr; compID = ComponentID( compID + 1 ) )
       {
+        // cclm, TU::hasCrossCompPredInfo( tu, compID )
         if( TU::hasCrossCompPredInfo( tu, compID ) )
         {
+          // cross_comp_pred
           cross_comp_pred( tu, compID );
         }
+        // residual coding
         if( cbf[ compID ] )
         {
           residual_coding( tu, compID );
@@ -2598,10 +2613,12 @@ void CABACWriter::residual_coding( const TransformUnit& tu, ComponentID compID )
 
   // code transform skip and explicit rdpcm mode
 #if JVET_M0464_UNI_MTS
+  // ?
   mts_coding         ( tu, compID );
 #else
   transform_skip_flag( tu, compID );
 #endif
+  // ?
   explicit_rdpcm_mode( tu, compID );
 
 #if HEVC_USE_SIGN_HIDING
@@ -2628,6 +2645,7 @@ void CABACWriter::residual_coding( const TransformUnit& tu, ComponentID compID )
 #else
   CoeffCodingContext  cctx    ( tu, compID );
 #endif
+  // !!!
   const TCoeff*       coeff   = tu.getCoeffs( compID ).buf;
 #if !JVET_M0464_UNI_MTS
   unsigned            numSig  = 0;
@@ -2636,12 +2654,14 @@ void CABACWriter::residual_coding( const TransformUnit& tu, ComponentID compID )
   // determine and set last coeff position and sig group flags
   int                      scanPosLast = -1;
   std::bitset<MLS_GRP_NUM> sigGroupFlags;
+  // maxNumCoeff
   for( int scanPos = 0; scanPos < cctx.maxNumCoeff(); scanPos++)
   {
     unsigned blkPos = cctx.blockPos( scanPos );
     if( coeff[blkPos] )
     {
       scanPosLast = scanPos;
+      // ?????log2CGSize
       sigGroupFlags.set( scanPos >> cctx.log2CGSize() );
     }
   }

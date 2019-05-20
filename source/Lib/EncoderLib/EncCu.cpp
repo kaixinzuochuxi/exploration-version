@@ -490,8 +490,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         //CodingStructure *cs1 = pcPic->cs->bestCS;
         auto picori = bestCS->picture->getTrueOrigBuf(area.Y());
         //auto picori = bestCS->picture->getTrueOrigBuf(area);
-        auto picpred = bestCS->getPredBuf(area);
-        auto picresi = bestCS->getRecoBuf(area);
+        auto picpred = bestCS->picture->getPredBuf(area);
+        auto picrecon = bestCS->picture->getRecoBuf(area);
         //auto picresiori = bestCS->picture->getOrgResiBuf(bestCS->area);
       
         int x = bestCS->area.Y().lumaPos().x;
@@ -512,7 +512,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         {
           for (int i = 0; i < 10; i++)
           {
-            printf("%d\t", picori.at( i,  j));
+            printf("%d\t", picrecon.Y().at( i,  j));
 
           }
           printf("\n");

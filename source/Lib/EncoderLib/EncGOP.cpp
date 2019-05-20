@@ -2408,21 +2408,6 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       }
       
       
-//#if printresi
-////CodingStructure &cs1 = *pcPic->cs;
-//auto picori = pcPic->getOrigBuf();
-//auto picpred = pcPic->getPredBuf();
-//auto picresi = pcPic->getResiBuf();
-//auto picrecon = pcPic->getRecoBuf();
-//
-//
-//printf("%" d "\t%" d "\t%" d "\t%" d "\n",
-//  picori.Y().buf[x], picpred.Y().buf[x],
-//  picresi.Y().buf[x], picrecon.Y().buf[x]);
-//
-//
-//#endif
-      
       duData.clear();
 
       CodingStructure& cs = *pcPic->cs;
