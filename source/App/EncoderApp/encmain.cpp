@@ -42,7 +42,9 @@
 
 #include "EncApp.h"
 #include "Utilities/program_options_lite.h"
-
+#if intermediate
+#include "CommonLib/CodingStructure.h"
+#endif
 //! \ingroup EncoderApp
 //! \{
 
@@ -117,6 +119,11 @@ int main(int argc, char* argv[])
 #endif
   fprintf( stdout, "\n" );
   
+#if intermediate
+  //framelevel fl;
+  //fl.output_prefix();
+#endif
+
   EncApp* pcEncApp = new EncApp;
   // create application encoder class
   pcEncApp->create();

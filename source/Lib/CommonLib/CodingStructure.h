@@ -326,5 +326,164 @@ static inline uint32_t getNumberValidTBlocks(const PreCalcValues& pcv) { return 
 inline unsigned toWSizeIdx( const CodingStructure* cs ) { return gp_sizeIdxInfo->idxFrom( cs->area.lwidth() ); }
 inline unsigned toHSizeIdx( const CodingStructure* cs ) { return gp_sizeIdxInfo->idxFrom( cs->area.lheight() ); }
 
+#if intermediate
+class Rate
+{
+public:
+
+  double m_bpp_comp;
+  double m_bpp_real;
+  int m_bit_comp;
+  int m_bit_real;
+
+  Rate() { m_bpp_comp = 0; m_bpp_real = 0; m_bit_comp = 0; m_bit_real = 0; }
+  Rate(double bpp_comp, double bpp_real,int bit_comp,int bit_real) { m_bpp_comp = bpp_comp; m_bpp_real = bpp_real; m_bit_comp = bit_comp; m_bit_real = bit_real; }
+  Rate(const Rate& R) { m_bpp_comp =R.m_bpp_comp ; m_bpp_real =R.m_bpp_real ; m_bit_comp = R.m_bit_comp; m_bit_real = R.m_bit_real; }
+
+  void setbppcomp(double bpp_comp) { m_bpp_comp = bpp_comp; }
+  void setbppreal(double bpp_real) { m_bpp_real = bpp_real; }
+  void setbitcomp(int bit_comp) { m_bit_comp = bit_comp; }
+  void setbitreal(int bit_real) { m_bit_real = bit_real; }
+
+  void setall(double bpp_comp, double bpp_real, int bit_comp, int bit_real) { m_bpp_comp = bpp_comp; m_bpp_real = bpp_real; m_bit_comp = bit_comp; m_bit_real = bit_real; }
+  void setall(const Rate& R) { m_bpp_comp = R.m_bpp_comp; m_bpp_real = R.m_bpp_real; m_bit_comp = R.m_bit_comp; m_bit_real = R.m_bit_real; }
+
+  double getbppcomp() { return m_bpp_comp ; }
+  double getbppreal() { return m_bpp_real; }
+  int getbitcomp() { return m_bit_comp; }
+  int getbitreal() { return m_bit_real; }
+};
+class coding_para
+{
+
+public:
+  double m_lambda[MAX_NUM_COMPONENT];
+  // COMPONENT_Y, COMPONENT_Cb, COMPONENT_Cr
+  int m_QP;
+
+  coding_para() { memset(m_lambda, 0, sizeof(m_lambda)); m_QP = 0;
+}
+  coding_para(const coding_para& cp) { memcpy(m_lambda , cp.m_lambda, sizeof(m_lambda)); m_QP = cp.m_QP; }
+
+  void setlambda( const double* lambda) { memcpy(m_lambda , lambda, sizeof(m_lambda)); }
+  void setqp(int qp) { m_QP = qp; }
+  double getlambda(ComponentID ch) { return m_lambda[ch]; }
+  int getqp() { return m_QP; }
+};
+
+class RCmodel
+{
+public:
+  double m_modelparaA;
+  double m_modelparaB;
+  double m_SATD;
+  RCmodel() { m_modelparaA = 0; m_modelparaB = 0; m_SATD = 0; }
+
+
+  void setmodelpara(double a, double b) { m_modelparaA = a; m_modelparaB = b; }
+  void getmodelpara(double &a, double &b) { a = m_modelparaA; b = m_modelparaB; }
+  void setSATD(double satd) { m_SATD = satd; }
+  double getSATD() { return m_SATD; }
+};
+class framelevel
+{
+public:
+  coding_para m_cp;
+  Rate m_R;
+  RCmodel m_RCmodel;
+
+  framelevel() {};
+
+  // output function
+  void output_prefix() { printf(" |[frame_level:\t"); }
+  // output cp
+  void output_cp_qp() { printf("QP: %d\t",m_cp.getqp()); }
+  void output_cp_lambda(ComponentID ch) { printf("lambda: %f\t", m_cp.getlambda(ch)); }
+  // output R
+  
+  void output_R_bitcomp() { printf("bitcomp: %d\t", m_R.getbitcomp()); }
+  void output_R_bitreal() { printf("bitreal: %d\t", m_R.getbitreal()); }
+  void output_R_bppcomp() { printf("bppcomp: %f\t", m_R.getbppcomp()); }
+  void output_R_bppreal() { printf("bppreal: %f\t", m_R.getbppreal()); }
+
+  // output model para
+  void output_RCmodel_modelpara() { double a; double b; m_RCmodel.getmodelpara(a, b); printf(" modelpara: %f %f\t", a,b); }
+  void output_RCmodel_SATD() { printf("%f\t", m_RCmodel.getSATD()); }
+
+  void output_suffix() { printf(" ]|\t"); }
+
+  void RC_output() {
+    output_prefix();
+    output_cp_qp();
+    output_cp_lambda(COMPONENT_Y);
+    output_R_bitcomp();
+    output_R_bitreal();
+    output_RCmodel_SATD();
+    output_RCmodel_modelpara();
+    output_suffix();
+  }
+};
+
+extern framelevel fl;
+
+class intra_pred
+{
+public:
+  
+};
+
+class inter_pred
+{
+public:
+
+};
+
+
+class ctulevel
+{
+public:
+  // source info
+  int m_size;
+  // R
+  Rate m_R;
+  RCmodel m_RCmodel;
+  coding_para m_cp;
+
+  ctulevel() { m_size = 128; }
+
+
+  // output function
+  void output_prefix() { printf("|[ctu_level:\t"); }
+  // output cp
+  void output_cp_qp() { printf("QP: %d\t", m_cp.getqp()); }
+  void output_cp_lambda(ComponentID ch) { printf("lambda: %f\t", m_cp.getlambda(ch)); }
+  // output R
+
+  void output_R_bitcomp() { printf("bitcomp: %d\t", m_R.getbitcomp()); }
+  void output_R_bitreal() { printf("bitreal: %d\t", m_R.getbitreal()); }
+  void output_R_bppcomp() { printf("bppcomp: %f\t", m_R.getbppcomp()); }
+  void output_R_bppreal() { printf("bppreal: %f\t", m_R.getbppreal()); }
+  // output model para
+  void output_RCmodel_modelpara() { double a; double b; m_RCmodel.getmodelpara(a, b); printf(" modelpara: %f %f\t", a, b); }
+  void output_RCmodel_SATD() { printf("%f\t", m_RCmodel.getSATD()); }
+
+
+  void output_suffix() {printf(" ]|\t") ; }
+
+  void RC_output() { 
+    output_prefix(); 
+    output_cp_qp();
+    output_cp_lambda(COMPONENT_Y);
+    output_R_bppcomp();
+    output_R_bppreal();
+    output_RCmodel_SATD();
+    output_RCmodel_modelpara();
+    output_suffix();
+  }
+
+};
+
+extern ctulevel cl;
 #endif
 
+#endif

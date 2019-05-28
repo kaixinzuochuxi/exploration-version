@@ -59,7 +59,9 @@
 
 #define PreAnalyzeyuv 0
 
-#define printresi 1
+#define printresi 0
+
+#define intermediate 0
 
 #define JVET_M0055_DEBUG_CTU                              1 // DebugCTU encoder debug option
 

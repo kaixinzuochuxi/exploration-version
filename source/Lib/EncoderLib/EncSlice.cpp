@@ -1130,6 +1130,9 @@ void EncSlice::calCostSliceI(Picture* pcPic) // TODO: this only analyses the fir
 
   }
   m_pcRateCtrl->getRCPic()->setTotalIntraCost(iSumHadSlice);
+#if intermediate
+  fl.m_RCmodel.setSATD(iSumHadSlice/ m_pcRateCtrl->getRCPic()->getNumberOfPixel());
+#endif
 }
 
 /** \param pcPic   picture class
@@ -1611,6 +1614,8 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
         if ( pcPic->slices[0]->isIRAP())
         {
           estLambda = pRateCtrl->getRCPic()->getLCUEstLambdaAndQP(bpp, pcSlice->getSliceQp(), &estQP);
+
+
         }
         else
         {
@@ -1627,12 +1632,26 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
         const double chromaLambda = estLambda / pRdCost->getChromaWeight();
         const double lambdaArray[MAX_NUM_COMPONENT] = { estLambda, chromaLambda, chromaLambda };
         pTrQuant->setLambdas( lambdaArray );
+
+#if intermediate
+        cl.m_cp.setlambda(lambdaArray);
+#endif // intermediate
 #else
         pTrQuant->setLambda( estLambda );
 #endif
       }
 
       pRateCtrl->setRCQP( estQP );
+      //printf("%d\t", estQP);
+#if intermediate
+      cl.m_cp.setqp(estQP);
+
+      //cl.output_prefix();
+      //cl.output_cp_qp();
+      //cl.output_cp_lambda(COMPONENT_Y);
+      
+#endif // intermediate
+
     }
 #if ENABLE_QPA
     else if (pCfg->getUsePerceptQPA() && pcSlice->getPPS()->getUseDQP())
@@ -1748,6 +1767,8 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 
       for( auto &cu : cs.traverseCUs( ctuArea, CH_L ) )
       {
+        //printf("%d\t", cu.qp);
+        //printf("\n");
         if( !cu.skip || cu.rootCbf )
         {
           numberOfEffectivePixels += cu.lumaSize().area();
@@ -1783,21 +1804,8 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
                                              pcSlice->isIRAP() ? 0 : pCfg->getLCULevelRC() );
 #endif
       
-#if PrintTemporalResult  
-      
-      if (!pCfg->getLCULevelRC())
-      {
-        printf("|[no-ctu_rc]  |");
-      }
-      else
-      {
-        if (pcSlice->isIRAP())
-        {
-          printf("no-update]  |");
-        }
-      }
-#endif  
 
+      
     }
 #if ENABLE_QPA
     else if (pCfg->getUsePerceptQPA() && pcSlice->getPPS()->getUseDQP())
@@ -1809,6 +1817,17 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
       pRdCost->setLambda (oldLambda, pcSlice->getSPS()->getBitDepths());
     }
+#endif
+#if intermediate
+    //cl.output_prefix();
+    //cl.output_cp_lambda(COMPONENT_Y);
+    //cl.output_cp_qp();
+    //cl.output_R_bppcomp();
+    //cl.output_R_bppreal();
+    //cl.output_RCmodel_SATD();
+    //cl.output_RCmodel_modelpara();
+    //cl.output_suffix();
+    cl.RC_output();
 #endif
 
 #if !ENABLE_WPP_PARALLELISM

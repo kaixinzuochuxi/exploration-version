@@ -832,6 +832,7 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
 #endif
       if (currTestMode.qp >= 0)
       {
+        //////////
         updateLambda(&slice, currTestMode.qp);
       }
     }

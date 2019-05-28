@@ -1454,3 +1454,8 @@ IbcLumaCoverage CodingStructure::getIbcLumaCoverage(const CompArea& chromaArea) 
 
   return coverage;
 }
+
+#if intermediate
+framelevel fl;
+ctulevel cl;
+#endif

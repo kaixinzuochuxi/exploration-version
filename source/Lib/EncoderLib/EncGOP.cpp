@@ -2102,6 +2102,10 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
              - DISTORTION_PRECISION_ADJUSTMENT(pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA)));
         double qp_temp = (double) sliceQP + bitdepth_luma_qp_scale - SHIFT_QP;
         lambda = dQPFactor*pow( 2.0, qp_temp/3.0 );
+#if intermediate
+        fl.m_R.setbitcomp(0);
+#endif
+
       }
       else if ( frameLevel == 0 )   // intra case, but use the model
       {
@@ -2145,12 +2149,14 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
           }
           m_pcRateCtrl->getRCPic()->setTargetBits(bits);
 
-#if PrintTemporalResult  
-          printf("RC  |Pic_comp_bits: %d  |frame_level: ", bits);
+
+#if intermediate
+          fl.m_R.setbitcomp(bits);
+
         }
         else
         { 
-          printf("RC  |Pic_comp_bits: %d  |frame_level: ", estimatedBits);
+          fl.m_R.setbitcomp(estimatedBits);
 #endif
         }
 
@@ -2165,18 +2171,16 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       }
       else    // normal case
       {
-#if PrintTemporalResult  
-        printf("RC  |Pic_comp_bits: %d  |frame_level: ", estimatedBits);
-#endif 
+#if intermediate
+        fl.m_R.setbitcomp(estimatedBits);
+#endif
         list<EncRCPic*> listPreviousPicture = m_pcRateCtrl->getPicList();
         lambda  = m_pcRateCtrl->getRCPic()->estimatePicLambda( listPreviousPicture, pcSlice->isIRAP());
         sliceQP = m_pcRateCtrl->getRCPic()->estimatePicQP( lambda, listPreviousPicture );
 
       }
 
-#if PrintTemporalResult  
-      printf("pic_lambda: %f  pic_QP: %d]  |ctu_level: ", lambda, sliceQP);
-#endif   
+  
       sliceQP = Clip3( -pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, sliceQP );
       m_pcRateCtrl->getRCPic()->setPicEstQP( sliceQP );
 
@@ -2346,6 +2350,16 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 #if HEVC_DEPENDENT_SLICES
       pcSlice->setSliceSegmentCurStartCtuTsAddr( 0 );
 #endif
+#if intermediate
+      //extern fl;
+      //fl.output_prefix();
+      fl.m_cp.setqp(pcSlice->getSliceQp());
+      fl.m_cp.setlambda(pcSlice->getLambdas());
+      //fl.output_R_bitcomp();
+      //fl.output_cp_lambda(COMPONENT_Y);
+      //fl.output_cp_lambda(COMPONENT_Cb);
+      //fl.output_cp_lambda(COMPONENT_Cr);
+#endif // intermediate
 
       for(uint32_t nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
       {
@@ -2744,8 +2758,16 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
           msg( NOTICE, " [CPB %6d bits]", m_pcRateCtrl->getCpbState() );
         }
   #endif
-      }
 
+      }
+#if intermediate
+      fl.m_R.setbitreal(actualTotalBits);
+      fl.m_RCmodel.setmodelpara(m_pcRateCtrl->getRCSeq()->getPicPara(m_pcRateCtrl->getRCPic()->getFrameLevel()).m_alpha, m_pcRateCtrl->getRCSeq()->getPicPara(m_pcRateCtrl->getRCPic()->getFrameLevel()).m_beta);
+
+      fl.RC_output();
+
+
+#endif
       xCreatePictureTimingSEI( m_pcCfg->getEfficientFieldIRAPEnabled() ? effFieldIRAPMap.GetIRAPGOPid() : 0, leadingSeiMessages, nestedSeiMessages, duInfoSeiMessages, pcSlice, isField, duData );
       if( m_pcCfg->getScalableNestingSEIEnabled() )
       {
