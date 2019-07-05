@@ -1034,7 +1034,9 @@ void Slice::checkLeadingPictureRestrictions(PicList& rcListPic) const
          nalUnitType == NAL_UNIT_CODED_SLICE_IDR_N_LP    ||
          nalUnitType == NAL_UNIT_CODED_SLICE_IDR_W_RADL)
       {
+        //printf("\n%d\t%d\n", pcPic->poc, this->getPOC());
         CHECK(pcPic->poc >= this->getPOC(), "Invalid POC");
+        
       }
     }
 

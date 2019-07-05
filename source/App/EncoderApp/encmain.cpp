@@ -119,10 +119,6 @@ int main(int argc, char* argv[])
 #endif
   fprintf( stdout, "\n" );
   
-#if intermediate
-  //framelevel fl;
-  //fl.output_prefix();
-#endif
 
   EncApp* pcEncApp = new EncApp;
   // create application encoder class

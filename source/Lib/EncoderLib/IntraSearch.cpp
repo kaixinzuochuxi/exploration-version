@@ -836,6 +836,8 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
       m_modeCtrl->setEmtFirstPassNoIspCost( MAX_DOUBLE );
     }
 #endif
+
+
     for( uint32_t ispOptionIdx = 0; ispOptionIdx < nOptionsForISP; ispOptionIdx++ )
     {
       cu.ispMode = ispOptions[ispOptionIdx];
@@ -895,6 +897,7 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
       else
       {
         xRecurIntraCodingLumaQT( *csTemp, partitioner, MAX_DOUBLE, -1 );
+
       }
 
       if( cu.ispMode && !csTemp->cus[0]->firstTU->cbf[COMPONENT_Y] )
@@ -918,10 +921,43 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
 #endif
 
       DTRACE( g_trace_ctx, D_INTRA_COST, "IntraCost T %f (%d) \n", csTemp->cost, uiOrgMode );
+      //printf("IntraCost T %f (%d) \n", csTemp->cost, uiOrgMode);
+
+      /////test
+      //pu.intradist = csTemp->dist;
+      ////csTemp->pus[0]->cost = csTemp->cost;
+      //if (csTemp->cost < csBest->cost) {
+      //  if (csBest->pus.size() > 0) {
+      //    //printf("%llu\n", csBest->pus.size());
+      //    pu.interdist = csBest->pus[0]->interdist;
+      //  }
+
+      //}
+      //else if (csBest->pus.size() > 0) {
+      //  if (csBest->cus[0]->predMode == MODE_INTER) {
+      //    extern double temp_cost;
+      //    extern Distortion temp_intra;
+      //    extern Distortion temp_inter;
+      //    if (csTemp->cost < temp_cost) {
+      //      temp_cost = csTemp->cost;
+      //      temp_intra = pu.intradist;
+      //      csBest->pus[0]->intradist = temp_intra;
+      //    }
+      //    //bestCS->pus[0]->intradist = std::min(tempCS->pus[0]->intradist, bestCS->pus[0]->intradist);
+      //    //printf("%llu\n", csBest->pus[0]->intradist);
+      //  }
+      //}
+      /////
 
       // check r-d cost
       if( csTemp->cost < csBest->cost )
       {
+        ///// *cstemp only have one pu and one cu, current cu also has only one pu
+        /////test
+        //cu.lastPU->intradist = csTemp->pus.back()->intradist;
+
+        //printf("%d", cu.lastPU == cu.firstPU);
+        /////
         std::swap( csTemp, csBest );
 
         uiBestPUMode  = uiOrgMode;
@@ -950,6 +986,7 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
         }
 #endif
       }
+      
 
       csTemp->releaseIntermediateData();
     } // Mode loop
@@ -963,16 +1000,26 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
     }
     cu.ispMode = bestIspOption;
 #endif
-
+    
 #if JVET_M0427_INLOOP_RESHAPER
+    //printf("%llu\n", csBest->pus.size());
     cs.useSubStructure(*csBest, partitioner.chType, pu.singleChan(CHANNEL_TYPE_LUMA), true, true, keepResi, keepResi);
 #else
     cs.useSubStructure( *csBest, partitioner.chType, pu.singleChan( CHANNEL_TYPE_LUMA ), KEEP_PRED_AND_RESI_SIGNALS, true, keepResi, keepResi );
 #endif
+    /////test
+    if (csBest->m_isTuEnc) {
+      pu.intradist = csBest->dist;
+    //  //pu.cost = csBest->cost;
+    //  //pu.interdist = csBest->pus[0]->interdist;
+    }
+    /////
     csBest->releaseIntermediateData();
     //=== update PU data ====
     pu.intraDir[0] = uiBestPUMode;
     pu.multiRefIdx = bestExtendRef;
+
+
   }
 
   //===== reset context models =====
@@ -2309,7 +2356,10 @@ void IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
     {
       ctxBest = m_CABACEstimator->getCtx();
     }
-
+    /////test
+    //if (cu.firstPU == cu.lastPU)
+    //cs.getCU(currArea.lumaPos(), partitioner.chType)->lastPU->intradist += uiSingleDistLuma;
+    /////
     csFull->cost     += dSingleCost;
     csFull->dist     += uiSingleDistLuma;
     csFull->fracBits += singleFracBits;
@@ -2443,6 +2493,7 @@ void IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
     cs.cost = m_pcRdCost->calcRdCost( cs.fracBits, cs.dist );
 #endif
   }
+
 }
 
 #if JVET_M0102_INTRA_SUBPARTITIONS

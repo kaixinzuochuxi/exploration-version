@@ -479,6 +479,12 @@ void PredictionUnit::initData()
 #if JVET_M0823_MMVD_ENCOPT
   mmvdEncOptMode = 0;
 #endif
+
+  /////test
+  intradist = UINT32_MAX;
+  interdist = UINT32_MAX;
+  cost = MAX_DOUBLE;
+  /////
 }
 
 PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
@@ -489,6 +495,11 @@ PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
   }
   multiRefIdx = predData.multiRefIdx;
 
+  /////test
+  intradist = predData.intradist;
+  cost = predData.cost;
+  //interdist = predData.interdist;
+  /////
   return *this;
 }
 
@@ -535,6 +546,12 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
   shareParentPos = predData.shareParentPos;
   shareParentSize = predData.shareParentSize;
 #endif
+
+  /////test
+  //intradist = predData.intradist;
+  interdist = predData.interdist;
+  cost = predData.cost;
+  /////
   return *this;
 }
 
@@ -587,6 +604,12 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   shareParentPos = other.shareParentPos;
   shareParentSize = other.shareParentSize;
 #endif
+
+  /////test
+  intradist = other.intradist;
+  interdist = other.interdist;
+  cost = other.cost;
+  /////
   return *this;
 }
 

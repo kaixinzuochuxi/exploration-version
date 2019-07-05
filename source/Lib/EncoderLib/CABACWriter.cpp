@@ -1092,6 +1092,7 @@ void CABACWriter::intra_luma_pred_modes( const CodingUnit& cu )
     mpm_idx    = numMPMs;
     for( unsigned idx = 0; idx < numMPMs; idx++ )
     {
+      
       if( ipred_mode == mpm_pred[idx] )
       {
         mpm_idx = idx;

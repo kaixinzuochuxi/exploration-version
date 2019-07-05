@@ -63,6 +63,11 @@
 
 #define intermediate 0
 
+#define AdaptiveGOP 0
+
+#define disablefast 1
+
+
 #define JVET_M0055_DEBUG_CTU                              1 // DebugCTU encoder debug option
 
 #define JVET_M0297_32PT_MTS_ZERO_OUT                      1 // 32 point MTS based on skipping high frequency coefficients

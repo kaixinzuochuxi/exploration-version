@@ -6770,6 +6770,11 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 
     csFull->fracBits += m_CABACEstimator->getEstFracBits();
     csFull->dist     += uiSingleDist;
+    /////test, only have one cu and pu
+    //printf("%d", csFull->pus.size()== (unsigned _int64)1);
+    //cu.firstPU->interdist += uiSingleDistComp[COMPONENT_Y];
+    //csFull->pus[0]->interdist = uiSingleDist;
+    /////
 #if WCG_EXT
     if( m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() )
     {
@@ -6877,11 +6882,21 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       if( bCheckFull && anyCbfSet && csSplit->cost < csFull->cost )
       {
         cs.useSubStructure( *csSplit, partitioner.chType, currArea, false, false, false, true );
+        /////test
+        //if (csSplit->m_isTuEnc) {
+        //  cs->pus[0].intradist = csSplit->pus[0]->intradist;
+        //  cs->pus[0].interdist = csSplit->pus[0]->interdist;
+        //}
+        //printf("%llu",cs.pus.size());
+        /////
         cs.cost = csSplit->cost;
 #if !JVET_M0464_UNI_MTS
         isSplit = true;
 #endif
       }
+      /////test
+      //cu.firstPU->interdist = csSplit->dist;
+      /////
     }
 
 #if !JVET_M0464_UNI_MTS
@@ -6900,6 +6915,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       csFull ->releaseIntermediateData();
     }
   }
+  
 }
 
 void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &partitioner, const bool &skipResidual
@@ -7011,6 +7027,10 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
     cs.fracBits = m_CABACEstimator->getEstFracBits();
     cs.cost     = m_pcRdCost->calcRdCost(cs.fracBits, cs.dist);
 
+    /////test
+    pu.interdist = distortion;
+    pu.cost = cs.cost;
+    /////
     return;
   }
 
@@ -7093,8 +7113,9 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #if JVET_M0140_SBT
     cu.sbtInfo = 0;
 #endif
+    /////test
     cu.rootCbf = false;
-
+    /////
     cs.clearTUs();
 
     // add a new "empty" TU spanning the whole CU
@@ -7214,6 +7235,10 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
   cs.fracBits = finalFracBits;
   cs.cost     = m_pcRdCost->calcRdCost(cs.fracBits, cs.dist);
 
+  /////test
+  cu.firstPU->interdist = finalDistortion;
+  cu.firstPU->cost = cs.cost;
+  /////
   CHECK(cs.tus.size() == 0, "No TUs present");
 }
 

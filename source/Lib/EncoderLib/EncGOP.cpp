@@ -57,6 +57,9 @@
 #include "CommonLib/dtrace_buffer.h"
 
 #include "DecoderLib/DecLib.h"
+#if AdaptiveGOP
+#include "CodingStructure.h"
+#endif // AdaptiveGOP
 
 
 #define ENCODE_SUB_SET 0
@@ -1401,8 +1404,12 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     int iTimeOffset;
     int pocCurr;
     int multipleFactor = m_pcCfg->getUseCompositeRef() ? 2 : 1;
-
+#if AdaptiveGOP
+    extern int AdaptiveGOPstart;
+    if (iPOCLast == 0 || AdaptiveGOPstart==2)
+#else
     if(iPOCLast == 0) //case first frame or first top field
+#endif
     {
       pocCurr=0;
       iTimeOffset = multipleFactor;
@@ -1415,9 +1422,12 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     else
     {
       pocCurr = iPOCLast - iNumPicRcvd * multipleFactor + m_pcCfg->getGOPEntry(iGOPid).m_POC - ((isField && m_iGopSize>1) ? 1 : 0);
+      
       iTimeOffset = m_pcCfg->getGOPEntry(iGOPid).m_POC;
     }
-
+    /////
+    //printf("m_POC:%d    POC:%d    iTimeOffset:%d\n", m_pcCfg->getGOPEntry(iGOPid).m_POC, pocCurr, iTimeOffset);
+    //printf("iPOCLast:%d    iNumPicRcvd:%d\n", iPOCLast, iNumPicRcvd);
     if (m_pcCfg->getUseCompositeRef() && isEncodeLtRef)
     {
       pocCurr++;
@@ -1428,9 +1438,18 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       if (m_pcCfg->getEfficientFieldIRAPEnabled())
       {
         iGOPid=effFieldIRAPMap.restoreGOPid(iGOPid);
+        
       }
+      //printf("\n\tflag\t\n");
       continue;
     }
+#if AdaptiveGOP
+    if (iNumPicRcvd < iTimeOffset) {
+      //printf("\n\tflag1\t\n");
+      continue;
+    }
+      
+#endif // AdaptiveGOP
 
     if( getNalUnitType(pocCurr, m_iLastIDR, isField) == NAL_UNIT_CODED_SLICE_IDR_W_RADL || getNalUnitType(pocCurr, m_iLastIDR, isField) == NAL_UNIT_CODED_SLICE_IDR_N_LP )
     {
@@ -1500,6 +1519,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     {
       pcSlice->setSliceType(I_SLICE);
     }
+    
 #if JVET_M0483_IBC ==0
     if (pcSlice->getSliceType() == I_SLICE && pcSlice->getSPS()->getIBCMode())
     {
@@ -1508,6 +1528,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 #endif
     // Set the nal unit type
     pcSlice->setNalUnitType(getNalUnitType(pocCurr, m_iLastIDR, isField));
+    
     if(pcSlice->getTemporalLayerNonReferenceFlag())
     {
       if (pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_TRAIL_R &&
@@ -1567,6 +1588,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     {
       m_pcEncLib->selectReferencePictureSet(pcSlice, pocCurr, iGOPid, -1);
     }
+    
     if (!m_pcCfg->getEfficientFieldIRAPEnabled())
     {
       if ( pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_BLA_W_LP
@@ -1576,8 +1598,10 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_IDR_N_LP
         || pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_CRA )  // IRAP picture
       {
+        
         m_associatedIRAPType = pcSlice->getNalUnitType();
         m_associatedIRAPPOC = pocCurr;
+        
       }
       pcSlice->setAssociatedIRAPType(m_associatedIRAPType);
       pcSlice->setAssociatedIRAPPOC(m_associatedIRAPPOC);
@@ -1591,7 +1615,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
                                                             , isEncodeLtRef, m_pcCfg->getUseCompositeRef()
       );
     }
-
+    //printf("ok");
     pcSlice->applyReferencePictureSet(rcListPic, pcSlice->getRPS());
 
     if(pcSlice->getTLayer() > 0
@@ -2363,6 +2387,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 
       for(uint32_t nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
       {
+
         m_pcSliceEncoder->precompressSlice( pcPic );
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
         
@@ -2768,6 +2793,8 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 
 
 #endif
+
+
       xCreatePictureTimingSEI( m_pcCfg->getEfficientFieldIRAPEnabled() ? effFieldIRAPMap.GetIRAPGOPid() : 0, leadingSeiMessages, nestedSeiMessages, duInfoSeiMessages, pcSlice, isField, duData );
       if( m_pcCfg->getScalableNestingSEIEnabled() )
       {
@@ -2779,7 +2806,9 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       m_AUWriterIf->outputAU( accessUnit );
 
       msg( NOTICE, "\n" );
+
       fflush( stdout );
+
     }
 
 
@@ -2789,6 +2818,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 #if JVET_M0483_IBC ==0
     pcPic->longTerm = false;
 #endif
+
     m_bFirst = false;
     m_iNumPicCoded++;
     if (!(pcPic->cs->sps->getUseCompositeRef() && isEncodeLtRef))
@@ -2803,10 +2833,12 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     pcPic->destroyTempBuffers();
     pcPic->cs->destroyCoeffs();
     pcPic->cs->releaseIntermediateData();
+
+
+
   } // iGOPid-loop
 
   delete pcBitstreamRedirect;
-
   CHECK(!( (m_iNumPicCoded == iNumPicRcvd) ), "Unspecified error");
 
 }
@@ -2946,7 +2978,12 @@ void EncGOP::xInitGOP( int iPOCLast, int iNumPicRcvd, bool isField
 {
   CHECK(!( iNumPicRcvd > 0 ), "Unspecified error");
   //  Exception for the first frames
+#if AdaptiveGOP
+  extern int AdaptiveGOPstart;
+  if ((isField && (iPOCLast == 0 || iPOCLast == 1)) || (!isField && ((iPOCLast == 0) || AdaptiveGOPstart==2)) || isEncodeLtRef)
+#else
   if ((isField && (iPOCLast == 0 || iPOCLast == 1)) || (!isField && (iPOCLast == 0)) || isEncodeLtRef)
+#endif
   {
     m_iGopSize    = 1;
   }
@@ -2996,6 +3033,8 @@ void EncGOP::xGetBuffer( PicList&                  rcListPic,
   }
 
   CHECK(!(rpcPic != NULL), "Unspecified error");
+  /////
+  //printf("rpcPic->getPOC():%d\tpocCurr:%d\n", rpcPic->getPOC(), pocCurr);
   CHECK(!(rpcPic->getPOC() == pocCurr), "Unspecified error");
 
   (**iterPicYuvRec) = rpcPic->getRecoBuf();

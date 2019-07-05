@@ -209,8 +209,11 @@ public:
 
 private:
 
+  /////test
+  public:
   // needed for TU encoding
   bool m_isTuEnc;
+  private:
 
   unsigned *m_cuIdx   [MAX_NUM_CHANNEL_TYPE];
   unsigned *m_puIdx   [MAX_NUM_CHANNEL_TYPE];
@@ -484,6 +487,18 @@ public:
 };
 
 extern ctulevel cl;
+
+class culevel {
+public:
+  Mv mv;
+
+  double intra_cost;
+  double inter_cost;
+
+
+};
+
+extern cul;
 #endif
 
 #endif

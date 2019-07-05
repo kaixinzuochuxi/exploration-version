@@ -2156,7 +2156,9 @@ bool EncAppCfg::xCheckParameter()
 
   xConfirmPara( m_iGOPSize < 1 ,                                                            "GOP Size must be greater or equal to 1" );
   xConfirmPara( m_iGOPSize > 1 &&  m_iGOPSize % 2,                                          "GOP Size must be a multiple of 2, if GOP Size is greater than 1" );
+
   xConfirmPara( (m_iIntraPeriod > 0 && m_iIntraPeriod < m_iGOPSize) || m_iIntraPeriod == 0, "Intra period must be more than GOP size, or -1 , not 0" );
+
   xConfirmPara( m_iDecodingRefreshType < 0 || m_iDecodingRefreshType > 3,                   "Decoding Refresh Type must be comprised between 0 and 3 included" );
   if(m_iDecodingRefreshType == 3)
   {
@@ -2424,12 +2426,14 @@ bool EncAppCfg::xCheckParameter()
    * This permits the ability to omit a GOP structure specification */
   if (m_iIntraPeriod == 1 && m_GOPList[0].m_POC == -1)
   {
+
     m_GOPList[0] = GOPEntry();
     m_GOPList[0].m_QPFactor = 1;
     m_GOPList[0].m_betaOffsetDiv2 = 0;
     m_GOPList[0].m_tcOffsetDiv2 = 0;
     m_GOPList[0].m_POC = 1;
     m_GOPList[0].m_numRefPicsActive = 4;
+
   }
   else
   {
@@ -2453,6 +2457,7 @@ bool EncAppCfg::xCheckParameter()
     isOK[i]=false;
   }
   int numOK=0;
+
   xConfirmPara( m_iIntraPeriod >=0&&(m_iIntraPeriod%m_iGOPSize!=0), "Intra period must be a multiple of GOPSize, or -1" );
 
   for(int i=0; i<m_iGOPSize; i++)

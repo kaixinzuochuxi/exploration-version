@@ -50,7 +50,9 @@ extern recursive_mutex g_cache_mutex;
 #endif
 
 #include <math.h>
-
+#if AdaptiveGOP
+#include "CodingStructure.h"
+#endif // AdaptiveGOP
 //! \ingroup EncoderLib
 //! \{
 
@@ -355,6 +357,16 @@ void EncSlice::initEncSlice(Picture* pcPic, const int pocLast, const int pocCurr
       eSliceType = (pocLast == 0 || (pocCurr - (isField ? 1 : 0)) % (m_pcCfg->getIntraPeriod() * multipleFactor) == 0 || m_pcGOPEncoder->getGOPSize() == 0) ? I_SLICE : eSliceType;
     }
   }
+#if AdaptiveGOP
+  extern int AdaptiveGOPstart;
+  
+  if (AdaptiveGOPstart==2) {
+    eSliceType = I_SLICE;
+    
+    //printf("xxx");
+    fflush(stdout);
+  }
+#endif // AdaptiveGOP
 
   rpcSlice->setSliceType    ( eSliceType );
 
@@ -371,7 +383,18 @@ void EncSlice::initEncSlice(Picture* pcPic, const int pocLast, const int pocCurr
     rpcSlice->setTemporalLayerNonReferenceFlag(!m_pcCfg->getGOPEntry(iGOPid).m_refPic);
   }
   pcPic->referenced = true;
+#if AdaptiveGOP
+  extern int AdaptiveGOPstart;
+  if (AdaptiveGOPstart==2) {
+    rpcSlice->setTemporalLayerNonReferenceFlag(false);
+    
+    //printf("xxx");
 
+    fflush(stdout);
+  }
+  
+  //printf("\t%d\t", rpcSlice->isIRAP());
+#endif // AdaptiveGOP
   // ------------------------------------------------------------------------------------------------------------------
   // QP setting
   // ------------------------------------------------------------------------------------------------------------------
@@ -1624,9 +1647,9 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
         }
 
         estQP     = Clip3( -pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, estQP );
-
+        
         pRdCost->setLambda(estLambda, pcSlice->getSPS()->getBitDepths());
-
+        //pRdCost->saveUnadjustedLambda();
 #if RDOQ_CHROMA_LAMBDA
         // set lambda for RDOQ
         const double chromaLambda = estLambda / pRdCost->getChromaWeight();

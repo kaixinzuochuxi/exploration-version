@@ -520,6 +520,7 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* cPicYuvTru
     const PPS *pps = m_ppsMap.getPS(2);
     const SPS *sps = m_spsMap.getPS(pps->getSPSId());
 
+    
     picCurr->M_BUFS(0, PIC_ORIGINAL).copyFrom(m_cGOPEncoder.getPicBg()->getRecoBuf());
     picCurr->finalInit(*sps, *pps);
     picCurr->poc = m_iPOCLast - 1;
@@ -584,9 +585,16 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* cPicYuvTru
     }
   }
 
+#if AdaptiveGOP
+  extern int AdaptiveGOPstart;
+  if ((m_iNumPicRcvd == 0) || (!flush && (m_iPOCLast != 0) && AdaptiveGOPstart!=2 && (m_iNumPicRcvd != m_iGOPSize) && (m_iGOPSize != 0)))
+#else
   if ((m_iNumPicRcvd == 0) || (!flush && (m_iPOCLast != 0) && (m_iNumPicRcvd != m_iGOPSize) && (m_iGOPSize != 0)))
+#endif
   {
     iNumEncoded = 0;
+
+
     return;
   }
 
@@ -594,7 +602,7 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* cPicYuvTru
   {
     m_cRateCtrl.initRCGOP( m_iNumPicRcvd );
   }
-
+  
   // compress GOP
   m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut,
                             false, false, snrCSC, m_printFrameMSE
@@ -605,6 +613,9 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* cPicYuvTru
   {
     m_cRateCtrl.destroyRCGOP();
   }
+#if AdaptiveGOP
+  AdaptiveGOPstart = AdaptiveGOPstart == 1 ? 2 : 0;
+#endif // AdaptiveGOP
 
   iNumEncoded         = m_iNumPicRcvd;
   m_iNumPicRcvd       = 0;
@@ -1866,6 +1877,7 @@ int EncCfg::getQPForPicture(const uint32_t gopIndex, const Slice *pSlice) const
     const SliceType sliceType=pSlice->getSliceType();
 
     qp = getBaseQP();
+    
 
     // switch at specific qp and keep this qp offset
     static int appliedSwitchDQQ = 0; /* TODO: MT */
@@ -1874,7 +1886,7 @@ int EncCfg::getQPForPicture(const uint32_t gopIndex, const Slice *pSlice) const
       appliedSwitchDQQ = getSwitchDQP();
     }
     qp += appliedSwitchDQQ;
-
+    
 #if QP_SWITCHING_FOR_PARALLEL
     const int* pdQPs = getdQPs();
     if ( pdQPs )
@@ -1900,7 +1912,6 @@ int EncCfg::getQPForPicture(const uint32_t gopIndex, const Slice *pSlice) const
         const GOPEntry &gopEntry=getGOPEntry(gopIndex);
         // adjust QP according to the QP offset for the GOP entry.
         qp +=gopEntry.m_QPOffset;
-
         // adjust QP according to QPOffsetModel for the GOP entry.
         double dqpOffset=qp*gopEntry.m_QPOffsetModelScale+gopEntry.m_QPOffsetModelOffset+0.5;
         int qpOffset = (int)floor(Clip3<double>(0.0, 3.0, dqpOffset));

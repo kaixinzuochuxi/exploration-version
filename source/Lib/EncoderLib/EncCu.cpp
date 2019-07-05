@@ -442,12 +442,97 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   tempCS->baseQP       = bestCS->baseQP       = currQP[CH_L];
   tempCS->prevQP[CH_L] = bestCS->prevQP[CH_L] = prevQP[CH_L];
 
+  /////test
+  if (tempCS->area.lx() == 304 && tempCS->area.ly() == 144 && tempCS->slice->getPOC() == 16) {
+    int xxx = 0;
+  }
+  if (tempCS->area.lx() == 48 && tempCS->area.ly() == 16 && tempCS->slice->getPOC() == 16) {
+    int xxx = 0;
+  }
+  /////
   xCompressCU( tempCS, bestCS, *partitioner
     , tempMotCandLUTs
     , bestMotCandLUTs
   );
   
+  /////test
+    char *s[] = {
+      "MODE_INTER" ,     ///< inter-prediction mode
+      "MODE_INTRA" ,     ///< intra-prediction mode
+  #if JVET_M0483_IBC
+      "MODE_IBC",     ///< ibc-prediction mode
+      "NUMBER_OF_PREDICTION_MODES" ,
+  #else
+      NUMBER_OF_PREDICTION_MODES ,
+  #endif
+    };
+  //for (auto pu : bestCS->pus)
+  //{
+  //  printf("(%4d* %4d* %4d* %4d*) %s intraDir:%2d interDir:%3d skip:%d merge:%d mergeIdx:%3d affine:%d\tmhIntraFlag:%d\t (MV: %d %d\t%d %d) (ref: %d %d)\n",
+  //    pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,
+  //    s[pu->cu->predMode],
+  //    pu->intraDir[0],
+  //    pu->interDir,
+  //    pu->cu->skip,
+  //    pu->mergeFlag,
+  //    pu->mergeIdx,
+  //    pu->cu->affine,
+  //    pu->mhIntraFlag,
+  //    pu->mv[0].hor,
+  //    pu->mv[0].ver,
+  //    pu->mv[1].hor,
+  //    pu->mv[1].ver,
+  //    pu->refIdx[0],
+  //    pu->refIdx[1]
+  //  );
+  //}
+    Distortion temp = 0;
+    for (auto pu : bestCS->pus)
+    {
+      printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,bestCS->slice->getPOC()
+        
+        );
+      printf("intradist:%llu interdist:%llu\t| ",
+        pu->intradist, pu->interdist);
+      printf("affine:%d*imv:%d*affinetype:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
+        pu->cu->affine,
+        pu->cu->imv, 
+        pu->cu->affineType,
 
+        pu->mv[0].hor,
+        pu->mv[0].ver,
+        pu->mv[1].hor,
+        pu->mv[1].ver,
+        pu->mvAffi[0][0].hor,
+        pu->mvAffi[0][0].ver,
+        pu->mvAffi[0][1].hor,
+        pu->mvAffi[0][1].ver,
+        pu->mvAffi[0][2].hor,
+        pu->mvAffi[0][2].ver,
+        pu->mvAffi[1][0].hor,
+        pu->mvAffi[1][0].ver,
+        pu->mvAffi[1][1].hor,
+        pu->mvAffi[1][1].ver,
+        pu->mvAffi[1][2].hor,
+        pu->mvAffi[1][2].ver
+        
+        );
+      printf("interDir:%d ref:%d*%d ", pu->interDir, pu->refIdx[0], pu->refIdx[1]);
+      for (int iRefList = 0; iRefList < 2; iRefList++)
+      {
+        printf( "L%d:", iRefList);
+        for (int iRefIndex = 0; iRefIndex < bestCS->slice->getNumRefIdx(RefPicList(iRefList)); iRefIndex++)
+        {
+          printf( "%d-", bestCS->slice->getRefPOC(RefPicList(iRefList), iRefIndex) - bestCS->slice->getLastIDR());
+        }
+        //printf( " ");
+      }
+      
+      printf(" |\n");
+    }
+     //printf("sum:%lld\tcs:%lld\n", temp,bestCS->dist);
+    //printf("%d", temp == bestCS->dist);
+  /////
 
   // all signals were already copied during compression if the CTU was split - at this point only the structures are copied to the top level CS
 #if JVET_M0427_INLOOP_RESHAPER
@@ -663,6 +748,9 @@ int  EncCu::updateCtuDataISlice(const CPelBuf buf)
 bool EncCu::xCheckBestMode( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &partitioner, const EncTestMode& encTestMode )
 {
   bool bestCSUpdated = false;
+  
+
+
 
   if( !tempCS->cus.empty() )
   {
@@ -750,11 +838,13 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
   if( m_pImvTempCS && !slice.isIntra() )
 #endif
   {
+    /////
     tempCS->initSubStructure( *m_pImvTempCS[wIdx], partitioner.chType, partitioner.currArea(), false );
   }
 
   tempCS->chType = partitioner.chType;
   bestCS->chType = partitioner.chType;
+  /////
   m_modeCtrl->initCULevel( partitioner, *tempCS );
 #if JVET_M0140_SBT
   if( partitioner.currQtDepth == 0 && partitioner.currMtDepth == 0 && !tempCS->slice->isIntra() && ( sps.getUseSBT() || sps.getUseInterMTS() ) )
@@ -891,6 +981,7 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
     }
     else if( currTestMode.type == ETM_INTRA )
     {
+      //printf("x");
       xCheckRDCostIntra( tempCS, bestCS, partitioner, currTestMode );
     }
     else if( currTestMode.type == ETM_IPCM )
@@ -928,24 +1019,8 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
     setShareStateDec(m_shareState);
   }
 #endif
+  
 
-
-  //#if printresi
-  //  //CodingStructure *cs1 = pcPic->cs->bestCS;
-  //  auto picori = bestCS->getOrgBuf(currCsArea);
-  //  auto picpred = bestCS->getPredBuf(currCsArea);
-  //  auto picresi = bestCS->getResiBuf(currCsArea);
-  //  auto picreco = bestCS->getRecoBuf(currCsArea);
-  //  //auto picresiori = bestCS->picture->getOrgResiBuf(currCsArea);
-  //  int x = bestCS->area.Y().lumaPos().x;
-  //  int y = bestCS->area.Y().lumaPos().y;
-  //
-  //    printf("%d\t%d\t%d\t%d\n", 
-  //      picori.Y().buf[0], picpred.Y().buf[0],
-  //      picresi.Y().buf[0], picreco.Y().buf[0]);
-  //
-  //
-  //#endif 
 
 
 
@@ -1399,6 +1474,12 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
       bestSubCS->sharedBndSize.width = (m_shareState == SHARING) ? m_shareBndSizeW : tempSubCS->area.lwidth();
       bestSubCS->sharedBndSize.height = (m_shareState == SHARING) ? m_shareBndSizeH : tempSubCS->area.lheight();
 #endif
+      /////test
+      if (subCUArea.lx() == 32 && subCUArea.ly() == 0 && subCUArea.lwidth() == 8 && subCUArea.lheight() == 16)
+      {
+        int xxx = 0;
+      }
+      /////
       xCompressCU( tempSubCS, bestSubCS, partitioner
         , tempSubMotCandLUTs
         , bestSubMotCandLUTs
@@ -1637,12 +1718,21 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
     CU::addPUs( cu );
 
     tempCS->interHad    = interHad;
-
+    ///// for luma
     if( isLuma( partitioner.chType ) )
     {
 #if JVET_M0102_INTRA_SUBPARTITIONS
       //the Intra SubPartitions mode uses the value of the best cost so far (luma if it is the fast version) to avoid test non-necessary lines
       const double bestCostSoFar = CS::isDualITree( *tempCS ) ? m_modeCtrl->getBestCostWithoutSplitFlags() : bestCU && bestCU->predMode == MODE_INTRA ? bestCS->lumaCost : bestCS->cost;
+      /////test
+      if (cu.lx() == 96 && cu.ly() == 64 && cu.lwidth() == 16 && cu.lheight() == 16)
+      {
+        int xxx = 0;
+      }
+
+      /////test
+      m_pcEncCfg->setUsePbIntraFast(0);
+      /////
       m_pcIntraSearch->estIntraPredLumaQT( cu, partitioner, bestCostSoFar );
 
       useIntraSubPartitions = cu.ispMode != NOT_INTRA_SUBPARTITIONS;
@@ -1681,6 +1771,9 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
       }
     }
 
+
+    
+    ///// for chorma
     if( tempCS->area.chromaFormat != CHROMA_400 && ( partitioner.chType == CHANNEL_TYPE_CHROMA || !CS::isDualITree( *tempCS ) ) )
     {
 #if JVET_M0102_INTRA_SUBPARTITIONS
@@ -1689,6 +1782,14 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
       if( useIntraSubPartitions && !cu.ispMode )
       {
         //At this point the temp cost is larger than the best cost. Therefore, we can already skip the remaining calculations
+
+        /////test
+        if (bestCS->cus[0]->predMode == MODE_INTER) {
+          //  temp_intra=
+
+          bestCS->pus[0]->intradist = cu.firstPU->intradist;
+      }
+        /////
 #if JVET_M0464_UNI_MTS
         return;
 #else
@@ -1768,6 +1869,25 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
 #else
     DTRACE_MODE_COST( *tempCS, m_pcRdCost->getLambda() );
 #endif
+    /////test
+    cu.firstPU->intradist = tempCS->dist;
+    if (bestCS->pus.size() > 0) {
+      if (tempCS->cost < bestCS->cost) {
+        cu.firstPU->interdist = bestCS->pus[0]->interdist;
+      }
+      else {
+        //extern double temp_cost;
+        //extern Distortion temp_inter;
+        //extern Distortion temp_intra;
+
+        if (bestCS->cus[0]->predMode == MODE_INTER) {
+          //  temp_intra=
+
+          bestCS->pus[0]->intradist = cu.firstPU->intradist;
+        }
+      }
+        }
+    /////
     xCheckBestMode( tempCS, bestCS, partitioner, encTestMode );
 
 #if !JVET_M0464_UNI_MTS
@@ -3631,6 +3751,7 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
     }
   }
 
+
 }
 
 void EncCu::xCheckRDCostIBCMode(CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &partitioner, const EncTestMode& encTestMode)
@@ -3730,6 +3851,7 @@ void EncCu::xCheckRDCostIBCMode(CodingStructure *&tempCS, CodingStructure *&best
 
           DTRACE_MODE_COST(*tempCS, m_pcRdCost->getLambda());
           xCheckBestMode(tempCS, bestCS, partitioner, encTestMode);
+
 
 #if !JVET_M0464_UNI_MTS
           //now we check whether the second pass should be skipped or not
@@ -4642,6 +4764,7 @@ void EncCu::xEncodeInterResidual( CodingStructure *&tempCS, CodingStructure *&be
       DTRACE_MODE_COST( *tempCS, m_pcRdCost->getLambda() );
 #endif
       xCheckBestMode( tempCS, bestCS, partitioner, encTestMode );
+
     }
 
     if( bestCostBegin != bestCS->cost )
@@ -4690,6 +4813,8 @@ void EncCu::xEncodeInterResidual( CodingStructure *&tempCS, CodingStructure *&be
     }
   }
 #endif
+
+
 }
 
 
@@ -4802,14 +4927,93 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
 
     xEncodeDontSplit( *tempCS,         partitioner );
     xCheckDQP       ( *tempCS,         partitioner );
+
+    /////test
+    ///// preserve the bestCS mode information that dont have
+    //if (tempCS->cost < bestCS->cost) {
+    //  if (tempCS->cus[0]->predMode== MODE_INTRA && bestCS->cus[0]->predMode == MODE_INTRA) {
+    //    //printf("%llu\n", csBest->pus.size());
+    //    tempCS->pus[0]->interdist = bestCS->pus[0]->interdist;
+    //  }
+    //  if (tempCS->cus[0]->predMode == MODE_INTRA && bestCS->cus[0]->predMode == MODE_INTER) {
+    //    //printf("%llu\n", csBest->pus.size());
+    //    tempCS->pus[0]->interdist = bestCS->pus[0]->interdist;
+    //  }
+    //  if (tempCS->cus[0]->predMode == MODE_INTER && bestCS->cus[0]->predMode == MODE_INTRA) {
+    //    //printf("%llu\n", csBest->pus.size());
+    //    tempCS->pus[0]->intradist = bestCS->pus[0]->intradist;
+    //  }
+    //  if (tempCS->cus[0]->predMode == MODE_INTER && bestCS->cus[0]->predMode == MODE_INTER) {
+    //    //printf("%llu\n", csBest->pus.size());
+    //    tempCS->pus[0]->intradist = bestCS->pus[0]->intradist;
+    //  }
+
+    //}
+    //else {
+    //  ///// update secondary optimized information
+    //  extern double temp_cost;
+    //  extern Distortion temp_intra;
+    //  extern Distortion temp_inter;
+
+
+    //  if (tempCS->cus[0]->predMode == MODE_INTRA && bestCS->cus[0]->predMode == MODE_INTER) {
+    //    
+    //    if (tempCS->cost < temp_cost) {
+    //      temp_cost = tempCS->cost;
+    //      temp_intra = tempCS->pus[0]->intradist;
+    //      bestCS->pus[0]->intradist = temp_intra;
+    //    }
+    //  }
+    //  if (tempCS->cus[0]->predMode == MODE_INTER && bestCS->cus[0]->predMode == MODE_INTRA) {
+    //    
+    //    if (tempCS->cost < temp_cost) {
+    //      temp_cost = tempCS->cost;
+    //      temp_inter = tempCS->pus[0]->interdist;
+    //      bestCS->pus[0]->interdist = temp_inter;
+    //    }
+    //  }
+      
+        //bestCS->pus[0]->intradist = std::min(tempCS->pus[0]->intradist, bestCS->pus[0]->intradist);
+        //printf("%llu\n", csBest->pus[0]->intradist);
+      
+    //}
+    /////
+    /////test
+      //cu.firstPU->interdist = tempCS->pus[0]->interdist;
+      //cu.firstPU->intradist = tempCS->pus[0]->intradist;
+    /////
     xCheckBestMode  (  tempCS, bestCS, partitioner, cachedMode );
+
+    /////test
+    //if (cu.predMode == MODE_INTER)
+    //{
+    //  cu.firstPU->interdist = bestCS->pus[0]->interdist;
+    //  cu.firstPU->intradist = bestCS->pus[0]->intradist;
+    //}
+    //else if (cu.predMode == MODE_INTRA)
+    //{
+    //  cu.firstPU->interdist = bestCS->pus[0]->interdist;
+    //  cu.firstPU->intradist = bestCS->pus[0]->intradist;
+    //}
+    ///
+    //printf("%d",cu.predMode);
   }
   else
   {
     THROW( "Should never happen!" );
   }
+
+
 }
 
+
+
+
+/////test
+double temp_cost = MAX_DOUBLE;
+Distortion temp_intra = UINT32_MAX;
+Distortion temp_inter = UINT32_MAX;
+/////
 #endif
 
 

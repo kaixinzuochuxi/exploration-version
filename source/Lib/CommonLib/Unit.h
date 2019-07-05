@@ -364,6 +364,8 @@ struct CodingUnit : public UnitArea
   uint8_t           getSbtTuSplit() const;
   const uint8_t     checkAllowedSbt() const;
 #endif
+
+  
 };
 
 // ---------------------------------------------------------------------------
@@ -374,6 +376,11 @@ struct IntraPredictionData
 {
   uint32_t  intraDir[MAX_NUM_CHANNEL_TYPE];
   int       multiRefIdx;
+  /////test
+  Distortion intradist;
+  //Distortion interdist;
+  double cost;
+  /////
 };
 
 struct InterPredictionData
@@ -411,6 +418,12 @@ struct InterPredictionData
 #if JVET_M0823_MMVD_ENCOPT
   uint8_t   mmvdEncOptMode;                  // 0: no action 1: skip chroma MC for MMVD candidate pre-selection 2: skip chroma MC and BIO for MMVD candidate pre-selection
 #endif
+                                             
+  /////test
+  //Distortion intradist;
+  Distortion interdist;
+  double cost;
+  /////
 };
 
 struct PredictionUnit : public UnitArea, public IntraPredictionData, public InterPredictionData
@@ -450,6 +463,11 @@ struct PredictionUnit : public UnitArea, public IntraPredictionData, public Inte
   int64_t cacheId;
   bool    cacheUsed;
 #endif
+  /////test
+  //Distortion intradist;
+  //Distortion interdist;
+  double cost;
+  /////
 };
 
 // ---------------------------------------------------------------------------

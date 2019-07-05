@@ -1396,11 +1396,12 @@ void EncModeCtrlMTnoRQT::finishCULevel( Partitioner &partitioner )
 bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingStructure &cs, Partitioner& partitioner )
 {
   ComprCUCtx& cuECtx = m_ComprCUCtxList.back();
-
+#if !disablefast
   // Fast checks, partitioning depended
 #if JVET_M0253_HASH_ME
   if (cuECtx.isHashPerfectMatch && encTestmode.type != ETM_MERGE_SKIP && encTestmode.type != ETM_AFFINE && encTestmode.type != ETM_MERGE_TRIANGLE)
   {
+    
     return false;
   }
 #endif
@@ -1410,7 +1411,7 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
   {
     return false;
   }
-
+#endif
   const PartSplit implicitSplit = partitioner.getImplicitSplit( cs );
   const bool isBoundary         = implicitSplit != CU_DONT_SPLIT;
 
@@ -1467,6 +1468,7 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
 
   if( encTestmode.type == ETM_INTRA )
   {
+#if !disablefast
     if( getFastDeltaQp() )
     {
       if( cs.area.lumaSize().width > cs.pcv->fastDeltaQPCuMaxSize )
@@ -1514,6 +1516,7 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
            ( ( numComp > COMPONENT_Cr ) && cuECtx.bestTU->cbf[2] != 0 )  // avoid very complex intra if it is unlikely
          ) ) ) )
     {
+      
       return false;
     }
     if ((m_pcEncCfg->getIBCFastMethod() & IBC_FAST_METHOD_NOINTRA_IBCCBF0)
@@ -1522,6 +1525,7 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
       && (!cuECtx.bestCU->Cb().valid() || cuECtx.bestTU->cbf[1] == 0)
       && (!cuECtx.bestCU->Cr().valid() || cuECtx.bestTU->cbf[2] == 0))
     {
+      
       return false;
     }
     if( lastTestMode().type != ETM_INTRA && cuECtx.bestCS && cuECtx.bestCU && interHadActive( cuECtx ) )
@@ -1543,11 +1547,12 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
         }
       }
     }
-
+#endif
     return true;
   }
   else if( encTestmode.type == ETM_IPCM )
   {
+#if !disablefast
     if( getFastDeltaQp() )
     {
       const SPS &sps = *cs.sps;
@@ -1558,7 +1563,7 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
         return false;   // only check necessary PCM in fast deltaqp mode
       }
     }
-
+#endif
     // PCM MODES
     return sps.getPCMEnabledFlag() && width <= ( 1 << sps.getPCMLog2MaxSize() ) && width >= ( 1 << sps.getPCMLog2MinSize() );
   }
@@ -1575,7 +1580,7 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
   {
     // INTER MODES (ME + MERGE/SKIP)
     CHECK( slice.isIntra(), "Inter-mode should not be in the I-Slice mode list!" );
-
+#if !disablefast
     if( getFastDeltaQp() )
     {
       if( encTestmode.type == ETM_MERGE_SKIP )
@@ -1625,6 +1630,7 @@ bool EncModeCtrlMTnoRQT::tryMode( const EncTestMode& encTestmode, const CodingSt
     {
       return false;
     }
+#endif
     return true;
   }
   else if( isModeSplit( encTestmode ) )

@@ -416,13 +416,15 @@ CodingUnit& CodingStructure::addCU( const UnitArea &unit, const ChannelType chTy
 PredictionUnit& CodingStructure::addPU( const UnitArea &unit, const ChannelType chType )
 {
   PredictionUnit *pu = m_puCache.get();
-
+  
   pu->UnitArea::operator=( unit );
   pu->initData();
   pu->next   = nullptr;
   pu->cs     = this;
   pu->cu     = m_isTuEnc ? cus[0] : getCU( unit.blocks[chType].pos(), chType );
   pu->chType = chType;
+
+
 #if ENABLE_SPLIT_PARALLELISM || ENABLE_WPP_PARALLELISM
 
   CHECK( pu->cacheId != pu->cu->cacheId, "Inconsintent cacheId between the PU and assigned CU" );
@@ -558,7 +560,9 @@ TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType c
         const Area scaledBlk   = scale.scale(     _blk );
 #endif
         unsigned *idxPtr       = m_tuIdx[i] + rsAddr( scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width );
+
         CHECK( *idxPtr, "Overwriting a pre-existing value, should be '0'!" );
+        
         AreaBuf<uint32_t>( idxPtr, scaledSelf.width, scaledBlk.size() ).fill( idx );
       }
     }
@@ -955,7 +959,15 @@ void CodingStructure::useSubStructure( const CodingStructure& subStruct, const C
       const UnitArea &puPatch = *ppu;
 
       PredictionUnit &pu = addPU( puPatch, chType );
-
+      /////test
+      Distortion intradist = ppu->intradist;
+      Distortion interdist = ppu->interdist;
+      /////
+      /////test
+      pu.interdist = interdist;
+      pu.intradist = intradist;
+      pu.cost = cost;
+      /////
       // copy the PU info from subPatch
       pu = *ppu;
     }
@@ -1458,4 +1470,10 @@ IbcLumaCoverage CodingStructure::getIbcLumaCoverage(const CompArea& chromaArea) 
 #if intermediate
 framelevel fl;
 ctulevel cl;
+culevel cul;
+#endif
+
+
+#if AdaptiveGOP
+int AdaptiveGOPstart = 0;
 #endif

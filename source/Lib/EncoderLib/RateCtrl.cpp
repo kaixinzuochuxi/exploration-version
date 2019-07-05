@@ -421,6 +421,7 @@ void EncRCGOP::create( EncRCSeq* encRCSeq, int numPic )
   int i;
   int totalPicRatio = 0;
   int currPicRatio = 0;
+  
   for ( i=0; i<numPic; i++ )
   {
     totalPicRatio += encRCSeq->getBitRatio( i );

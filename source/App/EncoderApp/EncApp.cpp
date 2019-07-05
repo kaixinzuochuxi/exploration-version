@@ -47,7 +47,9 @@
 #if EXTENSION_360_VIDEO
 #include "AppEncHelper360/TExt360AppEncTop.h"
 #endif
-
+#if AdaptiveGOP
+#include "CodingStructure.h"
+#endif // AdaptiveGOP
 using namespace std;
 
 //! \ingroup EncoderApp
@@ -118,6 +120,7 @@ void EncApp::xInitLibCfg()
   m_cEncLib.setIntraPeriod                                       ( m_iIntraPeriod );
   m_cEncLib.setDecodingRefreshType                               ( m_iDecodingRefreshType );
   m_cEncLib.setGOPSize                                           ( m_iGOPSize );
+
   m_cEncLib.setGopList                                           ( m_GOPList );
   m_cEncLib.setExtraRPSs                                         ( m_extraRPSs );
   for(int i = 0; i < MAX_TLAYER; i++)
@@ -648,6 +651,14 @@ void EncApp::encode()
 
   std::list<PelUnitBuf*> recBufList;
   // initialize internal class & member variables
+
+#if AdaptiveGOP
+  extern int AdaptiveGOPstart;
+  AdaptiveGOPstart = 0;
+
+#endif // AdaptiveGOP
+
+
   xInitLibCfg();
   xCreateLib( recBufList
              );
@@ -760,6 +771,9 @@ void EncApp::encode()
       tempbuf += 1;
 #endif
 #else
+
+  
+
   while (!bEos)
   {
     // read input YUV file
@@ -791,6 +805,7 @@ void EncApp::encode()
 #if PreAnalyzeyuv
     if (bufsize < BufSize)
 #else
+
     if (m_cVideoIOYuvInputFile.isEof())
 #endif
     {
@@ -799,6 +814,17 @@ void EncApp::encode()
       m_iFrameRcvd--;
       m_cEncLib.setFramesToBeEncoded(m_iFrameRcvd);
     }
+#if AdaptiveGOP
+    if (m_iFrameRcvd == 9) {
+      printf("m_iFrameRcvd:%d\n", m_iFrameRcvd);
+      //flush = true;
+      bEos = true;
+      extern int AdaptiveGOPstart;
+      AdaptiveGOPstart = 1;
+      ;
+    }
+
+#endif
 
     // call encoding function for one frame
     if (m_isField)
@@ -811,6 +837,14 @@ void EncApp::encode()
       m_cEncLib.encode(bEos, flush ? 0 : &orgPic, flush ? 0 : &trueOrgPic, snrCSC, recBufList,
         iNumEncoded);
     }
+#if AdaptiveGOP 
+    if (AdaptiveGOPstart == 2)
+    {
+      AdaptiveGOPstart = 0;
+      bEos = false;
+  }
+#endif   
+
 
     // write bistream to file if necessary
     if (iNumEncoded > 0)
