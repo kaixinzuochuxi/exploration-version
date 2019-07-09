@@ -67,6 +67,15 @@
 
 #define disablefast 1
 
+#define useoriaqp 0
+#if useoriaqp
+#define usecutreeaqp 0
+#elif !useoriaqp
+#define usecutreeaqp 1
+#endif
+
+#define getseqname 1
+
 
 #define JVET_M0055_DEBUG_CTU                              1 // DebugCTU encoder debug option
 

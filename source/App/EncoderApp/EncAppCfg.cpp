@@ -49,6 +49,9 @@
 #include "EncoderLib/RateCtrl.h"
 
 #include "CommonLib/dtrace_next.h"
+#if getseqname
+#include "EncoderLib/EncSlice.h"
+#endif
 
 #define MACRO_TO_STRING_HELPER(val) #val
 #define MACRO_TO_STRING(val) MACRO_TO_STRING_HELPER(val)
@@ -1384,6 +1387,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   m_inputFileName   = inputPathPrefix + m_inputFileName;
   m_framesToBeEncoded = ( m_framesToBeEncoded + m_temporalSubsampleRatio - 1 ) / m_temporalSubsampleRatio;
   m_adIntraLambdaModifier = cfg_adIntraLambdaModifier.values;
+#if getseqname
+  extern string seq_name;
+  seq_name = m_inputFileName;
+#endif
   if(m_isField)
   {
     //Frame height
@@ -3274,5 +3281,6 @@ bool confirmPara(bool bflag, const char* message)
   msg( ERROR, "Error: %s\n",message);
   return true;
 }
+
 
 //! \}

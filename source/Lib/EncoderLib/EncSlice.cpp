@@ -53,6 +53,10 @@ extern recursive_mutex g_cache_mutex;
 #if AdaptiveGOP
 #include "CodingStructure.h"
 #endif // AdaptiveGOP
+#if getseqname
+#include <string>
+#include <cstring>
+#endif
 //! \ingroup EncoderLib
 //! \{
 
@@ -1295,6 +1299,8 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
   }
 
 #if ENABLE_QPA
+
+#if useoriaqp
   double hpEnerMax     = 1.0;
   double hpEnerPic     = 0.0;
   int    iSrcOffset;
@@ -1373,6 +1379,33 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       }
     }
   }
+#endif
+
+#if usecutreeaqp
+  int curpoc = pcPic->getPOC() ;
+  extern string seq_name;
+  printf("%s %d\t", seq_name.c_str(), curpoc);
+  ///// parse input yuv name
+  auto last_slash = seq_name.find_last_of("\\");
+  auto dot= seq_name.find_last_of(".");
+  printf("%s\t", seq_name.substr(last_slash+1,dot- last_slash-1).c_str());
+
+  string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/temp/test/";
+
+  int w = pcPic->lwidth();
+  int h = pcPic->lheight();
+  vector<vector<double>> cutreematrix(h, vector<double>(w));
+  ifstream f;
+  f.open(file_dir + to_string(curpoc) + string(".txt"));
+  for (int hi = 0; hi < h; hi++)
+  {
+    for (int wi = 0; wi < w; wi++) {
+      f >> cutreematrix[hi][wi];
+      
+    }
+  }
+  f.close();
+#endif
 #endif // ENABLE_QPA
 
   cs.pcv      = pcSlice->getPPS()->pcv;
@@ -2209,5 +2242,7 @@ double EncSlice::xGetQPValueAccordingToLambda ( double lambda )
 {
   return 4.2005*log(lambda) + 13.7122;
 }
-
+#if getseqname
+string seq_name;
+#endif
 //! \}
