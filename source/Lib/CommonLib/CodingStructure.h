@@ -209,10 +209,12 @@ public:
 
 private:
 
-  /////test
+#if build_cu_tree
   public:
+#endif
   // needed for TU encoding
   bool m_isTuEnc;
+
   private:
 
   unsigned *m_cuIdx   [MAX_NUM_CHANNEL_TYPE];

@@ -376,11 +376,11 @@ struct IntraPredictionData
 {
   uint32_t  intraDir[MAX_NUM_CHANNEL_TYPE];
   int       multiRefIdx;
-  /////test
+#if build_cu_tree
   Distortion intradist;
   //Distortion interdist;
-  double cost;
-  /////
+  //double cost;
+#endif
 };
 
 struct InterPredictionData
@@ -419,11 +419,11 @@ struct InterPredictionData
   uint8_t   mmvdEncOptMode;                  // 0: no action 1: skip chroma MC for MMVD candidate pre-selection 2: skip chroma MC and BIO for MMVD candidate pre-selection
 #endif
                                              
-  /////test
+#if build_cu_tree
   //Distortion intradist;
   Distortion interdist;
-  double cost;
-  /////
+  //double cost;
+#endif
 };
 
 struct PredictionUnit : public UnitArea, public IntraPredictionData, public InterPredictionData
@@ -463,11 +463,11 @@ struct PredictionUnit : public UnitArea, public IntraPredictionData, public Inte
   int64_t cacheId;
   bool    cacheUsed;
 #endif
-  /////test
+#if build_cu_tree
   //Distortion intradist;
   //Distortion interdist;
-  double cost;
-  /////
+  //double cost;
+#endif
 };
 
 // ---------------------------------------------------------------------------

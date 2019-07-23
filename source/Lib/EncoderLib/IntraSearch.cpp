@@ -923,7 +923,7 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
       DTRACE( g_trace_ctx, D_INTRA_COST, "IntraCost T %f (%d) \n", csTemp->cost, uiOrgMode );
       //printf("IntraCost T %f (%d) \n", csTemp->cost, uiOrgMode);
 
-      /////test
+#if build_cu_tree
       //pu.intradist = csTemp->dist;
       ////csTemp->pus[0]->cost = csTemp->cost;
       //if (csTemp->cost < csBest->cost) {
@@ -947,17 +947,17 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
       //    //printf("%llu\n", csBest->pus[0]->intradist);
       //  }
       //}
-      /////
+#endif
 
       // check r-d cost
       if( csTemp->cost < csBest->cost )
       {
         ///// *cstemp only have one pu and one cu, current cu also has only one pu
-        /////test
+#if build_cu_tree
         //cu.lastPU->intradist = csTemp->pus.back()->intradist;
 
         //printf("%d", cu.lastPU == cu.firstPU);
-        /////
+#endif
         std::swap( csTemp, csBest );
 
         uiBestPUMode  = uiOrgMode;
@@ -1007,13 +1007,13 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
 #else
     cs.useSubStructure( *csBest, partitioner.chType, pu.singleChan( CHANNEL_TYPE_LUMA ), KEEP_PRED_AND_RESI_SIGNALS, true, keepResi, keepResi );
 #endif
-    /////test
+#if build_cu_tree
     if (csBest->m_isTuEnc) {
       pu.intradist = csBest->dist;
     //  //pu.cost = csBest->cost;
     //  //pu.interdist = csBest->pus[0]->interdist;
     }
-    /////
+#endif
     csBest->releaseIntermediateData();
     //=== update PU data ====
     pu.intraDir[0] = uiBestPUMode;
@@ -2356,10 +2356,10 @@ void IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
     {
       ctxBest = m_CABACEstimator->getCtx();
     }
-    /////test
+#if build_cu_tree
     //if (cu.firstPU == cu.lastPU)
     //cs.getCU(currArea.lumaPos(), partitioner.chType)->lastPU->intradist += uiSingleDistLuma;
-    /////
+#endif
     csFull->cost     += dSingleCost;
     csFull->dist     += uiSingleDistLuma;
     csFull->fracBits += singleFracBits;

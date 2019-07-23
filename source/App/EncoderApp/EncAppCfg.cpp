@@ -1388,8 +1388,10 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
   m_framesToBeEncoded = ( m_framesToBeEncoded + m_temporalSubsampleRatio - 1 ) / m_temporalSubsampleRatio;
   m_adIntraLambdaModifier = cfg_adIntraLambdaModifier.values;
 #if getseqname
-  extern string seq_name;
-  seq_name = m_inputFileName;
+  extern string curr_seq_name;
+  curr_seq_name = m_inputFileName;
+  extern int conf_QP;
+  conf_QP = m_iQP;
 #endif
   if(m_isField)
   {

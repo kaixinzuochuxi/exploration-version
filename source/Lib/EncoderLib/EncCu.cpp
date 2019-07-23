@@ -442,20 +442,20 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   tempCS->baseQP       = bestCS->baseQP       = currQP[CH_L];
   tempCS->prevQP[CH_L] = bestCS->prevQP[CH_L] = prevQP[CH_L];
 
-  /////test
+#if build_cu_tree
   if (tempCS->area.lx() == 304 && tempCS->area.ly() == 144 && tempCS->slice->getPOC() == 16) {
     int xxx = 0;
   }
   if (tempCS->area.lx() == 48 && tempCS->area.ly() == 16 && tempCS->slice->getPOC() == 16) {
     int xxx = 0;
   }
-  /////
+#endif
   xCompressCU( tempCS, bestCS, *partitioner
     , tempMotCandLUTs
     , bestMotCandLUTs
   );
   
-  /////test
+#if build_cu_tree
     char *s[] = {
       "MODE_INTER" ,     ///< inter-prediction mode
       "MODE_INTRA" ,     ///< intra-prediction mode
@@ -532,7 +532,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
     }
      //printf("sum:%lld\tcs:%lld\n", temp,bestCS->dist);
     //printf("%d", temp == bestCS->dist);
-  /////
+#endif
 
   // all signals were already copied during compression if the CTU was split - at this point only the structures are copied to the top level CS
 #if JVET_M0427_INLOOP_RESHAPER
@@ -1474,12 +1474,12 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
       bestSubCS->sharedBndSize.width = (m_shareState == SHARING) ? m_shareBndSizeW : tempSubCS->area.lwidth();
       bestSubCS->sharedBndSize.height = (m_shareState == SHARING) ? m_shareBndSizeH : tempSubCS->area.lheight();
 #endif
-      /////test
+#if build_cu_tree
       if (subCUArea.lx() == 32 && subCUArea.ly() == 0 && subCUArea.lwidth() == 8 && subCUArea.lheight() == 16)
       {
         int xxx = 0;
       }
-      /////
+#endif
       xCompressCU( tempSubCS, bestSubCS, partitioner
         , tempSubMotCandLUTs
         , bestSubMotCandLUTs
@@ -1724,15 +1724,15 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
 #if JVET_M0102_INTRA_SUBPARTITIONS
       //the Intra SubPartitions mode uses the value of the best cost so far (luma if it is the fast version) to avoid test non-necessary lines
       const double bestCostSoFar = CS::isDualITree( *tempCS ) ? m_modeCtrl->getBestCostWithoutSplitFlags() : bestCU && bestCU->predMode == MODE_INTRA ? bestCS->lumaCost : bestCS->cost;
-      /////test
+#if build_cu_tree
       if (cu.lx() == 96 && cu.ly() == 64 && cu.lwidth() == 16 && cu.lheight() == 16)
       {
         int xxx = 0;
       }
 
-      /////test
-      m_pcEncCfg->setUsePbIntraFast(0);
       /////
+      m_pcEncCfg->setUsePbIntraFast(0);
+#endif
       m_pcIntraSearch->estIntraPredLumaQT( cu, partitioner, bestCostSoFar );
 
       useIntraSubPartitions = cu.ispMode != NOT_INTRA_SUBPARTITIONS;
@@ -1783,13 +1783,13 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
       {
         //At this point the temp cost is larger than the best cost. Therefore, we can already skip the remaining calculations
 
-        /////test
+#if build_cu_tree
         if (bestCS->cus[0]->predMode == MODE_INTER) {
           //  temp_intra=
 
           bestCS->pus[0]->intradist = cu.firstPU->intradist;
       }
-        /////
+#endif
 #if JVET_M0464_UNI_MTS
         return;
 #else
@@ -1869,7 +1869,7 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
 #else
     DTRACE_MODE_COST( *tempCS, m_pcRdCost->getLambda() );
 #endif
-    /////test
+#if build_cu_tree
     cu.firstPU->intradist = tempCS->dist;
     if (bestCS->pus.size() > 0) {
       if (tempCS->cost < bestCS->cost) {
@@ -1887,7 +1887,7 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
         }
       }
         }
-    /////
+#endif
     xCheckBestMode( tempCS, bestCS, partitioner, encTestMode );
 
 #if !JVET_M0464_UNI_MTS
@@ -4928,7 +4928,7 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
     xEncodeDontSplit( *tempCS,         partitioner );
     xCheckDQP       ( *tempCS,         partitioner );
 
-    /////test
+#if build_cu_tree
     ///// preserve the bestCS mode information that dont have
     //if (tempCS->cost < bestCS->cost) {
     //  if (tempCS->cus[0]->predMode== MODE_INTRA && bestCS->cus[0]->predMode == MODE_INTRA) {
@@ -4977,14 +4977,14 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
         //printf("%llu\n", csBest->pus[0]->intradist);
       
     //}
-    /////
-    /////test
+#endif
+#if build_cu_tree
       //cu.firstPU->interdist = tempCS->pus[0]->interdist;
       //cu.firstPU->intradist = tempCS->pus[0]->intradist;
-    /////
+#endif
     xCheckBestMode  (  tempCS, bestCS, partitioner, cachedMode );
 
-    /////test
+#if build_cu_tree
     //if (cu.predMode == MODE_INTER)
     //{
     //  cu.firstPU->interdist = bestCS->pus[0]->interdist;
@@ -4997,6 +4997,7 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
     //}
     ///
     //printf("%d",cu.predMode);
+#endif
   }
   else
   {
@@ -5009,11 +5010,12 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
 
 
 
-/////test
-double temp_cost = MAX_DOUBLE;
-Distortion temp_intra = UINT32_MAX;
-Distortion temp_inter = UINT32_MAX;
-/////
+#if build_cu_tree
+
+//double temp_cost = MAX_DOUBLE;
+//Distortion temp_intra = UINT32_MAX;
+//Distortion temp_inter = UINT32_MAX;
+#endif
 #endif
 
 

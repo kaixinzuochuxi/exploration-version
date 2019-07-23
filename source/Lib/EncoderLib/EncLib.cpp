@@ -1282,7 +1282,12 @@ void EncLib::xInitPPS(PPS &pps, const SPS &sps)
   if (getUsePerceptQPA() && !bUseDQP)
   {
     CHECK( m_iMaxCuDQPDepth != 0, "max. delta-QP depth must be zero!" );
+#if dqp_apply_to_low_resolution
+    //bUseDQP = (getBaseQP() < 38) && (getSourceWidth() > 512 || getSourceHeight() > 320);
+    bUseDQP = (getBaseQP() < 38);
+#else
     bUseDQP = (getBaseQP() < 38) && (getSourceWidth() > 512 || getSourceHeight() > 320);
+#endif
   }
 #endif
 

@@ -56,6 +56,8 @@ extern recursive_mutex g_cache_mutex;
 #if getseqname
 #include <string>
 #include <cstring>
+
+#include <fstream>
 #endif
 //! \ingroup EncoderLib
 //! \{
@@ -831,7 +833,7 @@ static bool applyQPAdaptation (Picture* const pcPic,     Slice* const pcSlice,  
 #else
   const double hpEnerPic = 1.0 / hpEnerAvg; // speedup: multiply instead of divide in loop below; 1.0 for tuning
 #endif
-
+  
   if (useFrameWiseQPA || (iQPIndex >= MAX_QP))
   {
     int iQPFixed;
@@ -1314,6 +1316,8 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
  #else
       const uint32_t ctuRsAddr  = ctuTsAddr;
  #endif
+      ///// fltArea= subArea x-1,y-1,w+2,h+2
+      ///// for subArea x=0, y=0, fltArea= x=0, y=0, w+1,h+1
       const Position pos ((ctuRsAddr % widthInCtus) * pcv.maxCUWidth, (ctuRsAddr / widthInCtus) * pcv.maxCUHeight);
       const CompArea subArea    = clipArea (CompArea (COMPONENT_Y, pcPic->chromaFormat, Area (pos.x, pos.y, pcv.maxCUWidth, pcv.maxCUHeight)), pcPic->Y());
       const CompArea fltArea    = clipArea (CompArea (COMPONENT_Y, pcPic->chromaFormat, Area (pos.x > 0 ? pos.x - 1 : 0, pos.y > 0 ? pos.y - 1 : 0, pcv.maxCUWidth + (pos.x > 0 ? 2 : 1), pcv.maxCUHeight + (pos.y > 0 ? 2 : 1))), pcPic->Y());
@@ -1328,6 +1332,8 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       DTRACE_UPDATE (g_trace_ctx, std::make_pair ("ctu", ctuRsAddr));
 
       // compute DC offset to be subtracted from luma values
+
+      ///// sum all pixel values for current ctu
       iSrcOffset = 0;
       for (SizeType h = 0; h < iSrcHeight; h++)
       {
@@ -1353,7 +1359,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     } // end iteration over all CTUs in current slice
 
     const double hpEnerAvg = hpEnerPic / double(boundingCtuTsAddr - startCtuTsAddr);
-
+    ///// return whether modify frame-level QP: all CTU to a same QP or modify each CTU individually
     if (applyQPAdaptation (pcPic, pcSlice, pcv, startCtuTsAddr, boundingCtuTsAddr, m_pcCfg->getLumaLevelToDeltaQPMapping().mode == LUMALVL_TO_DQP_NUM_MODES,
                            hpEnerAvg, hpEnerMax, (m_pcCfg->getBaseQP() >= 38) || (m_pcCfg->getSourceWidth() <= 512 && m_pcCfg->getSourceHeight() <= 320), m_adaptedLumaQP))
     {
@@ -1383,28 +1389,105 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
 #if usecutreeaqp
   int curpoc = pcPic->getPOC() ;
-  extern string seq_name;
-  printf("%s %d\t", seq_name.c_str(), curpoc);
+  extern string curr_seq_name;
+  extern int conf_QP;
+  //printf("%s %d\t", curr_seq_name.c_str(), curpoc);
   ///// parse input yuv name
-  auto last_slash = seq_name.find_last_of("\\");
-  auto dot= seq_name.find_last_of(".");
-  printf("%s\t", seq_name.substr(last_slash+1,dot- last_slash-1).c_str());
+  //auto xxx = curr_seq_name.find_last_of("/");
+  auto last_slash = min(curr_seq_name.find_last_of("\\"), curr_seq_name.find_last_of("/"));
+  auto dot= curr_seq_name.find_last_of(".");
+  //curr_seq_name = curr_seq_name.substr(last_slash + 1, dot - last_slash - 1);
+  //printf("%s\t", curr_seq_name.substr(last_slash+1,dot- last_slash-1).c_str());
+  int QP=MAX_QP;
+  ///// determine current QP
+  if (!m_pcLib->getUseRateCtrl())
+    QP = conf_QP;
+  else {
+    ;
+  }
 
-  string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/temp/test/";
 
-  int w = pcPic->lwidth();
-  int h = pcPic->lheight();
-  vector<vector<double>> cutreematrix(h, vector<double>(w));
-  ifstream f;
-  f.open(file_dir + to_string(curpoc) + string(".txt"));
-  for (int hi = 0; hi < h; hi++)
+  //string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/temp/";
+  string file_dir = "/public/ychen455/date/20190625/code20190625/temp/";
+
+  int picw = pcPic->lwidth();
+  int pich = pcPic->lheight();
+  vector<vector<double>> cutreematrix(pich, vector<double>(picw));
+  ifstream f(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/") + to_string(curpoc) + string(".txt"));
+  //f.open(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1)+string("/")+ to_string(QP)+ string("/") + to_string(curpoc) + string(".txt"));
+  //printf("%s\n",(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/") + to_string(curpoc) + string(".txt")).c_str());
+  if(!f)
   {
-    for (int wi = 0; wi < w; wi++) {
+    printf("open failed: %s\n", strerror(errno));
+  }
+  for (int hi = 0; hi < pich; hi++)
+  {
+    for (int wi = 0; wi < picw; wi++) {
       f >> cutreematrix[hi][wi];
+
       
     }
   }
+  //printf("%f\n", cutreematrix[0][0]);
   f.close();
+  for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+  {
+#if HEVC_TILES_WPP
+    const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+    const uint32_t ctuRsAddr = ctuTsAddr;
+#endif
+    ///// fltArea= subArea x-1,y-1,w+2,h+2
+    ///// for subArea x=0, y=0, fltArea= x=0, y=0, w+1,h+1
+    const Position pos((ctuRsAddr % widthInCtus) * pcv.maxCUWidth, (ctuRsAddr / widthInCtus) * pcv.maxCUHeight);
+    const CompArea subArea = clipArea(CompArea(COMPONENT_Y, pcPic->chromaFormat, Area(pos.x, pos.y, pcv.maxCUWidth, pcv.maxCUHeight)), pcPic->Y());
+    
+    const SizeType iSrcStride = pcPic->getOrigBuf(subArea).stride;
+    const Pel*     pSrc = pcPic->getOrigBuf(subArea).buf;
+    const SizeType iSrcHeight = min(pcPic->getOrigBuf(subArea).height,pcPic->lheight()- pos.y-1);
+    const SizeType iSrcWidth = min(pcPic->getOrigBuf(subArea).width,pcPic->lwidth()-pos.x-1);
+    
+
+    ///// sum all pixel values for current ctu
+    double temp_propagate_cost = 0;
+    for (SizeType h = 0; h < iSrcHeight; h++)
+    {
+      for (SizeType w = 0; w < iSrcWidth; w++)
+      {
+        temp_propagate_cost += cutreematrix[h][w];
+      }
+    }
+    temp_propagate_cost = temp_propagate_cost   / (iSrcHeight* iSrcWidth);
+    double strength = 1;
+
+    pcPic->m_iOffsetCtu[ctuRsAddr] = (Pel) (pcSlice->getSliceQpBase() - Clip3<int>(-3,3,int (strength * log(temp_propagate_cost) / log(2)+0.5)));
+    // printf("%d\t%f\n", pcPic->m_iOffsetCtu[ctuRsAddr], log(temp_propagate_cost) / log(2));
+
+
+  } // end iteration over all CTUs in current slice
+
+  {
+    m_CABACEstimator->initCtxModels(*pcSlice);
+#if ENABLE_SPLIT_PARALLELISM || ENABLE_WPP_PARALLELISM
+    for (int jId = 1; jId < m_pcLib->getNumCuEncStacks(); jId++)
+    {
+      CABACWriter* cw = m_pcLib->getCABACEncoder(jId)->getCABACEstimator(pcSlice->getSPS());
+      cw->initCtxModels(*pcSlice);
+    }
+#endif
+#if HEVC_DEPENDENT_SLICES
+    if (!pcSlice->getDependentSliceSegmentFlag())
+    {
+#endif
+      pcPic->m_prevQP[0] = pcPic->m_prevQP[1] = pcSlice->getSliceQp();
+#if HEVC_DEPENDENT_SLICES
+    }
+#endif
+    if (startCtuTsAddr == 0)
+    {
+      cs.currQP[0] = cs.currQP[1] = pcSlice->getSliceQp(); // cf code above
+    }
+  }
 #endif
 #endif // ENABLE_QPA
 
@@ -1650,6 +1733,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #else
 #endif
 
+    
 #if RDOQ_CHROMA_LAMBDA && ENABLE_QPA
     double oldLambdaArray[MAX_NUM_COMPONENT] = {0.0};
 #endif
@@ -1725,6 +1809,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
       pRdCost->setLambda (newLambda, pcSlice->getSPS()->getBitDepths());
       currQP[0] = currQP[1] = adaptedQP;
+
     }
 #endif
 
@@ -2243,6 +2328,7 @@ double EncSlice::xGetQPValueAccordingToLambda ( double lambda )
   return 4.2005*log(lambda) + 13.7122;
 }
 #if getseqname
-string seq_name;
+string curr_seq_name;
+int conf_QP;
 #endif
 //! \}

@@ -65,16 +65,26 @@
 
 #define AdaptiveGOP 0
 
-#define disablefast 1
 
-#define useoriaqp 0
+
+#define useoriaqp 1
 #if useoriaqp
 #define usecutreeaqp 0
 #elif !useoriaqp
-#define usecutreeaqp 1
+#define usecutreeaqp 0
 #endif
 
+#define build_cu_tree 0
+#ifdef build_cu_tree
+#define disablefast 1
+#endif
+
+
+#ifdef usecutreeaqp
 #define getseqname 1
+#define dqp_apply_to_low_resolution 1
+#endif
+
 
 
 #define JVET_M0055_DEBUG_CTU                              1 // DebugCTU encoder debug option

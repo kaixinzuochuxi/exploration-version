@@ -959,15 +959,16 @@ void CodingStructure::useSubStructure( const CodingStructure& subStruct, const C
       const UnitArea &puPatch = *ppu;
 
       PredictionUnit &pu = addPU( puPatch, chType );
-      /////test
+#if build_cu_tree
       Distortion intradist = ppu->intradist;
       Distortion interdist = ppu->interdist;
       /////
       /////test
       pu.interdist = interdist;
       pu.intradist = intradist;
-      pu.cost = cost;
-      /////
+      //pu.cost = cost;
+
+#endif
       // copy the PU info from subPatch
       pu = *ppu;
     }

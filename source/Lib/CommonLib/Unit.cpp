@@ -480,11 +480,12 @@ void PredictionUnit::initData()
   mmvdEncOptMode = 0;
 #endif
 
-  /////test
+#if build_cu_tree
   intradist = UINT32_MAX;
   interdist = UINT32_MAX;
-  cost = MAX_DOUBLE;
-  /////
+  //cost = MAX_DOUBLE;
+
+#endif
 }
 
 PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
@@ -495,11 +496,11 @@ PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
   }
   multiRefIdx = predData.multiRefIdx;
 
-  /////test
+#if build_cu_tree
   intradist = predData.intradist;
-  cost = predData.cost;
+  //cost = predData.cost;
   //interdist = predData.interdist;
-  /////
+#endif
   return *this;
 }
 
@@ -547,11 +548,11 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
   shareParentSize = predData.shareParentSize;
 #endif
 
-  /////test
+#if build_cu_tree
   //intradist = predData.intradist;
   interdist = predData.interdist;
-  cost = predData.cost;
-  /////
+  // cost = predData.cost;
+#endif
   return *this;
 }
 
@@ -605,11 +606,11 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   shareParentSize = other.shareParentSize;
 #endif
 
-  /////test
+#if build_cu_tree
   intradist = other.intradist;
   interdist = other.interdist;
-  cost = other.cost;
-  /////
+  //cost = other.cost;
+#endif
   return *this;
 }
 
