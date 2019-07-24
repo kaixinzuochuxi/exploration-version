@@ -492,8 +492,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,bestCS->slice->getPOC()
         
         );
-      printf("intradist:%llu interdist:%llu\t| ",
-        pu->intradist, pu->interdist);
+      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu\t| ",
+        pu->intradist, pu->interdist,pu->intrabits,pu->interbits);
       printf("affine:%d*imv:%d*affinetype:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
         pu->cu->affine,
         pu->cu->imv, 
@@ -1788,6 +1788,8 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
           //  temp_intra=
 
           bestCS->pus[0]->intradist = cu.firstPU->intradist;
+          bestCS->pus[0]->intrabits = cu.firstPU->intrabits;
+
       }
 #endif
 #if JVET_M0464_UNI_MTS
@@ -1871,9 +1873,11 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
 #endif
 #if build_cu_tree
     cu.firstPU->intradist = tempCS->dist;
+    cu.firstPU->intrabits = tempCS->fracBits;
     if (bestCS->pus.size() > 0) {
       if (tempCS->cost < bestCS->cost) {
         cu.firstPU->interdist = bestCS->pus[0]->interdist;
+        cu.firstPU->interbits = bestCS->pus[0]->interbits;
       }
       else {
         //extern double temp_cost;
@@ -1884,6 +1888,7 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
           //  temp_intra=
 
           bestCS->pus[0]->intradist = cu.firstPU->intradist;
+          bestCS->pus[0]->intrabits = cu.firstPU->intrabits;
         }
       }
         }

@@ -380,6 +380,7 @@ struct IntraPredictionData
   Distortion intradist;
   //Distortion interdist;
   //double cost;
+  uint64_t intrabits;
 #endif
 };
 
@@ -422,6 +423,7 @@ struct InterPredictionData
 #if build_cu_tree
   //Distortion intradist;
   Distortion interdist;
+  uint64_t interbits;
   //double cost;
 #endif
 };
@@ -467,6 +469,7 @@ struct PredictionUnit : public UnitArea, public IntraPredictionData, public Inte
   //Distortion intradist;
   //Distortion interdist;
   //double cost;
+  
 #endif
 };
 

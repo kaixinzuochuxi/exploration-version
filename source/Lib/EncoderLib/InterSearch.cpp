@@ -7031,6 +7031,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #if build_cu_tree
     pu.interdist = distortion;
     // pu.cost = cs.cost;
+    pu.interbits = cs.fracBits;
 #endif
     return;
   }
@@ -7238,6 +7239,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
 #if build_cu_tree
   cu.firstPU->interdist = finalDistortion;
+  cu.firstPU->interbits = finalFracBits;
   //cu.firstPU->cost = cs.cost;
 #endif
   CHECK(cs.tus.size() == 0, "No TUs present");

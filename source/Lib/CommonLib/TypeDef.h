@@ -71,11 +71,11 @@
 #if useoriaqp
 #define usecutreeaqp 0
 #elif !useoriaqp
-#define usecutreeaqp 0
+#define usecutreeaqp 1
 #endif
 
-#define build_cu_tree 0
-#ifdef build_cu_tree
+#define build_cu_tree 1
+#ifdef build_cu_tree 
 #define disablefast 1
 #endif
 

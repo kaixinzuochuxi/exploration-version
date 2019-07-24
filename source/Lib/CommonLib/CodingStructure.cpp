@@ -960,12 +960,14 @@ void CodingStructure::useSubStructure( const CodingStructure& subStruct, const C
 
       PredictionUnit &pu = addPU( puPatch, chType );
 #if build_cu_tree
-      Distortion intradist = ppu->intradist;
-      Distortion interdist = ppu->interdist;
+      //Distortion intradist = ppu->intradist;
+      //Distortion interdist = ppu->interdist;
       /////
       /////test
-      pu.interdist = interdist;
-      pu.intradist = intradist;
+      pu.interdist = ppu->interdist;
+      pu.intradist = ppu->intradist;
+      pu.intrabits = ppu->intrabits;
+      pu.interbits = ppu->interbits;
       //pu.cost = cost;
 
 #endif

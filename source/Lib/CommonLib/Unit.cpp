@@ -484,7 +484,8 @@ void PredictionUnit::initData()
   intradist = UINT32_MAX;
   interdist = UINT32_MAX;
   //cost = MAX_DOUBLE;
-
+  interbits = 0;
+  intrabits = 0;
 #endif
 }
 
@@ -500,6 +501,7 @@ PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
   intradist = predData.intradist;
   //cost = predData.cost;
   //interdist = predData.interdist;
+  intrabits= predData.intrabits;
 #endif
   return *this;
 }
@@ -552,6 +554,7 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
   //intradist = predData.intradist;
   interdist = predData.interdist;
   // cost = predData.cost;
+  interbits = predData.interdist;
 #endif
   return *this;
 }
@@ -610,6 +613,8 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   intradist = other.intradist;
   interdist = other.interdist;
   //cost = other.cost;
+  interbits = other.interbits;
+  intrabits = other.intrabits;
 #endif
   return *this;
 }

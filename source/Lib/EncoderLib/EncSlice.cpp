@@ -1408,7 +1408,8 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
 
   //string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/temp/";
-  string file_dir = "/public/ychen455/date/20190625/code20190625/temp/";
+  string date = string("20190721-3");
+  string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
 
   int picw = pcPic->lwidth();
   int pich = pcPic->lheight();

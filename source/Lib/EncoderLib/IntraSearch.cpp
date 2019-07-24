@@ -1010,6 +1010,7 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
 #if build_cu_tree
     if (csBest->m_isTuEnc) {
       pu.intradist = csBest->dist;
+      pu.intrabits= csBest->fracBits;
     //  //pu.cost = csBest->cost;
     //  //pu.interdist = csBest->pus[0]->interdist;
     }
