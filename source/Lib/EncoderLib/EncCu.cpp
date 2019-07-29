@@ -492,8 +492,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,bestCS->slice->getPOC()
         
         );
-      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu\t| ",
-        pu->intradist, pu->interdist,pu->intrabits,pu->interbits);
+      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu\t QP:%d| ",
+        pu->intradist, pu->interdist,pu->intrabits,pu->interbits,pu->cu->qp);
       printf("affine:%d*imv:%d*affinetype:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
         pu->cu->affine,
         pu->cu->imv, 
@@ -529,7 +529,9 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       }
       
       printf(" |\n");
+
     }
+    printf("luma CU finished\n");
      //printf("sum:%lld\tcs:%lld\n", temp,bestCS->dist);
     //printf("%d", temp == bestCS->dist);
 #endif
@@ -560,7 +562,85 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       , bestMotCandLUTs
     );
   
+#if build_cu_tree && printchormacu
+    char *s[] = {
+      "MODE_INTER" ,     ///< inter-prediction mode
+      "MODE_INTRA" ,     ///< intra-prediction mode
+  #if JVET_M0483_IBC
+      "MODE_IBC",     ///< ibc-prediction mode
+      "NUMBER_OF_PREDICTION_MODES" ,
+  #else
+      NUMBER_OF_PREDICTION_MODES ,
+  #endif
+    };
+    //for (auto pu : bestCS->pus)
+    //{
+    //  printf("(%4d* %4d* %4d* %4d*) %s intraDir:%2d interDir:%3d skip:%d merge:%d mergeIdx:%3d affine:%d\tmhIntraFlag:%d\t (MV: %d %d\t%d %d) (ref: %d %d)\n",
+    //    pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,
+    //    s[pu->cu->predMode],
+    //    pu->intraDir[0],
+    //    pu->interDir,
+    //    pu->cu->skip,
+    //    pu->mergeFlag,
+    //    pu->mergeIdx,
+    //    pu->cu->affine,
+    //    pu->mhIntraFlag,
+    //    pu->mv[0].hor,
+    //    pu->mv[0].ver,
+    //    pu->mv[1].hor,
+    //    pu->mv[1].ver,
+    //    pu->refIdx[0],
+    //    pu->refIdx[1]
+    //  );
+    //}
+    Distortion temp = 0;
+    for (auto pu : bestCS->pus)
+    {
+      printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC()
 
+      );
+      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu\t QP:%d| ",
+        pu->intradist, pu->interdist, pu->intrabits, pu->interbits, pu->cu->qp);
+      printf("affine:%d*imv:%d*affinetype:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
+        pu->cu->affine,
+        pu->cu->imv,
+        pu->cu->affineType,
+
+        pu->mv[0].hor,
+        pu->mv[0].ver,
+        pu->mv[1].hor,
+        pu->mv[1].ver,
+        pu->mvAffi[0][0].hor,
+        pu->mvAffi[0][0].ver,
+        pu->mvAffi[0][1].hor,
+        pu->mvAffi[0][1].ver,
+        pu->mvAffi[0][2].hor,
+        pu->mvAffi[0][2].ver,
+        pu->mvAffi[1][0].hor,
+        pu->mvAffi[1][0].ver,
+        pu->mvAffi[1][1].hor,
+        pu->mvAffi[1][1].ver,
+        pu->mvAffi[1][2].hor,
+        pu->mvAffi[1][2].ver
+
+      );
+      printf("interDir:%d ref:%d*%d ", pu->interDir, pu->refIdx[0], pu->refIdx[1]);
+      for (int iRefList = 0; iRefList < 2; iRefList++)
+      {
+        printf("L%d:", iRefList);
+        for (int iRefIndex = 0; iRefIndex < bestCS->slice->getNumRefIdx(RefPicList(iRefList)); iRefIndex++)
+        {
+          printf("%d-", bestCS->slice->getRefPOC(RefPicList(iRefList), iRefIndex) - bestCS->slice->getLastIDR());
+        }
+        //printf( " ");
+      }
+
+      printf(" |\n");
+    }
+    printf("chorma cu finished\n");
+    //printf("sum:%lld\tcs:%lld\n", temp,bestCS->dist);
+   //printf("%d", temp == bestCS->dist);
+#endif
     
 #if JVET_M0427_INLOOP_RESHAPER
     const bool copyUnsplitCTUSignals = bestCS->cus.size() == 1;
@@ -4907,11 +4987,19 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
           PelBuf tmpRecLuma = m_tmpStorageLCU->getBuf(tmpArea);
           tmpRecLuma.copyFrom(reco);
           tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
+#if !disableWD
           finalDistortion += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
+#else
+          finalDistortion += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#endif
         }
         else
 #endif
+#if !disableWD
         finalDistortion += m_pcRdCost->getDistPart( org, reco, sps.getBitDepth( toChannelType( compID ) ), compID, DF_SSE_WTD, &orgLuma );
+#else
+        finalDistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#endif
       }
       else
 #endif

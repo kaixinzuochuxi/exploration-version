@@ -66,7 +66,7 @@
 #define AdaptiveGOP 0
 
 
-
+// QPA related
 #define useoriaqp 1
 #if useoriaqp
 #define usecutreeaqp 0
@@ -74,16 +74,22 @@
 #define usecutreeaqp 1
 #endif
 
-#define build_cu_tree 1
-#ifdef build_cu_tree 
-#define disablefast 1
-#endif
-
-
 #ifdef usecutreeaqp
 #define getseqname 1
 #define dqp_apply_to_low_resolution 1
 #endif
+
+// build cu tree
+#define build_cu_tree 1
+#ifdef build_cu_tree 
+#define disablefast 1
+#define printchormacu 1
+#endif
+
+// weighted D
+#define disableWD 0
+
+
 
 
 
