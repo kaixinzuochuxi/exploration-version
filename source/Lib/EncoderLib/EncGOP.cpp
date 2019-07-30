@@ -3530,7 +3530,7 @@ void EncGOP::xCalculateAddPSNR(Picture* pcPic, PelUnitBuf cPicD, const AccessUni
   if (useLumaWPSNR)
   {
 #if PrintSSIM
-    m_gcAnalyzeB.addResult(dPSNRWeighted, (double)uibits, MSEyuvframeWeighted, MSSSIM, isEncodeLtRef);
+    m_gcAnalyzeWPSNR.addResult(dPSNRWeighted, (double)uibits, MSEyuvframeWeighted, MSSSIM, isEncodeLtRef);
 #else
     m_gcAnalyzeWPSNR.addResult(dPSNRWeighted, (double)uibits, MSEyuvframeWeighted, isEncodeLtRef);
 #endif

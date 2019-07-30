@@ -1407,30 +1407,65 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
   }
 
 
-  //string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/temp/";
-  string date = string("20190721-3");
-  string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
+  string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+  //string date = string("20190721-3");
+  //string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
 
   int picw = pcPic->lwidth();
   int pich = pcPic->lheight();
-  vector<vector<double>> cutreematrix(pich, vector<double>(picw));
-  ifstream f(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/") + to_string(curpoc) + string(".txt"));
-  //f.open(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1)+string("/")+ to_string(QP)+ string("/") + to_string(curpoc) + string(".txt"));
-  //printf("%s\n",(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/") + to_string(curpoc) + string(".txt")).c_str());
-  if(!f)
+
+#if framelevelQPA
+  int currPOC = pcSlice->getPOC();
+  int frameDQP = 0;
+  double tempQP = 0;
+  ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt"));
+  if (!fframe)
   {
     printf("open failed: %s\n", strerror(errno));
   }
+  for (int tempi = 0; tempi <= currPOC; tempi++)
+  {
+    fframe >> tempQP;
+  }
+  frameDQP = int(tempQP/abs(tempQP)) *  int(abs(tempQP) + 0.5);
+
+  const double* oldLambdas = pcSlice->getLambdas();
+  const double  corrFactor = pow(2.0, double(iQPFixed - iQPIndex) / 3.0);
+  const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
+
+  CHECK(iQPIndex != pcSlice->getSliceQpBase(), "Invalid slice QP!");
+  pcSlice->setLambdas(newLambdas);
+  pcSlice->setSliceQp(iQPFixed); // update the slice/base QPs
+  pcSlice->setSliceQpBase(iQPFixed);
+#endif
+
+
+#if CTUlevelQPA
+  vector<vector<double>> cutreematrix(pich, vector<double>(picw));
+  vector<vector<double>> ctubits(pich, vector<double>(picw));
+  
+
+  ifstream fd(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/D") + to_string(curpoc) + string(".txt"));
+  ifstream fr(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/R") + to_string(curpoc) + string(".txt"));
+  //f.open(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1)+string("/")+ to_string(QP)+ string("/") + to_string(curpoc) + string(".txt"));
+  //printf("%s\n",(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/") + to_string(curpoc) + string(".txt")).c_str());
+  if(!fd || !fr)
+  {
+    printf("open failed: %s\n", strerror(errno));
+  }
+  
   for (int hi = 0; hi < pich; hi++)
   {
     for (int wi = 0; wi < picw; wi++) {
-      f >> cutreematrix[hi][wi];
-
+      fd >> cutreematrix[hi][wi];
+      fr >> ctubits[hi][wi];
+      
       
     }
   }
   //printf("%f\n", cutreematrix[0][0]);
-  f.close();
+  fd.close();
+  fr.close();
   for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
   {
 #if HEVC_TILES_WPP
@@ -1451,11 +1486,13 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
     ///// sum all pixel values for current ctu
     double temp_propagate_cost = 0;
+    double temp_bits = 0;
     for (SizeType h = 0; h < iSrcHeight; h++)
     {
       for (SizeType w = 0; w < iSrcWidth; w++)
       {
         temp_propagate_cost += cutreematrix[h][w];
+        temp_bits+= ctubits[h][w];
       }
     }
     temp_propagate_cost = temp_propagate_cost   / (iSrcHeight* iSrcWidth);
@@ -1489,6 +1526,11 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       cs.currQP[0] = cs.currQP[1] = pcSlice->getSliceQp(); // cf code above
     }
   }
+
+
+
+
+#endif
 #endif
 #endif // ENABLE_QPA
 
