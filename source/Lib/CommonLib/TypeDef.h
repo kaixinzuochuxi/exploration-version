@@ -67,7 +67,7 @@
 
 
 // QPA related
-#define useoriaqp 1
+#define useoriaqp 0
 /////
 #if useoriaqp
 #define usecutreeaqp 0
@@ -78,7 +78,7 @@
 #if usecutreeaqp
 #define getseqname 1
 #define dqp_apply_to_low_resolution 1
-#define CTUlevelQPA 1
+#define CTUlevelQPA 0
 #define framelevelQPA 1
 #endif
 
