@@ -536,6 +536,11 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
     //printf("%d", temp == bestCS->dist);
 #endif
 
+#if temppp
+    //printf("CTU: distbbeforeilf:%lld bits:%lld\n", bestCS->dist,bestCS->fracBits);
+    printf("CTU: distbbeforeilf:%lld\n", bestCS->dist);
+#endif
+
   // all signals were already copied during compression if the CTU was split - at this point only the structures are copied to the top level CS
 #if JVET_M0427_INLOOP_RESHAPER
   const bool copyUnsplitCTUSignals = bestCS->cus.size() == 1;

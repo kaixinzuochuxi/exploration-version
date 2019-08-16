@@ -362,6 +362,12 @@ const TransformUnit * CodingStructure::getTU( const Position &pos, const Channel
 CodingUnit& CodingStructure::addCU( const UnitArea &unit, const ChannelType chType )
 {
   CodingUnit *cu = m_cuCache.get();
+#if codingparameters
+  if (cu->blocks.size()==0)
+  int xxx = 0;
+  //cu->cucp.initialize();
+
+#endif // codingparameters
 
   cu->UnitArea::operator=( unit );
   cu->initData();
@@ -1470,13 +1476,3 @@ IbcLumaCoverage CodingStructure::getIbcLumaCoverage(const CompArea& chromaArea) 
   return coverage;
 }
 
-#if intermediate
-framelevel fl;
-ctulevel cl;
-culevel cul;
-#endif
-
-
-#if AdaptiveGOP
-int AdaptiveGOPstart = 0;
-#endif

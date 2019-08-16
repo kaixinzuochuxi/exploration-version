@@ -299,6 +299,11 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #if JVET_M0102_INTRA_SUBPARTITIONS
   ispMode           = other.ispMode;
 #endif
+
+#if codingparameters
+  cucp = other.cucp;
+
+#endif // codingparameters
   return *this;
 }
 
@@ -348,6 +353,11 @@ void CodingUnit::initData()
 #if JVET_M0102_INTRA_SUBPARTITIONS
   ispMode           = 0;
 #endif
+
+#if codingparameters
+  cucp.initialize();
+
+#endif // codingparameters
 }
 
 #if JVET_M0140_SBT
@@ -804,4 +814,21 @@ void TransformUnit::checkTuNoResidual( unsigned idx )
 #if JVET_M0427_INLOOP_RESHAPER
 int          TransformUnit::getChromaAdj()                     const { return m_chromaResScaleInv; }
 void         TransformUnit::setChromaAdj(int i)                      { m_chromaResScaleInv = i;    }
+#endif
+
+
+#if intermediate
+framelevel fl;
+ctulevel cl;
+culevel cul;
+#endif
+
+
+#if AdaptiveGOP
+int AdaptiveGOPstart = 0;
+#endif
+
+#if codingparameters
+coding_parameterscy framecp;
+coding_parameterscy ctucp;
 #endif

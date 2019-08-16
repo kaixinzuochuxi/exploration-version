@@ -35,8 +35,12 @@
  *  \brief    defines unit as a set of blocks and basic unit types (coding, prediction, transform)
  */
 
+
 #ifndef __UNIT__
 #define __UNIT__
+
+
+
 
 #include "CommonDef.h"
 #include "Common.h"
@@ -44,7 +48,239 @@
 #include "MotionInfo.h"
 #include "ChromaFormat.h"
 
+//#if codingparameters
+#include "TypeDef.h"
+//#endif
+#if intermediate
+class Rate
+{
+public:
 
+  double m_bpp_comp;
+  double m_bpp_real;
+  int m_bit_comp;
+  int m_bit_real;
+
+  Rate() { m_bpp_comp = 0; m_bpp_real = 0; m_bit_comp = 0; m_bit_real = 0; }
+  Rate(double bpp_comp, double bpp_real, int bit_comp, int bit_real) { m_bpp_comp = bpp_comp; m_bpp_real = bpp_real; m_bit_comp = bit_comp; m_bit_real = bit_real; }
+  Rate(const Rate& R) { m_bpp_comp = R.m_bpp_comp; m_bpp_real = R.m_bpp_real; m_bit_comp = R.m_bit_comp; m_bit_real = R.m_bit_real; }
+
+  void setbppcomp(double bpp_comp) { m_bpp_comp = bpp_comp; }
+  void setbppreal(double bpp_real) { m_bpp_real = bpp_real; }
+  void setbitcomp(int bit_comp) { m_bit_comp = bit_comp; }
+  void setbitreal(int bit_real) { m_bit_real = bit_real; }
+
+  void setall(double bpp_comp, double bpp_real, int bit_comp, int bit_real) { m_bpp_comp = bpp_comp; m_bpp_real = bpp_real; m_bit_comp = bit_comp; m_bit_real = bit_real; }
+  void setall(const Rate& R) { m_bpp_comp = R.m_bpp_comp; m_bpp_real = R.m_bpp_real; m_bit_comp = R.m_bit_comp; m_bit_real = R.m_bit_real; }
+
+  double getbppcomp() { return m_bpp_comp; }
+  double getbppreal() { return m_bpp_real; }
+  int getbitcomp() { return m_bit_comp; }
+  int getbitreal() { return m_bit_real; }
+};
+class coding_para
+{
+
+public:
+  double m_lambda[MAX_NUM_COMPONENT];
+  // COMPONENT_Y, COMPONENT_Cb, COMPONENT_Cr
+  int m_QP;
+
+  coding_para() {
+    memset(m_lambda, 0, sizeof(m_lambda)); m_QP = 0;
+  }
+  coding_para(const coding_para& cp) { memcpy(m_lambda, cp.m_lambda, sizeof(m_lambda)); m_QP = cp.m_QP; }
+
+  void setlambda(const double* lambda) { memcpy(m_lambda, lambda, sizeof(m_lambda)); }
+  void setqp(int qp) { m_QP = qp; }
+  double getlambda(ComponentID ch) { return m_lambda[ch]; }
+  int getqp() { return m_QP; }
+};
+
+class RCmodel
+{
+public:
+  double m_modelparaA;
+  double m_modelparaB;
+  double m_SATD;
+  RCmodel() { m_modelparaA = 0; m_modelparaB = 0; m_SATD = 0; }
+
+
+  void setmodelpara(double a, double b) { m_modelparaA = a; m_modelparaB = b; }
+  void getmodelpara(double &a, double &b) { a = m_modelparaA; b = m_modelparaB; }
+  void setSATD(double satd) { m_SATD = satd; }
+  double getSATD() { return m_SATD; }
+};
+class framelevel
+{
+public:
+  coding_para m_cp;
+  Rate m_R;
+  RCmodel m_RCmodel;
+
+  framelevel() {};
+
+  // output function
+  void output_prefix() { printf(" |[frame_level:\t"); }
+  // output cp
+  void output_cp_qp() { printf("QP: %d\t", m_cp.getqp()); }
+  void output_cp_lambda(ComponentID ch) { printf("lambda: %f\t", m_cp.getlambda(ch)); }
+  // output R
+
+  void output_R_bitcomp() { printf("bitcomp: %d\t", m_R.getbitcomp()); }
+  void output_R_bitreal() { printf("bitreal: %d\t", m_R.getbitreal()); }
+  void output_R_bppcomp() { printf("bppcomp: %f\t", m_R.getbppcomp()); }
+  void output_R_bppreal() { printf("bppreal: %f\t", m_R.getbppreal()); }
+
+  // output model para
+  void output_RCmodel_modelpara() { double a; double b; m_RCmodel.getmodelpara(a, b); printf(" modelpara: %f %f\t", a, b); }
+  void output_RCmodel_SATD() { printf("%f\t", m_RCmodel.getSATD()); }
+
+  void output_suffix() { printf(" ]|\t"); }
+
+  void RC_output() {
+    output_prefix();
+    output_cp_qp();
+    output_cp_lambda(COMPONENT_Y);
+    output_R_bitcomp();
+    output_R_bitreal();
+    output_RCmodel_SATD();
+    output_RCmodel_modelpara();
+    output_suffix();
+  }
+};
+
+extern framelevel fl;
+
+class intra_pred
+{
+public:
+
+};
+
+class inter_pred
+{
+public:
+
+};
+
+
+class ctulevel
+{
+public:
+  // source info
+  int m_size;
+  // R
+  Rate m_R;
+  RCmodel m_RCmodel;
+  coding_para m_cp;
+
+  ctulevel() { m_size = 128; }
+
+
+  // output function
+  void output_prefix() { printf("|[ctu_level:\t"); }
+  // output cp
+  void output_cp_qp() { printf("QP: %d\t", m_cp.getqp()); }
+  void output_cp_lambda(ComponentID ch) { printf("lambda: %f\t", m_cp.getlambda(ch)); }
+  // output R
+
+  void output_R_bitcomp() { printf("bitcomp: %d\t", m_R.getbitcomp()); }
+  void output_R_bitreal() { printf("bitreal: %d\t", m_R.getbitreal()); }
+  void output_R_bppcomp() { printf("bppcomp: %f\t", m_R.getbppcomp()); }
+  void output_R_bppreal() { printf("bppreal: %f\t", m_R.getbppreal()); }
+  // output model para
+  void output_RCmodel_modelpara() { double a; double b; m_RCmodel.getmodelpara(a, b); printf(" modelpara: %f %f\t", a, b); }
+  void output_RCmodel_SATD() { printf("%f\t", m_RCmodel.getSATD()); }
+
+
+  void output_suffix() { printf(" ]|\t"); }
+
+  void RC_output() {
+    output_prefix();
+    output_cp_qp();
+    output_cp_lambda(COMPONENT_Y);
+    output_R_bppcomp();
+    output_R_bppreal();
+    output_RCmodel_SATD();
+    output_RCmodel_modelpara();
+    output_suffix();
+  }
+
+};
+
+extern ctulevel cl;
+
+class culevel {
+public:
+  Mv mv;
+
+  double intra_cost;
+  double inter_cost;
+
+
+};
+
+extern cul;
+#endif
+
+
+#if codingparameters
+class coding_parameterscy
+{
+public:
+  double lambda[3];
+
+  int QP[3];
+
+  uint64_t R_mode;
+  uint64_t R_resi;
+  uint64_t R_luma;
+  uint64_t R_chroma;
+  Distortion D_luma;
+  Distortion D_chroma;
+
+  coding_parameterscy() {
+    memset(lambda, 0, sizeof(lambda));
+    memset(QP, 0, sizeof(QP));
+  }
+
+  void initialize() {
+    memset(lambda, 0, sizeof(lambda));
+    memset(QP, 0, sizeof(QP));
+    R_mode = 0;
+    R_resi = 0;
+    R_luma = 0;
+    R_chroma = 0;
+    D_luma = 0;
+    D_chroma = 0;
+  }
+
+  void setlambdas(double luma, double cb, double cr) { lambda[0] = luma; lambda[1] = cb; lambda[2] = cr; }
+
+  void setQPs(int QPL, int QPCb, int QPCr) { QP[0] = QPL; QP[1] = QPCb; QP[2] = QPCr; }
+
+  void updateRlumachroma(uint64_t rluma, uint64_t rchroma) { R_luma = rluma; R_chroma = rchroma; }
+
+  void updateRmoderesi(uint64_t rmode, uint64_t rresi) { R_mode = rmode; R_resi = rresi; }
+
+  void updateDlumachroma(Distortion dluma, Distortion dchroma) { D_luma = dluma; D_chroma = dchroma; }
+  coding_parameterscy& operator=(const coding_parameterscy& cp) {
+    memcpy(lambda, cp.lambda, sizeof(lambda));
+    memcpy(QP, cp.QP, sizeof(QP));
+    R_mode = cp.R_mode;
+    R_resi = cp.R_resi;
+    R_luma = cp.R_luma;
+    R_chroma = cp.R_chroma;
+    D_luma = cp.D_luma;
+    D_chroma = cp.D_chroma;
+    return *this;
+  }
+};
+
+extern coding_parameterscy framecp;
+extern coding_parameterscy ctucp;
+#endif
 // ---------------------------------------------------------------------------
 // tools
 // ---------------------------------------------------------------------------
@@ -365,6 +601,11 @@ struct CodingUnit : public UnitArea
   const uint8_t     checkAllowedSbt() const;
 #endif
 
+#if codingparameters
+  coding_parameterscy cucp;
+  
+#endif // codingparameters
+
   
 };
 
@@ -608,6 +849,8 @@ typedef UnitTraverser<TransformUnit>  TUTraverser;
 typedef UnitTraverser<const CodingUnit>     cCUTraverser;
 typedef UnitTraverser<const PredictionUnit> cPUTraverser;
 typedef UnitTraverser<const TransformUnit>  cTUTraverser;
+
+
 
 #endif
 

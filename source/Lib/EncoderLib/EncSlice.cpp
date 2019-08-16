@@ -59,6 +59,9 @@ extern recursive_mutex g_cache_mutex;
 
 #include <fstream>
 #endif
+#if codingparameters
+#include "CodingStructure.h"
+#endif
 //! \ingroup EncoderLib
 //! \{
 
@@ -117,6 +120,11 @@ EncSlice::setUpLambda( Slice* slice, const double dLambda, int iQP)
 {
   // store lambda
   m_pcRdCost ->setLambda( dLambda, slice->getSPS()->getBitDepths() );
+#if codingparameters
+  extern coding_parameterscy framecp;
+  framecp.initialize();
+  int QPc[2] = { 0 };
+#endif
 
   // for RDO
   // in RdCost there is only one lambda because the luma and chroma bits are not separated, instead we weight the distortion of chroma.
@@ -139,7 +147,16 @@ EncSlice::setUpLambda( Slice* slice, const double dLambda, int iQP)
     }
 #endif
     dLambdas[compIdx] = dLambda / tmpWeight;
+#if codingparameters
+    QPc[compIdx - 1] = qpc;
+#endif
   }
+#if codingparameters
+  framecp.setlambdas(dLambda, dLambdas[1], dLambdas[2]);
+  framecp.setQPs(iQP,
+    QPc[0],
+    QPc[1]);
+#endif
 
 #if RDOQ_CHROMA_LAMBDA
   // for RDOQ
@@ -1409,8 +1426,8 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
 
 
-    // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
-    string date = string("20190729-3");
+     // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+    string date = string("20190729-1");
     ////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
     string file_dir = string("/public/ychen455/date/") + date + string("/code")  + string("/HRRN80VS/");
 
@@ -1440,6 +1457,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     pcSlice->setLambdas(newLambdas);
     pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
     pcSlice->setSliceQpBase(baseQP);
+    //setUpLambda(pcSlice, oldLambdas[0] * corrFactor, frameDQP + baseQP);
     for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
     {
 #if HEVC_TILES_WPP
@@ -1543,13 +1561,24 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
 
 #endif
-#endif
   }
+#endif
+  
 #endif // ENABLE_QPA
 
   cs.pcv      = pcSlice->getPPS()->pcv;
   cs.fracBits = 0;
+#if codingparameters
+  //extern coding_parameterscy framecp;
+  setUpLambda(pcSlice, (pcSlice->getLambdas())[0], pcSlice->getSliceQp());
+  /*framecp.setlambdas(m_pcRdCost->getLambda(), m_pcRdCost->getLambda(), m_pcRdCost->getLambda());
+  framecp.setlambdas(pcSlice->getSliceQp(),
+    pcSlice->getSliceQp() + pcSlice->getSliceChromaQpDelta(COMPONENT_Cb),
+    pcSlice->getSliceQp() + pcSlice->getSliceChromaQpDelta(COMPONENT_Cr));*/
 
+
+
+#endif
 
 #if ENABLE_WPP_PARALLELISM
   bool bUseThreads = m_pcCfg->getNumWppThreads() > 1;
@@ -1868,6 +1897,16 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 
     }
 #endif
+
+#if codingparameters
+    extern coding_parameterscy ctucp;
+    ctucp.initialize();
+    double currentlambdas[MAX_NUM_COMPONENT] = { 0.0 };
+    pTrQuant->getLambdas(currentlambdas);
+    ctucp.setlambdas(currentlambdas[0], currentlambdas[1], currentlambdas[2]);
+    ctucp.setQPs(currQP[0], currQP[1], currQP[1]);
+#endif
+
 
     bool updateGbiCodingOrder = cs.slice->getSliceType() == B_SLICE && ctuTsAddr == startCtuTsAddr;
     if( updateGbiCodingOrder )

@@ -62,6 +62,7 @@
 #define printresi 0
 
 #define intermediate 0
+#define codingparameters 0
 
 #define AdaptiveGOP 0
 
@@ -93,7 +94,7 @@
 // weighted D
 #define disableWD 0
 
-
+#define temppp 0
 
 
 
