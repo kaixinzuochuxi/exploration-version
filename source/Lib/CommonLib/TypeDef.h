@@ -68,19 +68,21 @@
 
 
 // QPA related
-#define useoriaqp 0
+#define useoriaqp 1
 /////
 #if useoriaqp
 #define usecutreeaqp 0
 #else 
 #define usecutreeaqp 1
+#define mbtreeQPA 0
 #endif
 
 #if usecutreeaqp
 #define getseqname 1
 #define dqp_apply_to_low_resolution 1
-#define CTUlevelQPA 0
-#define framelevelQPA 1
+#define CTUlevelQPA 1
+#define framelevelQPA 0
+
 #endif
 
 // build cu tree

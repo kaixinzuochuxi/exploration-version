@@ -1426,7 +1426,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
 
 
-     // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+    // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
     string date = string("20190729-1");
     ////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
     string file_dir = string("/public/ychen455/date/") + date + string("/code")  + string("/HRRN80VS/");
@@ -1471,6 +1471,48 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
 
 #if CTUlevelQPA
+    int currPOC = pcSlice->getPOC();
+    int baseQP = pcSlice->getSliceQpBase();
+    int frameDQP = 0;
+    int ctuDQP = 0;
+    double tempQP = 0;
+    int CTUnum = boundingCtuTsAddr - startCtuTsAddr;
+    ifstream fctu(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/ctu.txt"));
+    if (!fctu)
+    {
+      printf("open /%s/%d/ failed: %s\n", curr_seq_name.substr(last_slash + 1, dot - last_slash - 1).c_str(), conf_QP, strerror(errno));
+    }
+    for (int tempi = 0; tempi < currPOC* CTUnum; tempi++)
+    {
+      fctu >> tempQP;
+    }
+    
+    // frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+
+    //const double* oldLambdas = pcSlice->getLambdas();
+    //const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
+    //const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
+
+    //pcSlice->setLambdas(newLambdas);
+    //pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
+    //pcSlice->setSliceQpBase(baseQP);
+    //setUpLambda(pcSlice, oldLambdas[0] * corrFactor, frameDQP + baseQP);
+    for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+    {
+#if HEVC_TILES_WPP
+      const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+      const uint32_t ctuRsAddr = ctuTsAddr;
+#endif
+      fctu >> tempQP;
+      ctuDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+      pcPic->m_iOffsetCtu[ctuRsAddr] = (baseQP+ ctuDQP)>MAX_QP? MAX_QP: (baseQP + ctuDQP)<1?1: (baseQP + ctuDQP);
+    }
+
+
+
+#endif
+#if mbtreeQPA
     vector<vector<double>> cutreematrix(pich, vector<double>(picw));
     vector<vector<double>> ctubits(pich, vector<double>(picw));
 
