@@ -98,6 +98,8 @@
 
 #define temppp 0
 
+#define frameleveldqr 1
+
 
 
 #define JVET_M0055_DEBUG_CTU                              1 // DebugCTU encoder debug option

@@ -1128,6 +1128,11 @@ void EncSlice::precompressSlice( Picture* pcPic )
       uiQpIdxBest    = uiQpIdx;
       dPicRdCostBest = dPicRdCost;
     }
+#if frameleveldqr
+    printf("frameleveldqr: QP:%d lambda:%f dist:%lld bits:%lld\n",
+      m_viRdPicQp[uiQpIdx], m_vdRdPicLambda[uiQpIdx], uiPicDist, m_uiPicTotalBits);
+    uiQpIdxBest = 0;
+#endif
   }
 
   // set best values
