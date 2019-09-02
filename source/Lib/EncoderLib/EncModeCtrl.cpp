@@ -833,14 +833,25 @@ void BestEncInfoCache::init( const Slice &slice )
 #if REUSE_CU_RESULTS_WITH_MULTIPLE_TUS
   m_pCoeff  = new TCoeff[numCoeff*MAX_NUM_TUS];
   m_pPcmBuf = new Pel   [numCoeff*MAX_NUM_TUS];
+#if printoriresi
+  m_resiwoq = new TCoeff[numCoeff*MAX_NUM_TUS];
+  m_resiwq = new TCoeff[numCoeff*MAX_NUM_TUS];
+#endif
 #else
   m_pCoeff  = new TCoeff[numCoeff];
   m_pPcmBuf = new Pel   [numCoeff];
+#if printoriresi
+  m_resiwoq = new TCoeff[numCoeff];
+  m_resiwq = new TCoeff[numCoeff];
+#endif
 #endif
 
   TCoeff *coeffPtr = m_pCoeff;
   Pel    *pcmPtr   = m_pPcmBuf;
-
+#if printoriresi
+  TCoeff *resiwoqPtr = m_resiwoq;
+  TCoeff *resiwqPtr = m_resiwq;
+#endif
   m_dummyCS.pcv = m_slice_bencinf->getPPS()->pcv;
 
   for( unsigned x = 0; x < numPos; x++ )
@@ -855,6 +866,10 @@ void BestEncInfoCache::init( const Slice &slice )
           {
             TCoeff *coeff[MAX_NUM_TBLOCKS] = { 0, };
             Pel    *pcmbf[MAX_NUM_TBLOCKS] = { 0, };
+#if printoriresi
+            TCoeff *resiwoq[MAX_NUM_TBLOCKS] = { 0, };
+            TCoeff *resiwq[MAX_NUM_TBLOCKS] = { 0, };
+#endif
 
 #if REUSE_CU_RESULTS_WITH_MULTIPLE_TUS
             for( int i = 0; i < MAX_NUM_TUS; i++ )
@@ -866,10 +881,18 @@ void BestEncInfoCache::init( const Slice &slice )
               {
                 coeff[i] = coeffPtr; coeffPtr += area.blocks[i].area();
                 pcmbf[i] = pcmPtr;   pcmPtr += area.blocks[i].area();
+#if printoriresi
+                resiwoq[i] = resiwoqPtr; resiwoqPtr += area.blocks[i].area();
+                resiwq[i] = resiwqPtr; resiwqPtr += area.blocks[i].area();
+#endif
               }
 
               tu.cs = &m_dummyCS;
+#if printoriresi
+              tu.init(coeff, pcmbf, resiwoq, resiwq);
+#else
               tu.init(coeff, pcmbf);
+#endif
             }
 #else
             const UnitArea &area = m_bestEncInfo[x][y][wIdx][hIdx]->tu;
@@ -878,10 +901,18 @@ void BestEncInfoCache::init( const Slice &slice )
             {
               coeff[i] = coeffPtr; coeffPtr += area.blocks[i].area();
               pcmbf[i] =   pcmPtr;   pcmPtr += area.blocks[i].area();
+#if printoriresi
+              resiwoq[i] = resiwoqPtr; resiwoqPtr += area.blocks[i].area();
+              resiwq[i] = resiwqPtr; resiwqPtr += area.blocks[i].area();
+#endif
             }
 
             m_bestEncInfo[x][y][wIdx][hIdx]->tu.cs = &m_dummyCS;
+#if printoriresi
+            m_bestEncInfo[x][y][wIdx][hIdx]->tu.init(coeff, pcmbf, resiwoq, resiwq);
+#else
             m_bestEncInfo[x][y][wIdx][hIdx]->tu.init( coeff, pcmbf );
+#endif
 #endif
           }
         }

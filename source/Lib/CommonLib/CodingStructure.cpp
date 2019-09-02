@@ -74,7 +74,10 @@ CodingStructure::CodingStructure(CUCache& cuCache, PUCache& puCache, TUCache& tu
   {
     m_coeffs[ i ] = nullptr;
     m_pcmbuf[ i ] = nullptr;
-
+#if printoriresi
+    m_resiwoq[i] = nullptr;
+    m_resiwq[i] = nullptr;
+#endif
     m_offsets[ i ] = 0;
   }
 
@@ -531,7 +534,10 @@ TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType c
 
   TCoeff *coeffs[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
   Pel    *pcmbuf[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-
+#if printoriresi
+  TCoeff *resiwoq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+  TCoeff    *resiwq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+#endif
   uint32_t numCh = ::getNumberValidComponents( area.chromaFormat );
 
   for( uint32_t i = 0; i < numCh; i++ )
@@ -575,13 +581,19 @@ TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType c
 
     coeffs[i] = m_coeffs[i] + m_offsets[i];
     pcmbuf[i] = m_pcmbuf[i] + m_offsets[i];
+#if printoriresi
+    resiwoq[i] = m_resiwoq[i] + m_offsets[i];
+    resiwq[i] = m_resiwq[i] + m_offsets[i];
+#endif
 
     unsigned areaSize = tu->blocks[i].area();
     m_offsets[i] += areaSize;
   }
-
+#if printoriresi
+  tu->init(coeffs, pcmbuf, resiwoq,resiwq);
+#else
   tu->init( coeffs, pcmbuf );
-
+#endif
   return *tu;
 }
 
@@ -745,6 +757,10 @@ void CodingStructure::createCoeffs()
 
     m_coeffs[i] = _area > 0 ? ( TCoeff* ) xMalloc( TCoeff, _area ) : nullptr;
     m_pcmbuf[i] = _area > 0 ? ( Pel*    ) xMalloc( Pel,    _area ) : nullptr;
+#if printoriresi
+    m_resiwoq[i] = _area > 0 ? (TCoeff*)xMalloc(TCoeff, _area) : nullptr;
+    m_resiwq[i] = _area > 0 ? (TCoeff*)xMalloc(TCoeff, _area) : nullptr;
+#endif
   }
 }
 
@@ -754,6 +770,10 @@ void CodingStructure::destroyCoeffs()
   {
     if( m_coeffs[i] ) { xFree( m_coeffs[i] ); m_coeffs[i] = nullptr; }
     if( m_pcmbuf[i] ) { xFree( m_pcmbuf[i] ); m_pcmbuf[i] = nullptr; }
+#if printoriresi
+    if (m_resiwoq[i]) { xFree(m_resiwoq[i]); m_resiwoq[i] = nullptr; }
+    if (m_resiwq[i]) { xFree(m_resiwq[i]); m_resiwq[i] = nullptr; }
+#endif
   }
 }
 
@@ -968,8 +988,7 @@ void CodingStructure::useSubStructure( const CodingStructure& subStruct, const C
 #if build_cu_tree
       //Distortion intradist = ppu->intradist;
       //Distortion interdist = ppu->interdist;
-      /////
-      /////test
+
       pu.interdist = ppu->interdist;
       pu.intradist = ppu->intradist;
       pu.intrabits = ppu->intrabits;

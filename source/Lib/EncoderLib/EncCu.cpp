@@ -528,6 +528,29 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         //printf( " ");
       }
       
+#if printoriresi
+      printf(" | \n");
+
+      if (pu->cu->firstTU == pu->cu->lastTU)
+      {
+        for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+        {
+          printf("%d:", pu->cu->firstTU->m_resiwoq[0][p]);
+          printf("%d\n", pu->cu->firstTU->m_resiwq[0][p]);
+        }
+      }
+      else {
+        for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
+        {
+
+          for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+          {
+            printf("%d:", ttu.m_resiwoq[0][p]);
+            printf("%d\n", ttu.m_resiwq[0][p]);
+          }
+        }
+      }
+#endif
       printf(" |\n");
 
     }
@@ -923,13 +946,13 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
   if( m_pImvTempCS && !slice.isIntra() )
 #endif
   {
-    /////
+    
     tempCS->initSubStructure( *m_pImvTempCS[wIdx], partitioner.chType, partitioner.currArea(), false );
   }
 
   tempCS->chType = partitioner.chType;
   bestCS->chType = partitioner.chType;
-  /////
+  
   m_modeCtrl->initCULevel( partitioner, *tempCS );
 #if JVET_M0140_SBT
   if( partitioner.currQtDepth == 0 && partitioner.currMtDepth == 0 && !tempCS->slice->isIntra() && ( sps.getUseSBT() || sps.getUseInterMTS() ) )

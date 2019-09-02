@@ -239,7 +239,10 @@ private:
 
   TCoeff *m_coeffs [ MAX_NUM_COMPONENT ];
   Pel    *m_pcmbuf [ MAX_NUM_COMPONENT ];
-
+#if printoriresi
+  TCoeff *m_resiwoq[MAX_NUM_COMPONENT];
+  TCoeff *m_resiwq[MAX_NUM_COMPONENT];
+#endif
   int     m_offsets[ MAX_NUM_COMPONENT ];
 
   MotionInfo *m_motionBuf;

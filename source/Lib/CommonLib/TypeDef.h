@@ -62,7 +62,7 @@
 #define printresi 0
 
 #define intermediate 0
-#define codingparameters 0
+#define codingparameters 1
 
 #define AdaptiveGOP 0
 
@@ -85,12 +85,13 @@
 
 #endif
 
-// build cu tree
-#define build_cu_tree 0
+// build cu tree, print CU level information
+#define build_cu_tree 1
 /////
 #if build_cu_tree 
-#define disablefast 1
+#define disablefast 0
 #define printchormacu 1
+#define printoriresi 1
 #endif
 
 // weighted D
@@ -98,7 +99,7 @@
 
 #define temppp 0
 
-#define frameleveldqr 1
+#define frameleveldqr 0
 
 
 

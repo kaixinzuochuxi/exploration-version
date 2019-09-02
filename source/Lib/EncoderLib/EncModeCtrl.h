@@ -476,6 +476,10 @@ private:
   BestEncodingInfo ***m_bestEncInfo[MAX_CU_SIZE >> MIN_CU_LOG2][MAX_CU_SIZE >> MIN_CU_LOG2];
   TCoeff             *m_pCoeff;
   Pel                *m_pPcmBuf;
+#if printoriresi
+  TCoeff             *m_resiwoq;
+  TCoeff             *m_resiwq;
+#endif
   CodingStructure     m_dummyCS;
   XUCache             m_dummyCache;
 

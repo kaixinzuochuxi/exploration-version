@@ -1617,11 +1617,11 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
   cs.fracBits = 0;
 #if codingparameters
   //extern coding_parameterscy framecp;
-  setUpLambda(pcSlice, (pcSlice->getLambdas())[0], pcSlice->getSliceQp());
-  /*framecp.setlambdas(m_pcRdCost->getLambda(), m_pcRdCost->getLambda(), m_pcRdCost->getLambda());
-  framecp.setlambdas(pcSlice->getSliceQp(),
-    pcSlice->getSliceQp() + pcSlice->getSliceChromaQpDelta(COMPONENT_Cb),
-    pcSlice->getSliceQp() + pcSlice->getSliceChromaQpDelta(COMPONENT_Cr));*/
+  ////setUpLambda(pcSlice, (pcSlice->getLambdas())[0], pcSlice->getSliceQp());
+  //framecp.setlambdas(m_pcRdCost->getLambda(), m_pcRdCost->getLambda(), m_pcRdCost->getLambda());
+  //framecp.setlambdas(pcSlice->getSliceQp(),
+  //  pcSlice->getSliceQp() + pcSlice->getSliceChromaQpDelta(COMPONENT_Cb),
+  //  pcSlice->getSliceQp() + pcSlice->getSliceChromaQpDelta(COMPONENT_Cr));
 
 
 
@@ -1666,7 +1666,16 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     m_lastSliceSegmentEndContextState = m_CABACEstimator->getCtx();//ctx end of dep.slice
   }
 #endif
+#if codingparameters 
+  extern coding_parameterscy framecp;
+  printf("codingparameters:framelevel | ");
+  printf("lambda: %f-%f-%f | ", framecp.lambda[0], framecp.lambda[1], framecp.lambda[2]);
+  printf("QP: %d-%d-%d | ", framecp.QP[0], framecp.QP[1], framecp.QP[2]);
+  printf("D: %lld-%lld | ", framecp.D_luma, framecp.D_chroma);
+  printf("R: %lld-%lld-%lld-%lld | " ,framecp.R_luma,framecp.R_chroma,framecp.R_mode,framecp.R_resi);
+  printf("\n");
 
+#endif
 }
 
 #if JVET_M0255_FRACMMVD_SWITCH
@@ -2119,6 +2128,17 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
 #if ENABLE_WPP_PARALLELISM
     pcPic->scheduler.setReady( ctuXPosInCtus, ctuYPosInCtus );
+#endif
+
+#if codingparameters 
+    extern coding_parameterscy ctucp;
+    printf("codingparameters:ctulevel | ");
+    printf("lambda: %f-%f-%f | ", ctucp.lambda[0], ctucp.lambda[1], ctucp.lambda[2]);
+    printf("QP: %d-%d-%d | ", ctucp.QP[0], ctucp.QP[1], ctucp.QP[2]);
+    printf("D: %lld-%lld | ", ctucp.D_luma, ctucp.D_chroma);
+    printf("R: %lld-%lld-%lld-%lld | ", ctucp.R_luma, ctucp.R_chroma, ctucp.R_mode, ctucp.R_resi);
+    printf("\n");
+
 #endif
   }
 

@@ -795,7 +795,7 @@ void Quant::quant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf 
     {
       const TCoeff iLevel   = piCoef.buf[uiBlockPos];
       const TCoeff iSign    = (iLevel < 0 ? -1: 1);
-
+      
 #if HEVC_USE_SCALING_LISTS
       const int64_t  tmpLevel = (int64_t)abs(iLevel) * (enableScalingLists ? piQuantCoeff[uiBlockPos] : defaultQuantisationCoefficient);
 #else
@@ -811,6 +811,7 @@ void Quant::quant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf 
       const TCoeff quantisedCoefficient = quantisedMagnitude * iSign;
 
       piQCoef.buf[uiBlockPos] = Clip3<TCoeff>( entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient );
+
     } // for n
 #if HEVC_USE_SIGN_HIDING
     if( cctx.signHiding() && uiWidth>=4 && uiHeight>=4 )

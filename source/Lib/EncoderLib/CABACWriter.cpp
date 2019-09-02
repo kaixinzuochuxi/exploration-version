@@ -3061,6 +3061,7 @@ void CABACWriter::residual_coding_subblock( CoeffCodingContext& cctx, const TCoe
   for( ; nextSigPos >= minSubPos && remRegBins >= 3; nextSigPos-- )
 #endif
   {
+
     TCoeff    Coeff      = coeff[ cctx.blockPos( nextSigPos ) ];
     unsigned  sigFlag    = ( Coeff != 0 );
     if( numNonZero || nextSigPos != inferSigPos )

@@ -674,6 +674,10 @@ TransformUnit::TransformUnit(const UnitArea& unit) : UnitArea(unit), cu(nullptr)
   {
     m_coeffs[i] = nullptr;
     m_pcmbuf[i] = nullptr;
+#if printoriresi
+    m_resiwoq[i] = nullptr;
+    m_resiwq[i] = nullptr;
+#endif
   }
 
   initData();
@@ -685,6 +689,10 @@ TransformUnit::TransformUnit(const ChromaFormat _chromaFormat, const Area &_area
   {
     m_coeffs[i] = nullptr;
     m_pcmbuf[i] = nullptr;
+#if printoriresi
+    m_resiwoq[i] = nullptr;
+    m_resiwq[i] = nullptr;
+#endif
   }
 
   initData();
@@ -715,7 +723,11 @@ void TransformUnit::initData()
 #endif
 }
 
+#if printoriresi
+void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq, TCoeff **resiwq)
+#else
 void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf)
+#endif
 {
   uint32_t numBlocks = getNumberValidTBlocks(*cs->pcv);
 
@@ -723,6 +735,10 @@ void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf)
   {
     m_coeffs[i] = coeffs[i];
     m_pcmbuf[i] = pcmbuf[i];
+#if printoriresi
+    m_resiwoq[i] = resiwoq[i];
+    m_resiwq[i] = resiwq[i];
+#endif
   }
 }
 
@@ -739,7 +755,10 @@ TransformUnit& TransformUnit::operator=(const TransformUnit& other)
 
     if (m_coeffs[i] && other.m_coeffs[i] && m_coeffs[i] != other.m_coeffs[i]) memcpy(m_coeffs[i], other.m_coeffs[i], sizeof(TCoeff) * area);
     if (m_pcmbuf[i] && other.m_pcmbuf[i] && m_pcmbuf[i] != other.m_pcmbuf[i]) memcpy(m_pcmbuf[i], other.m_pcmbuf[i], sizeof(Pel   ) * area);
-
+#if printoriresi
+    if (m_resiwoq[i] && other.m_resiwoq[i] && m_resiwoq[i] != other.m_resiwoq[i]) memcpy(m_resiwoq[i], other.m_resiwoq[i], sizeof(TCoeff) * area);
+    if (m_resiwq[i] && other.m_resiwq[i] && m_resiwq[i] != other.m_resiwq[i]) memcpy(m_resiwq[i], other.m_resiwq[i], sizeof(TCoeff) * area);
+#endif
     cbf[i]           = other.cbf[i];
     rdpcm[i]         = other.rdpcm[i];
 #if !JVET_M0464_UNI_MTS
@@ -769,7 +788,10 @@ void TransformUnit::copyComponentFrom(const TransformUnit& other, const Componen
 
   if (m_coeffs[i] && other.m_coeffs[i] && m_coeffs[i] != other.m_coeffs[i]) memcpy(m_coeffs[i], other.m_coeffs[i], sizeof(TCoeff) * area);
   if (m_pcmbuf[i] && other.m_pcmbuf[i] && m_pcmbuf[i] != other.m_pcmbuf[i]) memcpy(m_pcmbuf[i], other.m_pcmbuf[i], sizeof(Pel   ) * area);
-
+#if printoriresi
+  if (m_resiwoq[i] && other.m_resiwoq[i] && m_resiwoq[i] != other.m_resiwoq[i]) memcpy(m_resiwoq[i], other.m_resiwoq[i], sizeof(TCoeff) * area);
+  if (m_resiwq[i] && other.m_resiwq[i] && m_resiwq[i] != other.m_resiwq[i]) memcpy(m_resiwq[i], other.m_resiwq[i], sizeof(TCoeff) * area);
+#endif
   cbf[i]           = other.cbf[i];
   rdpcm[i]         = other.rdpcm[i];
 #if !JVET_M0464_UNI_MTS

@@ -755,7 +755,12 @@ struct TransformUnit : public UnitArea
   TransformUnit *prev;
 #endif
 
-  void init(TCoeff **coeffs, Pel **pcmbuf);
+#if printoriresi
+  void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq = nullptr, TCoeff **m_resiwq = nullptr);
+#else
+  void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf);
+#endif
+  
 
   TransformUnit& operator=(const TransformUnit& other);
   void copyComponentFrom  (const TransformUnit& other, const ComponentID compID);
@@ -777,9 +782,17 @@ struct TransformUnit : public UnitArea
   bool    cacheUsed;
 
 #endif
+#if printoriresi
+public:
+  TCoeff *m_resiwoq[MAX_NUM_TBLOCKS];
+  TCoeff *m_resiwq[MAX_NUM_TBLOCKS];
+#else
 private:
+#endif
   TCoeff *m_coeffs[ MAX_NUM_TBLOCKS ];
   Pel    *m_pcmbuf[ MAX_NUM_TBLOCKS ];
+
+
 };
 
 // ---------------------------------------------------------------------------

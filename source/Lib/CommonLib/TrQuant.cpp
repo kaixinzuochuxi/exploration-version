@@ -205,6 +205,14 @@ void TrQuant::invTransformNxN( TransformUnit &tu, const ComponentID &compID, Pel
 
     DTRACE_COEFF_BUF( D_TCOEFF, tempCoeff, tu, tu.cu->predMode, compID );
 
+#if printoriresi
+    //for (int x = 0; x < uiWidth*uiHeight; x++)
+    //{
+    //  printf("%d:", tempCoeff.buf[x]);
+    //}
+    
+    memcpy(tu.m_resiwq[compID], tempCoeff.buf, uiWidth*uiHeight * sizeof(TCoeff));
+#endif
 #if JVET_M0464_UNI_MTS
     if( isLuma(compID) && tu.mtsIdx == 1 )
 #else
@@ -217,6 +225,7 @@ void TrQuant::invTransformNxN( TransformUnit &tu, const ComponentID &compID, Pel
     {
       xIT( tu, compID, tempCoeff, pResi );
     }
+
   }
 
   //DTRACE_BLOCK_COEFF(tu.getCoeffs(compID), tu, tu.cu->predMode, compID);
@@ -771,6 +780,7 @@ void TrQuant::transformNxN(TransformUnit &tu, const ComponentID &compID, const Q
       CoeffBuf tempCoeff( m_plTempCoeff, rect );
 #endif
 
+
       DTRACE_PEL_BUF( D_RESIDUALS, resiBuf, tu, tu.cu->predMode, compID );
 
 #if JVET_M0464_UNI_MTS
@@ -804,6 +814,9 @@ void TrQuant::transformNxN(TransformUnit &tu, const ComponentID &compID, const Q
         //it gets the distribution of the coefficients energy, which will be useful to discard ISP tests
         xGetCoeffEnergy( tu, compID, tempCoeff, diagRatio, horVerRatio );
       }
+#endif
+#if printoriresi
+      memcpy(tu.m_resiwoq[compID], m_mtsCoeffs[tu.mtsIdx], rect.height*rect.width * sizeof(TCoeff));
 #endif
       DTRACE_COEFF_BUF( D_TCOEFF, tempCoeff, tu, tu.cu->predMode, compID );
 
