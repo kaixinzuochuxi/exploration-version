@@ -1131,7 +1131,7 @@ void EncSlice::precompressSlice( Picture* pcPic )
 #if frameleveldqr
     printf("frameleveldqr: QP:%d lambda:%f dist:%lld bits:%lld\n",
       m_viRdPicQp[uiQpIdx], m_vdRdPicLambda[uiQpIdx], uiPicDist, m_uiPicTotalBits);
-    uiQpIdxBest = 0;
+    //uiQpIdxBest = 0;
 #endif
   }
 
@@ -1409,6 +1409,84 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
   }
 #endif
 
+#if alambda
+  if (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && (boundingCtuTsAddr > startCtuTsAddr))
+  {
+    int curpoc = pcPic->getPOC();
+    extern string curr_seq_name;
+    extern int conf_QP;
+    //printf("%s %d\t", curr_seq_name.c_str(), curpoc);
+    ///// parse input yuv name
+    //auto xxx = curr_seq_name.find_last_of("/");
+    auto last_slash = min(curr_seq_name.find_last_of("\\"), curr_seq_name.find_last_of("/"));
+    auto dot = curr_seq_name.find_last_of(".");
+    //curr_seq_name = curr_seq_name.substr(last_slash + 1, dot - last_slash - 1);
+    //printf("%s\t", curr_seq_name.substr(last_slash+1,dot- last_slash-1).c_str());
+    int QP = MAX_QP;
+    ///// determine current QP
+    if (!m_pcLib->getUseRateCtrl())
+      QP = conf_QP;
+    else {
+      ;
+    }
+    string file_dir;
+    bool iswindows = 1;
+    if (iswindows) {
+      file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+    }
+    else {
+      string date = string("20190729-1");
+      file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+    }
+    //// string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+    //string date = string("20190729-1");
+    //////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
+    //string file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+
+    int picw = pcPic->lwidth();
+    int pich = pcPic->lheight();
+
+#if framelevelalambda
+    int currPOC = pcSlice->getPOC();
+    int baseQP = pcSlice->getSliceQpBase();
+    int frameDQP = 0;
+    double templambda = 0;
+    ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt"));
+    if (!fframe)
+    {
+      printf("open failed: %s\n", strerror(errno));
+      //printf("open failed\n");
+    }
+    for (int tempi = 0; tempi <= currPOC; tempi++)
+    {
+      fframe >> templambda;
+    }
+    //frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+
+    const double* oldLambdas = pcSlice->getLambdas();
+    //const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
+    //const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
+    double tempQP = 3 * log2(templambda / oldLambdas[0]);
+    frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+
+    //pcSlice->setLambdas(newLambdas);
+    pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
+    pcSlice->setSliceQpBase(frameDQP + baseQP);
+    setUpLambda(pcSlice, templambda, frameDQP + baseQP);
+    for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+    {
+#if HEVC_TILES_WPP
+      const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+      const uint32_t ctuRsAddr = ctuTsAddr;
+#endif
+      pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
+    }
+#endif
+    if (m_pcRdCost->getLambda() <= oldLambdas[0])
+   m_pcRdCost->saveUnadjustedLambda();
+  }
+#endif
 #if usecutreeaqp
   if (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && (boundingCtuTsAddr > startCtuTsAddr))
   {
@@ -1430,14 +1508,25 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       ;
     }
 
-
+    string file_dir;
+    bool iswindows = 1;
+    if (iswindows) {
+      file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+    }
+    else {
+      string date = string("20190729-1");
+      file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+    }
     // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
-    string date = string("20190729-1");
+    //string date = string("20190729-1");
     ////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
-    string file_dir = string("/public/ychen455/date/") + date + string("/code")  + string("/HRRN80VS/");
+    //string file_dir = string("/public/ychen455/date/") + date + string("/code")  + string("/HRRN80VS/");
 
     int picw = pcPic->lwidth();
     int pich = pcPic->lheight();
+
+
+
 
 #if framelevelQPA
     int currPOC = pcSlice->getPOC();
@@ -1461,7 +1550,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
     pcSlice->setLambdas(newLambdas);
     pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
-    pcSlice->setSliceQpBase(baseQP);
+    pcSlice->setSliceQpBase(frameDQP + baseQP);
     //setUpLambda(pcSlice, oldLambdas[0] * corrFactor, frameDQP + baseQP);
     for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
     {
@@ -1470,8 +1559,10 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 #else
       const uint32_t ctuRsAddr = ctuTsAddr;
 #endif
-      pcPic->m_iOffsetCtu[ctuRsAddr] = baseQP;
+      pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
     }
+    if(m_pcRdCost->getLambda()<= oldLambdas[0])
+      m_pcRdCost->saveUnadjustedLambda();
 #endif
 
 

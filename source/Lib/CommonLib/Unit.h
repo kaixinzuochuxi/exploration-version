@@ -756,9 +756,10 @@ struct TransformUnit : public UnitArea
 #endif
 
 #if printoriresi
-  void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq = nullptr, TCoeff **m_resiwq = nullptr);
+  void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq , TCoeff **m_resiwq);
 #else
-  void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf);
+  //void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf);
+  void init(TCoeff **coeffs, Pel **pcmbuf);
 #endif
   
 
