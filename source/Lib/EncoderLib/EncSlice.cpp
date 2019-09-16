@@ -1526,7 +1526,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
 
     string file_dir;
-    bool iswindows = 0;
+    bool iswindows = 1;
     if (iswindows) {
       file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
     }
