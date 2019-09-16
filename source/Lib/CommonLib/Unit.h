@@ -236,9 +236,9 @@ public:
   uint64_t R_mode;
   uint64_t R_resi;
   uint64_t R_luma;
-  uint64_t R_chroma;
-  Distortion D_luma;
-  Distortion D_chroma;
+  uint64_t R[MAX_NUM_COMPONENT];
+  Distortion D[MAX_NUM_COMPONENT];
+  
 
   coding_parameterscy() {
     memset(lambda, 0, sizeof(lambda));
@@ -250,30 +250,26 @@ public:
     memset(QP, 0, sizeof(QP));
     R_mode = 0;
     R_resi = 0;
-    R_luma = 0;
-    R_chroma = 0;
-    D_luma = 0;
-    D_chroma = 0;
+    memset(D, 0, sizeof(D));
+    memset(R, 0, sizeof(R));
   }
 
   void setlambdas(double luma, double cb, double cr) { lambda[0] = luma; lambda[1] = cb; lambda[2] = cr; }
 
   void setQPs(int QPL, int QPCb, int QPCr) { QP[0] = QPL; QP[1] = QPCb; QP[2] = QPCr; }
 
-  void updateRlumachroma(uint64_t rluma, uint64_t rchroma) { R_luma = rluma; R_chroma = rchroma; }
+  //void updateRlumachroma(uint64_t rluma, uint64_t rchroma) { R_luma = rluma; R_chroma = rchroma; }
 
   void updateRmoderesi(uint64_t rmode, uint64_t rresi) { R_mode = rmode; R_resi = rresi; }
 
-  void updateDlumachroma(Distortion dluma, Distortion dchroma) { D_luma = dluma; D_chroma = dchroma; }
+  //void updateDlumachroma(Distortion dluma, Distortion dchroma) { D_luma = dluma; D_chroma = dchroma; }
   coding_parameterscy& operator=(const coding_parameterscy& cp) {
     memcpy(lambda, cp.lambda, sizeof(lambda));
     memcpy(QP, cp.QP, sizeof(QP));
     R_mode = cp.R_mode;
     R_resi = cp.R_resi;
-    R_luma = cp.R_luma;
-    R_chroma = cp.R_chroma;
-    D_luma = cp.D_luma;
-    D_chroma = cp.D_chroma;
+    memcpy(R, cp.R, sizeof(R));
+    memcpy(D, cp.D, sizeof(D));
     return *this;
   }
 };
@@ -622,6 +618,10 @@ struct IntraPredictionData
   //Distortion interdist;
   //double cost;
   uint64_t intrabits;
+#if predfromori
+  Distortion intradistori;
+  uint64_t intrabitsori;
+#endif
 #endif
 };
 
@@ -665,6 +665,10 @@ struct InterPredictionData
   //Distortion intradist;
   Distortion interdist;
   uint64_t interbits;
+#if predfromori
+  Distortion interdistori;
+  uint64_t interbitsori;
+#endif
   //double cost;
 #endif
 };
@@ -756,7 +760,7 @@ struct TransformUnit : public UnitArea
 #endif
 
 #if printoriresi
-  void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq , TCoeff **m_resiwq);
+  void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq , TCoeff **resiwq, Pel **spresiwoq, Pel **spresiwq);
 #else
   //void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf);
   void init(TCoeff **coeffs, Pel **pcmbuf);
@@ -787,6 +791,8 @@ struct TransformUnit : public UnitArea
 public:
   TCoeff *m_resiwoq[MAX_NUM_TBLOCKS];
   TCoeff *m_resiwq[MAX_NUM_TBLOCKS];
+  Pel *m_spresiwoq[MAX_NUM_TBLOCKS];
+  Pel *m_spresiwq[MAX_NUM_TBLOCKS];
 #else
 private:
 #endif

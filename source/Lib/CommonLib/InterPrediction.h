@@ -225,6 +225,43 @@ public:
 #if JVET_M0170_MRG_SHARELIST
   void    setShareState(int shareStateIn) {m_shareState = shareStateIn;}
 #endif
+
+#if predfromori
+  void xSubPuMCori(PredictionUnit& pu, PelUnitBuf& predBuf, const RefPicList &eRefPicList = REF_PIC_LIST_X);
+  void xChromaMCori(PredictionUnit &pu, PelUnitBuf& pcYuvPred);
+  void xPredInterUniori(const PredictionUnit& pu, const RefPicList& eRefPicList, PelUnitBuf& pcYuvPred, const bool& bi
+    , const bool& bioApplied
+    , const bool luma, const bool chroma
+  );
+  void xPredInterBiori(PredictionUnit& pu, PelUnitBuf &pcYuvPred);
+#if JVET_M0147_DMVR
+  void xPredInterBlkori(const ComponentID& compID, const PredictionUnit& pu, const Picture* refPic, const Mv& _mv, PelUnitBuf& dstPic, const bool& bi, const ClpRng& clpRng
+    , const bool& bioApplied
+    , bool isIBC
+    , SizeType dmvrWidth = 0
+    , SizeType dmvrHeight = 0
+    , bool bilinearMC = false
+    , Pel *srcPadBuf = NULL
+    , int32_t srcPadStride = 0
+  );
+#else
+  void xPredInterBlkori(const ComponentID& compID, const PredictionUnit& pu, const Picture* refPic, const Mv& _mv, PelUnitBuf& dstPic, const bool& bi, const ClpRng& clpRng
+    , const bool& bioApplied
+    , bool isIBC
+  );
+#endif
+  void xPredAffineBlkori(const ComponentID& compID, const PredictionUnit& pu, const Picture* refPic, const Mv* _mv, PelUnitBuf& dstPic, const bool& bi, const ClpRng& clpRng);
+
+  void    motionCompensationori(PredictionUnit &pu, PelUnitBuf& predBuf, const RefPicList &eRefPicList = REF_PIC_LIST_X
+    , const bool luma = true, const bool chroma = true
+  );
+  void InterPrediction::motionCompensationori(CodingUnit &cu, const RefPicList &eRefPicList = REF_PIC_LIST_X
+    , const bool luma = true, const bool chroma = true
+  );
+  void InterPrediction::motionCompensationori(PredictionUnit &pu, const RefPicList &eRefPicList = REF_PIC_LIST_X /*= REF_PIC_LIST_X*/
+    , const bool luma = true, const bool chroma = true
+  );
+#endif
 };
 
 //! \}

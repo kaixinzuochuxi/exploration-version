@@ -403,7 +403,783 @@ void InterPrediction::xChromaMC(PredictionUnit &pu, PelUnitBuf& pcYuvPred)
   }
 }
 
+#if predfromori
+void InterPrediction::xSubPuMCori(PredictionUnit & pu, PelUnitBuf & predBuf, const RefPicList & eRefPicList)
+{
+  // compute the location of the current PU
+  Position puPos = pu.lumaPos();
+  Size puSize = pu.lumaSize();
 
+  int numPartLine, numPartCol, puHeight, puWidth;
+  {
+    numPartLine = std::max(puSize.width >> ATMVP_SUB_BLOCK_SIZE, 1u);
+    numPartCol = std::max(puSize.height >> ATMVP_SUB_BLOCK_SIZE, 1u);
+    puHeight = numPartCol == 1 ? puSize.height : 1 << ATMVP_SUB_BLOCK_SIZE;
+    puWidth = numPartLine == 1 ? puSize.width : 1 << ATMVP_SUB_BLOCK_SIZE;
+  }
+
+  PredictionUnit subPu;
+
+  subPu.cs = pu.cs;
+  subPu.cu = pu.cu;
+  subPu.mergeType = MRG_TYPE_DEFAULT_N;
+
+  bool isAffine = pu.cu->affine;
+  subPu.cu->affine = false;
+
+  // join sub-pus containing the same motion
+  bool verMC = puSize.height > puSize.width;
+  int  fstStart = (!verMC ? puPos.y : puPos.x);
+  int  secStart = (!verMC ? puPos.x : puPos.y);
+  int  fstEnd = (!verMC ? puPos.y + puSize.height : puPos.x + puSize.width);
+  int  secEnd = (!verMC ? puPos.x + puSize.width : puPos.y + puSize.height);
+  int  fstStep = (!verMC ? puHeight : puWidth);
+  int  secStep = (!verMC ? puWidth : puHeight);
+
+  m_subPuMC = true;
+
+  for (int fstDim = fstStart; fstDim < fstEnd; fstDim += fstStep)
+  {
+    for (int secDim = secStart; secDim < secEnd; secDim += secStep)
+    {
+      int x = !verMC ? secDim : fstDim;
+      int y = !verMC ? fstDim : secDim;
+      const MotionInfo &curMi = pu.getMotionInfo(Position{ x, y });
+
+      int length = secStep;
+      int later = secDim + secStep;
+
+      while (later < secEnd)
+      {
+        const MotionInfo &laterMi = !verMC ? pu.getMotionInfo(Position{ later, fstDim }) : pu.getMotionInfo(Position{ fstDim, later });
+        if (laterMi == curMi)
+        {
+          length += secStep;
+        }
+        else
+        {
+          break;
+        }
+        later += secStep;
+      }
+      int dx = !verMC ? length : puWidth;
+      int dy = !verMC ? puHeight : length;
+
+      subPu.UnitArea::operator=(UnitArea(pu.chromaFormat, Area(x, y, dx, dy)));
+      subPu = curMi;
+      PelUnitBuf subPredBuf = predBuf.subBuf(UnitAreaRelative(pu, subPu));
+#if JVET_M0823_MMVD_ENCOPT
+      subPu.mmvdEncOptMode = 0;
+#endif
+#if JVET_M0147_DMVR
+      subPu.mvRefine = false;
+#endif
+      motionCompensationori(subPu, subPredBuf, eRefPicList);
+      secDim = later - secStep;
+    }
+  }
+  m_subPuMC = false;
+
+  pu.cu->affine = isAffine;
+
+}
+
+void InterPrediction::xChromaMCori(PredictionUnit &pu, PelUnitBuf& pcYuvPred)
+{
+  // separated tree, chroma
+  const CompArea lumaArea = CompArea(COMPONENT_Y, pu.chromaFormat, pu.Cb().lumaPos(), recalcSize(pu.chromaFormat, CHANNEL_TYPE_CHROMA, CHANNEL_TYPE_LUMA, pu.Cb().size()));
+  PredictionUnit subPu;
+  subPu.cs = pu.cs;
+  subPu.cu = pu.cu;
+
+  Picture * refPic = pu.cu->slice->getPic();
+  for (int y = lumaArea.y; y < lumaArea.y + lumaArea.height; y += MIN_PU_SIZE)
+  {
+    for (int x = lumaArea.x; x < lumaArea.x + lumaArea.width; x += MIN_PU_SIZE)
+    {
+      const MotionInfo &curMi = pu.cs->picture->cs->getMotionInfo(Position{ x, y });
+
+      subPu.UnitArea::operator=(UnitArea(pu.chromaFormat, Area(x, y, MIN_PU_SIZE, MIN_PU_SIZE)));
+      PelUnitBuf subPredBuf = pcYuvPred.subBuf(UnitAreaRelative(pu, subPu));
+
+      xPredInterBlkori(COMPONENT_Cb, subPu, refPic, curMi.mv[0], subPredBuf, false, pu.cu->slice->clpRng(COMPONENT_Cb)
+        , false
+        , true);
+      xPredInterBlkori(COMPONENT_Cr, subPu, refPic, curMi.mv[0], subPredBuf, false, pu.cu->slice->clpRng(COMPONENT_Cr)
+        , false
+        , true);
+    }
+  }
+}
+
+void InterPrediction::xPredInterUniori(const PredictionUnit& pu, const RefPicList& eRefPicList, PelUnitBuf& pcYuvPred, const bool& bi
+  , const bool& bioApplied
+  , const bool luma, const bool chroma
+)
+{
+  const SPS &sps = *pu.cs->sps;
+
+  int iRefIdx = pu.refIdx[eRefPicList];
+  Mv mv[3];
+  bool isIBC = false;
+#if JVET_M0483_IBC
+  if (CU::isIBC(*pu.cu))
+#else
+  if (pu.cs->slice->getRefPic(eRefPicList, iRefIdx)->getPOC() == pu.cs->slice->getPOC())
+#endif
+  {
+    isIBC = true;
+  }
+  if (pu.cu->affine)
+  {
+    CHECK(iRefIdx < 0, "iRefIdx incorrect.");
+
+    mv[0] = pu.mvAffi[eRefPicList][0];
+    mv[1] = pu.mvAffi[eRefPicList][1];
+    mv[2] = pu.mvAffi[eRefPicList][2];
+  }
+  else
+  {
+    mv[0] = pu.mv[eRefPicList];
+  }
+  if (!pu.cu->affine)
+    clipMv(mv[0], pu.cu->lumaPos(),
+      pu.cu->lumaSize(),
+      sps);
+
+  for (uint32_t comp = COMPONENT_Y; comp < pcYuvPred.bufs.size() && comp <= m_maxCompIDToPred; comp++)
+  {
+    const ComponentID compID = ComponentID(comp);
+    if (compID == COMPONENT_Y && !luma)
+      continue;
+    if (compID != COMPONENT_Y && !chroma)
+      continue;
+    if (pu.cu->affine)
+    {
+      CHECK(bioApplied, "BIO is not allowed with affine");
+      xPredAffineBlkori(compID, pu, pu.cu->slice->getRefPic(eRefPicList, iRefIdx), mv, pcYuvPred, bi, pu.cu->slice->clpRng(compID));
+    }
+    else
+    {
+#if JVET_M0483_IBC
+      if (isIBC)
+      {
+        xPredInterBlkori(compID, pu, pu.cu->slice->getPic(), mv[0], pcYuvPred, bi, pu.cu->slice->clpRng(compID)
+          , bioApplied
+          , isIBC
+        );
+      }
+      else
+      {
+        xPredInterBlkori(compID, pu, pu.cu->slice->getRefPic(eRefPicList, iRefIdx), mv[0], pcYuvPred, bi, pu.cu->slice->clpRng(compID)
+          , bioApplied
+          , isIBC
+        );
+      }
+#else
+      xPredInterBlkori(compID, pu, pu.cu->slice->getRefPic(eRefPicList, iRefIdx), mv[0], pcYuvPred, bi, pu.cu->slice->clpRng(compID)
+        , bioApplied
+        , isIBC
+      );
+#endif
+    }
+  }
+}
+void InterPrediction::xPredInterBiori(PredictionUnit & pu, PelUnitBuf & pcYuvPred)
+{
+  const PPS   &pps = *pu.cs->pps;
+  const Slice &slice = *pu.cs->slice;
+
+  bool bioApplied = false;
+  if (pu.cs->sps->getBDOFEnabledFlag())
+  {
+    if (pu.cu->affine || m_subPuMC)
+    {
+      bioApplied = false;
+    }
+    else
+    {
+      const bool biocheck0 = !(pps.getWPBiPred() && slice.getSliceType() == B_SLICE);
+      const bool biocheck1 = !(pps.getUseWP() && slice.getSliceType() == P_SLICE);
+      if (biocheck0
+        && biocheck1
+        && PU::isBiPredFromDifferentDir(pu)
+        && !(pu.Y().height == 4 || (pu.Y().width == 4 && pu.Y().height == 8))
+        )
+      {
+        bioApplied = true;
+      }
+    }
+
+#if JVET_M0444_SMVD
+    if (bioApplied && pu.cu->smvdMode)
+    {
+      bioApplied = false;
+    }
+#endif
+
+    if (pu.cu->cs->sps->getUseGBi() && bioApplied && pu.cu->GBiIdx != GBI_DEFAULT)
+    {
+      bioApplied = false;
+    }
+  }
+#if JVET_M0823_MMVD_ENCOPT
+  if (pu.mmvdEncOptMode == 2 && pu.mmvdMergeFlag) {
+    bioApplied = false;
+  }
+#endif
+#if JVET_M0147_DMVR
+  bool dmvrApplied = false;
+  dmvrApplied = (pu.mvRefine) && PU::checkDMVRCondition(pu);
+#endif
+  for (uint32_t refList = 0; refList < NUM_REF_PIC_LIST_01; refList++)
+  {
+    if (pu.refIdx[refList] < 0)
+    {
+      continue;
+    }
+
+    RefPicList eRefPicList = (refList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
+
+#if JVET_M0483_IBC
+    CHECK(CU::isIBC(*pu.cu) && eRefPicList != REF_PIC_LIST_0, "Invalid interdir for ibc mode");
+    CHECK(CU::isIBC(*pu.cu) && pu.refIdx[refList] != MAX_NUM_REF, "Invalid reference index for ibc mode");
+    CHECK((CU::isInter(*pu.cu) && pu.refIdx[refList] >= slice.getNumRefIdx(eRefPicList)), "Invalid reference index");
+#else
+    CHECK(pu.refIdx[refList] >= slice.getNumRefIdx(eRefPicList), "Invalid reference index");
+#endif
+    m_iRefListIdx = refList;
+
+    PelUnitBuf pcMbBuf = (pu.chromaFormat == CHROMA_400 ?
+      PelUnitBuf(pu.chromaFormat, PelBuf(m_acYuvPred[refList][0], pcYuvPred.Y())) :
+      PelUnitBuf(pu.chromaFormat, PelBuf(m_acYuvPred[refList][0], pcYuvPred.Y()), PelBuf(m_acYuvPred[refList][1], pcYuvPred.Cb()), PelBuf(m_acYuvPred[refList][2], pcYuvPred.Cr())));
+
+    if (pu.refIdx[0] >= 0 && pu.refIdx[1] >= 0)
+    {
+#if JVET_M0147_DMVR
+      if (dmvrApplied)
+        continue; // mc will happen in processDMVR
+#endif
+      xPredInterUniori(pu, eRefPicList, pcMbBuf, true
+        , bioApplied
+        , true, true
+      );
+    }
+    else
+    {
+      if (((pps.getUseWP() && slice.getSliceType() == P_SLICE) || (pps.getWPBiPred() && slice.getSliceType() == B_SLICE)))
+      {
+        xPredInterUniori(pu, eRefPicList, pcMbBuf, true
+          , bioApplied
+          , true, true
+        );
+      }
+      else
+      {
+        xPredInterUniori(pu, eRefPicList, pcMbBuf, pu.cu->triangle
+          , bioApplied
+          , true, true
+        );
+      }
+    }
+  }
+#if JVET_M0147_DMVR
+  if (dmvrApplied)
+  {
+    xProcessDMVR(pu, pcYuvPred, slice.clpRngs(), bioApplied);
+  }
+#endif
+
+
+  CPelUnitBuf srcPred0 = (pu.chromaFormat == CHROMA_400 ?
+    CPelUnitBuf(pu.chromaFormat, PelBuf(m_acYuvPred[0][0], pcYuvPred.Y())) :
+    CPelUnitBuf(pu.chromaFormat, PelBuf(m_acYuvPred[0][0], pcYuvPred.Y()), PelBuf(m_acYuvPred[0][1], pcYuvPred.Cb()), PelBuf(m_acYuvPred[0][2], pcYuvPred.Cr())));
+  CPelUnitBuf srcPred1 = (pu.chromaFormat == CHROMA_400 ?
+    CPelUnitBuf(pu.chromaFormat, PelBuf(m_acYuvPred[1][0], pcYuvPred.Y())) :
+    CPelUnitBuf(pu.chromaFormat, PelBuf(m_acYuvPred[1][0], pcYuvPred.Y()), PelBuf(m_acYuvPred[1][1], pcYuvPred.Cb()), PelBuf(m_acYuvPred[1][2], pcYuvPred.Cr())));
+  if (pps.getWPBiPred() && slice.getSliceType() == B_SLICE)
+  {
+    xWeightedPredictionBi(pu, srcPred0, srcPred1, pcYuvPred, m_maxCompIDToPred);
+  }
+  else if (pps.getUseWP() && slice.getSliceType() == P_SLICE)
+  {
+    xWeightedPredictionUni(pu, srcPred0, REF_PIC_LIST_0, pcYuvPred, -1, m_maxCompIDToPred);
+  }
+  else
+  {
+#if JVET_M0147_DMVR
+    if (dmvrApplied == false)
+    {
+#endif
+      xWeightedAverage(pu, srcPred0, srcPred1, pcYuvPred, slice.getSPS()->getBitDepths(), slice.clpRngs(), bioApplied);
+#if JVET_M0147_DMVR
+    }
+#endif
+  }
+}
+void InterPrediction::xPredInterBlkori(const ComponentID & compID, const PredictionUnit & pu, const Picture * refPic, const Mv & _mv, PelUnitBuf & dstPic, const bool & bi, const ClpRng & clpRng, const bool & bioApplied, bool isIBC, SizeType dmvrWidth, SizeType dmvrHeight, bool bilinearMC, Pel * srcPadBuf, int32_t srcPadStride)
+{
+  JVET_J0090_SET_REF_PICTURE(refPic, compID);
+  const ChromaFormat  chFmt = pu.chromaFormat;
+  const bool          rndRes = !bi;
+
+  int shiftHor = MV_FRACTIONAL_BITS_INTERNAL + ::getComponentScaleX(compID, chFmt);
+  int shiftVer = MV_FRACTIONAL_BITS_INTERNAL + ::getComponentScaleY(compID, chFmt);
+
+  int xFrac = _mv.hor & ((1 << shiftHor) - 1);
+  int yFrac = _mv.ver & ((1 << shiftVer) - 1);
+  if (isIBC)
+  {
+    xFrac = yFrac = 0;
+    JVET_J0090_SET_CACHE_ENABLE(false);
+  }
+
+  PelBuf &dstBuf = dstPic.bufs[compID];
+  unsigned width = dstBuf.width;
+  unsigned height = dstBuf.height;
+
+  CPelBuf refBuf;
+  {
+    Position offset = pu.blocks[compID].pos().offset(_mv.getHor() >> shiftHor, _mv.getVer() >> shiftVer);
+#if JVET_M0147_DMVR
+    if (dmvrWidth)
+    {
+      refBuf = refPic->getTrueOrigBuf(CompArea(compID, chFmt, offset, Size(dmvrWidth, dmvrHeight)));
+    }
+    else
+#endif
+      refBuf = refPic->getTrueOrigBuf(CompArea(compID, chFmt, offset, pu.blocks[compID].size()));
+  }
+
+#if JVET_M0147_DMVR
+  if (NULL != srcPadBuf)
+  {
+    refBuf.buf = srcPadBuf;
+    refBuf.stride = srcPadStride;
+  }
+  if (dmvrWidth)
+  {
+    width = dmvrWidth;
+    height = dmvrHeight;
+  }
+#endif
+  // backup data
+  int backupWidth = width;
+  int backupHeight = height;
+  Pel *backupDstBufPtr = dstBuf.buf;
+  int backupDstBufStride = dstBuf.stride;
+
+  if (bioApplied && compID == COMPONENT_Y)
+  {
+    width = width + 2 * BIO_EXTEND_SIZE + 2;
+    height = height + 2 * BIO_EXTEND_SIZE + 2;
+
+    // change MC output
+    dstBuf.stride = width;
+    dstBuf.buf = m_filteredBlockTmp[2 + m_iRefListIdx][compID] + 2 * dstBuf.stride + 2;
+  }
+
+  if (yFrac == 0)
+  {
+#if JVET_M0147_DMVR
+    m_if.filterHor(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, xFrac, rndRes, chFmt, clpRng, bilinearMC, bilinearMC);
+#else
+    m_if.filterHor(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, xFrac, rndRes, chFmt, clpRng);
+#endif
+  }
+  else if (xFrac == 0)
+  {
+#if JVET_M0147_DMVR
+    m_if.filterVer(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, true, rndRes, chFmt, clpRng, bilinearMC, bilinearMC);
+#else
+    m_if.filterVer(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, true, rndRes, chFmt, clpRng);
+#endif
+  }
+  else
+  {
+#if JVET_M0147_DMVR
+    PelBuf tmpBuf = dmvrWidth ? PelBuf(m_filteredBlockTmp[0][compID], Size(dmvrWidth, dmvrHeight)) : PelBuf(m_filteredBlockTmp[0][compID], pu.blocks[compID]);
+    if (dmvrWidth == 0)
+      tmpBuf.stride = dstBuf.stride;
+#else
+    PelBuf tmpBuf = PelBuf(m_filteredBlockTmp[0][compID], pu.blocks[compID]);
+    tmpBuf.stride = dstBuf.stride;
+#endif
+
+    int vFilterSize = isLuma(compID) ? NTAPS_LUMA : NTAPS_CHROMA;
+#if JVET_M0147_DMVR
+    if (bilinearMC)
+    {
+      vFilterSize = NTAPS_BILINEAR;
+    }
+#endif
+#if JVET_M0147_DMVR
+    m_if.filterHor(compID, (Pel*)refBuf.buf - ((vFilterSize >> 1) - 1) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng, bilinearMC, bilinearMC);
+#else
+    m_if.filterHor(compID, (Pel*)refBuf.buf - ((vFilterSize >> 1) - 1) * refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, backupWidth, backupHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng);
+#endif
+    JVET_J0090_SET_CACHE_ENABLE(false);
+#if JVET_M0147_DMVR
+    m_if.filterVer(compID, (Pel*)tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng, bilinearMC, bilinearMC);
+#else
+    m_if.filterVer(compID, (Pel*)tmpBuf.buf + ((vFilterSize >> 1) - 1) * tmpBuf.stride, tmpBuf.stride, dstBuf.buf, dstBuf.stride, backupWidth, backupHeight, yFrac, false, rndRes, chFmt, clpRng);
+#endif
+  }
+  JVET_J0090_SET_CACHE_ENABLE(true);
+  if (bioApplied && compID == COMPONENT_Y)
+  {
+#if JVET_M0487_INT_EXTEND
+    const int shift = std::max<int>(2, (IF_INTERNAL_PREC - clpRng.bd));
+    const Pel* refPel = refBuf.buf - refBuf.stride - 1;
+    Pel* dstPel = m_filteredBlockTmp[2 + m_iRefListIdx][compID] + dstBuf.stride + 1;
+    for (int w = 0; w < (width - 2 * BIO_EXTEND_SIZE); w++)
+    {
+      Pel val = leftShift_round(refPel[w], shift);
+      dstPel[w] = val - (Pel)IF_INTERNAL_OFFS;
+    }
+
+    refPel = refBuf.buf - 1;
+    dstPel = m_filteredBlockTmp[2 + m_iRefListIdx][compID] + 2 * dstBuf.stride + 1;
+    for (int h = 0; h < (height - 2 * BIO_EXTEND_SIZE - 2); h++)
+    {
+      Pel val = leftShift_round(refPel[0], shift);
+      dstPel[0] = val - (Pel)IF_INTERNAL_OFFS;
+
+      val = leftShift_round(refPel[width - 3], shift);
+      dstPel[width - 3] = val - (Pel)IF_INTERNAL_OFFS;
+
+      refPel += refBuf.stride;
+      dstPel += dstBuf.stride;
+    }
+
+    refPel = refBuf.buf + (height - 2 * BIO_EXTEND_SIZE - 2)*refBuf.stride - 1;
+    dstPel = m_filteredBlockTmp[2 + m_iRefListIdx][compID] + (height - 2 * BIO_EXTEND_SIZE)*dstBuf.stride + 1;
+    for (int w = 0; w < (width - 2 * BIO_EXTEND_SIZE); w++)
+    {
+      Pel val = leftShift_round(refPel[w], shift);
+      dstPel[w] = val - (Pel)IF_INTERNAL_OFFS;
+    }
+#else
+    refBuf.buf = refBuf.buf - refBuf.stride - 1;
+#if JVET_M0147_DMVR
+    if (srcPadBuf)
+    {
+      refBuf.buf = srcPadBuf - srcPadStride - 1;
+      refBuf.stride = srcPadStride;
+    }
+#endif
+    dstBuf.buf = m_filteredBlockTmp[2 + m_iRefListIdx][compID] + dstBuf.stride + 1;
+    bioSampleExtendBilinearFilter(refBuf.buf, refBuf.stride, dstBuf.buf, dstBuf.stride, width - 2, height - 2, 1, xFrac, yFrac, rndRes, chFmt, clpRng);
+#endif
+
+    // restore data
+    width = backupWidth;
+    height = backupHeight;
+    dstBuf.buf = backupDstBufPtr;
+    dstBuf.stride = backupDstBufStride;
+  }
+}
+void InterPrediction::xPredAffineBlkori(const ComponentID & compID, const PredictionUnit & pu, const Picture * refPic, const Mv * _mv, PelUnitBuf & dstPic, const bool & bi, const ClpRng & clpRng)
+{
+  if ((pu.cu->affineType == AFFINEMODEL_6PARAM && _mv[0] == _mv[1] && _mv[0] == _mv[2])
+    || (pu.cu->affineType == AFFINEMODEL_4PARAM && _mv[0] == _mv[1])
+    )
+  {
+    Mv mvTemp = _mv[0];
+    clipMv(mvTemp, pu.cu->lumaPos(),
+      pu.cu->lumaSize(),
+      *pu.cs->sps);
+    xPredInterBlkori(compID, pu, refPic, mvTemp, dstPic, bi, clpRng
+      , false
+      , false
+    );
+    return;
+  }
+
+  JVET_J0090_SET_REF_PICTURE(refPic, compID);
+  const ChromaFormat chFmt = pu.chromaFormat;
+  int iScaleX = ::getComponentScaleX(compID, chFmt);
+  int iScaleY = ::getComponentScaleY(compID, chFmt);
+
+  Mv mvLT = _mv[0];
+  Mv mvRT = _mv[1];
+  Mv mvLB = _mv[2];
+
+
+  // get affine sub-block width and height
+  const int width = pu.Y().width;
+  const int height = pu.Y().height;
+  int blockWidth = AFFINE_MIN_BLOCK_SIZE;
+  int blockHeight = AFFINE_MIN_BLOCK_SIZE;
+
+  blockWidth >>= iScaleX;
+  blockHeight >>= iScaleY;
+
+  blockWidth = std::max(blockWidth, AFFINE_MIN_BLOCK_SIZE);
+  blockHeight = std::max(blockHeight, AFFINE_MIN_BLOCK_SIZE);
+
+  CHECK(blockWidth > (width >> iScaleX), "Sub Block width  > Block width");
+  CHECK(blockHeight > (height >> iScaleX), "Sub Block height > Block height");
+  const int MVBUFFER_SIZE = MAX_CU_SIZE / MIN_PU_SIZE;
+
+  const int cxWidth = width >> iScaleX;
+  const int cxHeight = height >> iScaleY;
+  const int iHalfBW = blockWidth >> 1;
+  const int iHalfBH = blockHeight >> 1;
+
+  const int iBit = MAX_CU_DEPTH;
+  int iDMvHorX, iDMvHorY, iDMvVerX, iDMvVerY;
+  iDMvHorX = (mvRT - mvLT).getHor() << (iBit - g_aucLog2[cxWidth]);
+  iDMvHorY = (mvRT - mvLT).getVer() << (iBit - g_aucLog2[cxWidth]);
+  if (pu.cu->affineType == AFFINEMODEL_6PARAM)
+  {
+    iDMvVerX = (mvLB - mvLT).getHor() << (iBit - g_aucLog2[cxHeight]);
+    iDMvVerY = (mvLB - mvLT).getVer() << (iBit - g_aucLog2[cxHeight]);
+  }
+  else
+  {
+    iDMvVerX = -iDMvHorY;
+    iDMvVerY = iDMvHorX;
+  }
+
+  int iMvScaleHor = mvLT.getHor() << iBit;
+  int iMvScaleVer = mvLT.getVer() << iBit;
+  const SPS &sps = *pu.cs->sps;
+  const int iMvShift = 4;
+  const int iOffset = 8;
+  const int iHorMax = (sps.getPicWidthInLumaSamples() + iOffset - pu.Y().x - 1) << iMvShift;
+  const int iHorMin = (-(int)pu.cs->pcv->maxCUWidth - iOffset - (int)pu.Y().x + 1) << iMvShift;
+  const int iVerMax = (sps.getPicHeightInLumaSamples() + iOffset - pu.Y().y - 1) << iMvShift;
+  const int iVerMin = (-(int)pu.cs->pcv->maxCUHeight - iOffset - (int)pu.Y().y + 1) << iMvShift;
+
+  PelBuf tmpBuf = PelBuf(m_filteredBlockTmp[0][compID], pu.blocks[compID]);
+  const int vFilterSize = isLuma(compID) ? NTAPS_LUMA : NTAPS_CHROMA;
+
+  const int shift = iBit - 4 + MV_FRACTIONAL_BITS_INTERNAL;
+
+  // get prediction block by block
+  for (int h = 0; h < cxHeight; h += blockHeight)
+  {
+    for (int w = 0; w < cxWidth; w += blockWidth)
+    {
+
+      int iMvScaleTmpHor, iMvScaleTmpVer;
+      if (compID == COMPONENT_Y)
+      {
+        iMvScaleTmpHor = iMvScaleHor + iDMvHorX * (iHalfBW + w) + iDMvVerX * (iHalfBH + h);
+        iMvScaleTmpVer = iMvScaleVer + iDMvHorY * (iHalfBW + w) + iDMvVerY * (iHalfBH + h);
+        roundAffineMv(iMvScaleTmpHor, iMvScaleTmpVer, shift);
+#if JVET_M0145_AFFINE_MV_CLIP
+        Mv tmpMv(iMvScaleTmpHor, iMvScaleTmpVer);
+        tmpMv.clipToStorageBitDepth();
+        iMvScaleTmpHor = tmpMv.getHor();
+        iMvScaleTmpVer = tmpMv.getVer();
+#endif
+
+        // clip and scale
+        if (sps.getWrapAroundEnabledFlag())
+        {
+          m_storedMv[h / AFFINE_MIN_BLOCK_SIZE * MVBUFFER_SIZE + w / AFFINE_MIN_BLOCK_SIZE].set(iMvScaleTmpHor, iMvScaleTmpVer);
+          Mv tmpMv(iMvScaleTmpHor, iMvScaleTmpVer);
+          clipMv(tmpMv, Position(pu.Y().x + w, pu.Y().y + h), Size(blockWidth, blockHeight), sps);
+          iMvScaleTmpHor = tmpMv.getHor();
+          iMvScaleTmpVer = tmpMv.getVer();
+        }
+        else
+        {
+#if JVET_M0265_MV_ROUNDING_CLEANUP
+          m_storedMv[h / AFFINE_MIN_BLOCK_SIZE * MVBUFFER_SIZE + w / AFFINE_MIN_BLOCK_SIZE].set(iMvScaleTmpHor, iMvScaleTmpVer);
+#endif
+          iMvScaleTmpHor = std::min<int>(iHorMax, std::max<int>(iHorMin, iMvScaleTmpHor));
+          iMvScaleTmpVer = std::min<int>(iVerMax, std::max<int>(iVerMin, iMvScaleTmpVer));
+#if !JVET_M0265_MV_ROUNDING_CLEANUP
+          m_storedMv[h / AFFINE_MIN_BLOCK_SIZE * MVBUFFER_SIZE + w / AFFINE_MIN_BLOCK_SIZE].set(iMvScaleTmpHor, iMvScaleTmpVer);
+#endif
+        }
+      }
+      else
+      {
+#if JVET_M0265_MV_ROUNDING_CLEANUP
+#if JVET_M0192_AFF_CHROMA_SIMPL
+        Mv curMv = m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE) * MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE)] +
+          m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE + 1)* MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE + 1)];
+        roundAffineMv(curMv.hor, curMv.ver, 1);
+#else
+        Mv curMv = m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE) * MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE)] +
+          m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE + 1)* MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE)] +
+          m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE)* MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE + 1)] +
+          m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE + 1)* MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE + 1)];
+        roundAffineMv(curMv.hor, curMv.ver, 2);
+#endif
+#else
+#if JVET_M0192_AFF_CHROMA_SIMPL
+        Mv curMv = m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE) * MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE)] +
+          m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE + 1)* MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE + 1)];
+        roundAffineMv(curMv.hor, curMv.ver, 1);
+#else
+        Mv curMv = (m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE) * MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE)] +
+          m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE + 1)* MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE)] +
+          m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE)* MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE + 1)] +
+          m_storedMv[((h << iScaleY) / AFFINE_MIN_BLOCK_SIZE + 1)* MVBUFFER_SIZE + ((w << iScaleX) / AFFINE_MIN_BLOCK_SIZE + 1)] +
+          Mv(2, 2));
+        curMv.set(curMv.getHor() >> 2, curMv.getVer() >> 2);
+#endif
+#endif
+        if (sps.getWrapAroundEnabledFlag())
+        {
+          clipMv(curMv, Position(pu.Y().x + (w << iScaleX), pu.Y().y + (h << iScaleY)), Size(blockWidth << iScaleX, blockHeight << iScaleY), sps);
+        }
+#if JVET_M0265_MV_ROUNDING_CLEANUP
+        else
+        {
+          curMv.hor = std::min<int>(iHorMax, std::max<int>(iHorMin, curMv.hor));
+          curMv.ver = std::min<int>(iVerMax, std::max<int>(iVerMin, curMv.ver));
+        }
+#endif
+        iMvScaleTmpHor = curMv.hor;
+        iMvScaleTmpVer = curMv.ver;
+      }
+      // get the MV in high precision
+      int xFrac, yFrac, xInt, yInt;
+
+      if (!iScaleX)
+      {
+        xInt = iMvScaleTmpHor >> 4;
+        xFrac = iMvScaleTmpHor & 15;
+      }
+      else
+      {
+        xInt = iMvScaleTmpHor >> 5;
+        xFrac = iMvScaleTmpHor & 31;
+      }
+      if (!iScaleY)
+      {
+        yInt = iMvScaleTmpVer >> 4;
+        yFrac = iMvScaleTmpVer & 15;
+      }
+      else
+      {
+        yInt = iMvScaleTmpVer >> 5;
+        yFrac = iMvScaleTmpVer & 31;
+      }
+
+      const CPelBuf refBuf = refPic->getTrueOrigBuf(CompArea(compID, chFmt, pu.blocks[compID].offset(xInt + w, yInt + h), pu.blocks[compID]));
+      PelBuf &dstBuf = dstPic.bufs[compID];
+
+      if (yFrac == 0)
+      {
+        m_if.filterHor(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf + w + h * dstBuf.stride, dstBuf.stride, blockWidth, blockHeight, xFrac, !bi, chFmt, clpRng);
+      }
+      else if (xFrac == 0)
+      {
+        m_if.filterVer(compID, (Pel*)refBuf.buf, refBuf.stride, dstBuf.buf + w + h * dstBuf.stride, dstBuf.stride, blockWidth, blockHeight, yFrac, true, !bi, chFmt, clpRng);
+      }
+      else
+      {
+        m_if.filterHor(compID, (Pel*)refBuf.buf - ((vFilterSize >> 1) - 1)*refBuf.stride, refBuf.stride, tmpBuf.buf, tmpBuf.stride, blockWidth, blockHeight + vFilterSize - 1, xFrac, false, chFmt, clpRng);
+        JVET_J0090_SET_CACHE_ENABLE(false);
+        m_if.filterVer(compID, tmpBuf.buf + ((vFilterSize >> 1) - 1)*tmpBuf.stride, tmpBuf.stride, dstBuf.buf + w + h * dstBuf.stride, dstBuf.stride, blockWidth, blockHeight, yFrac, false, !bi, chFmt, clpRng);
+        JVET_J0090_SET_CACHE_ENABLE(true);
+      }
+    }
+  }
+}
+
+
+
+void InterPrediction::motionCompensationori(PredictionUnit &pu, PelUnitBuf &predBuf, const RefPicList &eRefPicList
+  , const bool luma, const bool chroma
+)
+{
+  // dual tree handling for IBC as the only ref
+  if ((!luma || !chroma) && eRefPicList == REF_PIC_LIST_0)
+  {
+    if (!luma && chroma)
+    {
+      xChromaMCori(pu, predBuf);
+      return;
+    }
+    else // (luma && !chroma)
+    {
+      xPredInterUniori(pu, eRefPicList, predBuf, false
+        , false
+        , luma, chroma);
+      return;
+    }
+  }
+  // else, go with regular MC below
+  CodingStructure &cs = *pu.cs;
+  const PPS &pps = *cs.pps;
+  const SliceType sliceType = cs.slice->getSliceType();
+
+  if (eRefPicList != REF_PIC_LIST_X)
+  {
+    if (((sliceType == P_SLICE && pps.getUseWP()) || (sliceType == B_SLICE && pps.getWPBiPred())))
+    {
+      xPredInterUniori(pu, eRefPicList, predBuf, true
+        , false
+        , true, true
+      );
+      xWeightedPredictionUni(pu, predBuf, eRefPicList, predBuf, -1, m_maxCompIDToPred);
+    }
+    else
+    {
+      xPredInterUniori(pu, eRefPicList, predBuf, false
+        , false
+        , true, true
+      );
+    }
+  }
+  else
+  {
+    if (pu.mergeType != MRG_TYPE_DEFAULT_N && pu.mergeType != MRG_TYPE_IBC)
+    {
+      xSubPuMCori(pu, predBuf, eRefPicList);
+    }
+    else if (xCheckIdenticalMotion(pu))
+    {
+      xPredInterUniori(pu, REF_PIC_LIST_0, predBuf, false
+        , false
+        , true, true
+      );
+    }
+    else
+    {
+      xPredInterBiori(pu, predBuf);
+    }
+  }
+}
+
+void InterPrediction::motionCompensationori(CodingUnit &cu, const RefPicList &eRefPicList
+  , const bool luma, const bool chroma
+)
+{
+  for (auto &pu : CU::traversePUs(cu))
+  {
+    PelUnitBuf predBuf = cu.cs->getBuf(pu,PIC_PREDFROMORI);
+#if JVET_M0147_DMVR
+    pu.mvRefine = true;
+#endif
+    motionCompensationori(pu, predBuf, eRefPicList
+      , luma, chroma
+    );
+#if JVET_M0147_DMVR
+    pu.mvRefine = false;
+#endif
+  }
+}
+
+void InterPrediction::motionCompensationori(PredictionUnit &pu, const RefPicList &eRefPicList /*= REF_PIC_LIST_X*/
+  , const bool luma, const bool chroma
+)
+{
+  PelUnitBuf predBuf = pu.cs->getBuf(pu,PIC_PREDFROMORI);
+  motionCompensationori(pu, predBuf, eRefPicList
+    , luma, chroma
+  );
+}
+
+#endif 
 void InterPrediction::xPredInterUni(const PredictionUnit& pu, const RefPicList& eRefPicList, PelUnitBuf& pcYuvPred, const bool& bi
                                    , const bool& bioApplied
                                    , const bool luma, const bool chroma
@@ -1385,6 +2161,7 @@ void InterPrediction::motionCompensation( PredictionUnit &pu, PelUnitBuf &predBu
       xPredInterBi( pu, predBuf );
     }
   }
+
   return;
 }
 

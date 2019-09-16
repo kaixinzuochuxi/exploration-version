@@ -69,13 +69,14 @@
 #define printoriresi 0
 
 // QPA related
-#define useoriaqp 1
+#define useoriaqp 0
+#define is_dqp_not_actualqp 0 // 1 dqp, should add with baseqp; 0 acutal qp,should not add with base qp
 /////
 #if useoriaqp
 #define usecutreeaqp 0
 #define alambda 0
 #else 
-#define usecutreeaqp 0
+#define usecutreeaqp 1
 #define mbtreeQPA 0
 #define alambda 0
 #endif
@@ -109,9 +110,19 @@
 
 #define temppp 0
 ///// multipass
-#define frameleveldqr 1
+#define frameleveldqr 0
 
+///// test hierachical
+#define usehierarchical 1
+#if !usehierarchical
+#define disable_hierarchical_lambda 0
+#define disable_hierarchical_qp 1
+#define getseqname 1
+#endif
 
+#define predfromori 0
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define JVET_M0055_DEBUG_CTU                              1 // DebugCTU encoder debug option
 

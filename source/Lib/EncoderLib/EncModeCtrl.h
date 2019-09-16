@@ -479,6 +479,8 @@ private:
 #if printoriresi
   TCoeff             *m_resiwoq;
   TCoeff             *m_resiwq;
+  Pel             *m_spresiwoq;
+  Pel             *m_spresiwq;
 #endif
   CodingStructure     m_dummyCS;
   XUCache             m_dummyCache;

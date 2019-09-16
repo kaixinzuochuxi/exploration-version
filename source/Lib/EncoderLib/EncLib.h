@@ -74,7 +74,14 @@ private:
   // picture
   int                       m_iPOCLast;                           ///< time index (POC)
   int                       m_iNumPicRcvd;                        ///< number of received pictures
+#if usecutreeaqp
+public:
   uint32_t                      m_uiNumAllPicCoded;                   ///< number of coded pictures
+private:
+#else
+  uint32_t                      m_uiNumAllPicCoded;                   ///< number of coded pictures
+#endif
+  
   PicList                   m_cListPic;                           ///< dynamic list of pictures
 
   // encoder search

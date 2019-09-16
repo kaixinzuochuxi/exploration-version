@@ -77,6 +77,8 @@ CodingStructure::CodingStructure(CUCache& cuCache, PUCache& puCache, TUCache& tu
 #if printoriresi
     m_resiwoq[i] = nullptr;
     m_resiwq[i] = nullptr;
+    m_spresiwoq[i] = nullptr;
+    m_spresiwq[i] = nullptr;
 #endif
     m_offsets[ i ] = 0;
   }
@@ -103,7 +105,11 @@ void CodingStructure::destroy()
   m_resi.destroy();
   m_reco.destroy();
   m_orgr.destroy();
-
+#if predfromori 
+  m_predfromori.destroy();
+  m_recofromori.destroy();
+  m_resifromori.destroy();
+#endif
   destroyCoeffs();
 
   for( uint32_t i = 0; i < MAX_NUM_CHANNEL_TYPE; i++ )
@@ -537,6 +543,8 @@ TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType c
 #if printoriresi
   TCoeff *resiwoq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
   TCoeff    *resiwq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+  Pel *spresiwoq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+  Pel    *spresiwq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
 #endif
   uint32_t numCh = ::getNumberValidComponents( area.chromaFormat );
 
@@ -584,13 +592,15 @@ TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType c
 #if printoriresi
     resiwoq[i] = m_resiwoq[i] + m_offsets[i];
     resiwq[i] = m_resiwq[i] + m_offsets[i];
+    spresiwoq[i] = m_spresiwoq[i] + m_offsets[i];
+    spresiwq[i] = m_spresiwq[i] + m_offsets[i];
 #endif
 
     unsigned areaSize = tu->blocks[i].area();
     m_offsets[i] += areaSize;
   }
 #if printoriresi
-  tu->init(coeffs, pcmbuf, resiwoq,resiwq);
+  tu->init(coeffs, pcmbuf, resiwoq,resiwq, spresiwoq, spresiwq);
 #else
   tu->init( coeffs, pcmbuf );
 #endif
@@ -681,6 +691,11 @@ void CodingStructure::create(const ChromaFormat &_chromaFormat, const Area& _are
   m_pred.create( area );
   m_resi.create( area );
   m_orgr.create( area );
+#if predfromori 
+  m_predfromori.create(area);
+  m_recofromori.create(area);
+  m_resifromori.create(area);
+#endif
 }
 
 void CodingStructure::create(const UnitArea& _unit, const bool isTopLayer)
@@ -693,6 +708,11 @@ void CodingStructure::create(const UnitArea& _unit, const bool isTopLayer)
   m_pred.create( area );
   m_resi.create( area );
   m_orgr.create( area );
+#if predfromori 
+  m_predfromori.create(area);
+  m_recofromori.create(area);
+  m_resifromori.create(area);
+#endif
 }
 
 void CodingStructure::createInternals( const UnitArea& _unit, const bool isTopLayer )
@@ -745,6 +765,15 @@ void CodingStructure::rebindPicBufs()
     if( !picture->M_BUFS( 0, PIC_RESIDUAL     ).bufs.empty() ) m_orgr.create( area.chromaFormat, area.blocks[0], pcv->maxCUWidth );
     else                                                       m_orgr.destroy();
   }
+
+#if predfromori 
+  if (!picture->M_BUFS(0, PIC_PREDFROMORI).bufs.empty()) m_predfromori.createFromBuf(picture->M_BUFS(0, PIC_PREDFROMORI));
+  else                                                         m_predfromori.destroy();
+  if (!picture->M_BUFS(0, PIC_RECOFROMORI).bufs.empty()) m_recofromori.createFromBuf(picture->M_BUFS(0, PIC_RECOFROMORI));
+  else                                                         m_recofromori.destroy();
+  if (!picture->M_BUFS(0, PIC_RESIFROMORI).bufs.empty()) m_resifromori.createFromBuf(picture->M_BUFS(0, PIC_RESIFROMORI));
+  else                                                         m_resifromori.destroy();
+#endif
 }
 
 void CodingStructure::createCoeffs()
@@ -760,6 +789,8 @@ void CodingStructure::createCoeffs()
 #if printoriresi
     m_resiwoq[i] = _area > 0 ? (TCoeff*)xMalloc(TCoeff, _area) : nullptr;
     m_resiwq[i] = _area > 0 ? (TCoeff*)xMalloc(TCoeff, _area) : nullptr;
+    m_spresiwoq[i] = _area > 0 ? (Pel*)xMalloc(Pel, _area) : nullptr;
+    m_spresiwq[i] = _area > 0 ? (Pel*)xMalloc(Pel, _area) : nullptr;
 #endif
   }
 }
@@ -773,6 +804,9 @@ void CodingStructure::destroyCoeffs()
 #if printoriresi
     if (m_resiwoq[i]) { xFree(m_resiwoq[i]); m_resiwoq[i] = nullptr; }
     if (m_resiwq[i]) { xFree(m_resiwq[i]); m_resiwq[i] = nullptr; }
+    if (m_spresiwoq[i]) { xFree(m_spresiwoq[i]); m_spresiwoq[i] = nullptr; }
+    if (m_spresiwq[i]) { xFree(m_spresiwq[i]); m_spresiwq[i] = nullptr; }
+
 #endif
   }
 }
@@ -860,6 +894,26 @@ void CodingStructure::useSubStructure( const CodingStructure& subStruct, const C
   if( cpyPred ) picture->getPredBuf( clippedArea ).copyFrom( subPredBuf );
   if( cpyResi ) picture->getResiBuf( clippedArea ).copyFrom( subResiBuf );
   if( cpyReco ) picture->getRecoBuf( clippedArea ).copyFrom( subRecoBuf );
+
+#if predfromori 
+  subPredBuf = cpyPred ? subStruct.getBuf(clippedArea,PIC_PREDFROMORI) : CPelUnitBuf();
+  subResiBuf = cpyResi ? subStruct.getBuf(clippedArea, PIC_RESIFROMORI) : CPelUnitBuf();
+  subRecoBuf = cpyReco ? subStruct.getBuf(clippedArea, PIC_RECOFROMORI) : CPelUnitBuf();
+
+  if (parent)
+  {
+    // copy data to picture
+    if (cpyPred)    getBuf(clippedArea, PIC_PREDFROMORI).copyFrom(subPredBuf);
+    if (cpyResi)    getBuf(clippedArea, PIC_RESIFROMORI).copyFrom(subResiBuf);
+    if (cpyReco)    getBuf(clippedArea, PIC_RECOFROMORI).copyFrom(subRecoBuf);
+    if (cpyOrgResi) getBuf(clippedArea, PIC_ORIRESIFROMORI).copyFrom(subStruct.getBuf(clippedArea, PIC_ORIRESIFROMORI));
+  }
+
+  if (cpyPred) picture->getBuf(clippedArea, PIC_PREDFROMORI).copyFrom(subPredBuf);
+  if (cpyResi) picture->getBuf(clippedArea, PIC_RESIFROMORI).copyFrom(subResiBuf);
+  if (cpyReco) picture->getBuf(clippedArea, PIC_RECOFROMORI).copyFrom(subRecoBuf);
+#endif
+
 
 #if JVET_M0483_IBC
   if (!subStruct.m_isTuEnc && ((!slice->isIntra() || slice->getSPS()->getIBCFlag()) && subStruct.chType != CHANNEL_TYPE_CHROMA))
@@ -1110,6 +1164,32 @@ void CodingStructure::copyStructure( const CodingStructure& other, const Channel
       picture->getPredBuf(area).copyFrom(predBuf);
     }
 #endif
+
+#if predfromori 
+    recoBuf = other.getBuf(area,PIC_RECOFROMORI);
+
+    if (parent)
+    {
+      // copy data to self for neighbors
+      ///getRecoBuf( area )=getBuf(area, PIC_RECOFROMORI)
+      getBuf(area, PIC_RECOFROMORI).copyFrom(recoBuf);
+    }
+
+    // copy data to picture
+    picture->getBuf(area, PIC_RECOFROMORI).copyFrom(recoBuf);
+#if JVET_M0427_INLOOP_RESHAPER
+    if (other.pcv->isEncoder)
+    {
+      CPelUnitBuf predBuf = other.getBuf(area, PIC_PREDFROMORI);
+      if (parent)
+      {
+        getBuf(area, PIC_PREDFROMORI).copyFrom(predBuf);
+      }
+      picture->getBuf(area, PIC_PREDFROMORI).copyFrom(predBuf);
+    }
+#endif
+#endif
+
 #if JVET_M0055_DEBUG_CTU
 
     // required for DebugCTU
@@ -1305,6 +1385,11 @@ PelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &type )
   const ComponentID compID = blk.compID;
 
   PelStorage* buf = type == PIC_PREDICTION ? &m_pred : ( type == PIC_RESIDUAL ? &m_resi : ( type == PIC_RECONSTRUCTION ? &m_reco : ( type == PIC_ORG_RESI ? &m_orgr : nullptr ) ) );
+#if predfromori 
+  buf = type == PIC_PREDFROMORI ? &m_predfromori : buf;
+  buf = type == PIC_RECOFROMORI ? &m_recofromori : buf;
+  buf = type == PIC_RESIFROMORI ? &m_resifromori : buf;
+#endif
 
   CHECK( !buf, "Unknown buffer requested" );
 
@@ -1319,6 +1404,13 @@ PelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &type )
     cFinal.x &= ( pcv->maxCUWidthMask  >> getComponentScaleX( blk.compID, blk.chromaFormat ) );
     cFinal.y &= ( pcv->maxCUHeightMask >> getComponentScaleY( blk.compID, blk.chromaFormat ) );
   }
+#if predfromori 
+  if (!parent && (type == PIC_RESIFROMORI || type == PIC_PREDFROMORI))
+  {
+    cFinal.x &= (pcv->maxCUWidthMask >> getComponentScaleX(blk.compID, blk.chromaFormat));
+    cFinal.y &= (pcv->maxCUHeightMask >> getComponentScaleY(blk.compID, blk.chromaFormat));
+  }
+#endif
 #endif
 
   return buf->getBuf( cFinal );
@@ -1340,6 +1432,12 @@ const CPelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &t
 
   const PelStorage* buf = type == PIC_PREDICTION ? &m_pred : ( type == PIC_RESIDUAL ? &m_resi : ( type == PIC_RECONSTRUCTION ? &m_reco : ( type == PIC_ORG_RESI ? &m_orgr : nullptr ) ) );
 
+#if predfromori 
+  buf = type == PIC_PREDFROMORI ? &m_predfromori : buf;
+  buf = type == PIC_RECOFROMORI ? &m_recofromori : buf;
+  buf = type == PIC_RESIFROMORI ? &m_resifromori : buf;
+#endif
+
   CHECK( !buf, "Unknown buffer requested" );
 
   CHECKD( !area.blocks[compID].contains( blk ), "Buffer not contained in self requested" );
@@ -1353,6 +1451,14 @@ const CPelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &t
     cFinal.x &= ( pcv->maxCUWidthMask  >> getComponentScaleX( blk.compID, blk.chromaFormat ) );
     cFinal.y &= ( pcv->maxCUHeightMask >> getComponentScaleY( blk.compID, blk.chromaFormat ) );
   }
+
+#if predfromori 
+  if (!parent && (type == PIC_RESIFROMORI || type == PIC_PREDFROMORI))
+  {
+    cFinal.x &= (pcv->maxCUWidthMask >> getComponentScaleX(blk.compID, blk.chromaFormat));
+    cFinal.y &= (pcv->maxCUHeightMask >> getComponentScaleY(blk.compID, blk.chromaFormat));
+  }
+#endif
 #endif
 
   return buf->getBuf( cFinal );

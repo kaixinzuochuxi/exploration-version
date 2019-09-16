@@ -1996,7 +1996,9 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
   else
 #endif
   piReco.reconstruct(piPred, piResi, cs.slice->clpRng( compID ));
-
+#if printoriresi
+  memcpy(tu.m_spresiwq[compID], piResi.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
+#endif
   //===== update distortion =====
 #if WCG_EXT
 #if JVET_M0427_INLOOP_RESHAPER

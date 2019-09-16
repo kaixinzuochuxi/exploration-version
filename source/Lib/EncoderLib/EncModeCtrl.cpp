@@ -836,6 +836,8 @@ void BestEncInfoCache::init( const Slice &slice )
 #if printoriresi
   m_resiwoq = new TCoeff[numCoeff*MAX_NUM_TUS];
   m_resiwq = new TCoeff[numCoeff*MAX_NUM_TUS];
+  m_spresiwoq = new Pel[numCoeff*MAX_NUM_TUS];
+  m_spresiwq = new Pel[numCoeff*MAX_NUM_TUS];
 #endif
 #else
   m_pCoeff  = new TCoeff[numCoeff];
@@ -843,6 +845,8 @@ void BestEncInfoCache::init( const Slice &slice )
 #if printoriresi
   m_resiwoq = new TCoeff[numCoeff];
   m_resiwq = new TCoeff[numCoeff];
+  m_spresiwoq = new Pel[numCoeff*MAX_NUM_TUS];
+  m_spresiwq = new Pel[numCoeff*MAX_NUM_TUS];
 #endif
 #endif
 
@@ -850,7 +854,9 @@ void BestEncInfoCache::init( const Slice &slice )
   Pel    *pcmPtr   = m_pPcmBuf;
 #if printoriresi
   TCoeff *resiwoqPtr = m_resiwoq;
-  TCoeff *resiwqPtr = m_resiwq;
+  TCoeff *resiwqPtr = m_resiwq; 
+  Pel *spresiwoqPtr = m_spresiwoq;
+  Pel *spresiwqPtr = m_spresiwq;
 #endif
   m_dummyCS.pcv = m_slice_bencinf->getPPS()->pcv;
 
@@ -869,6 +875,8 @@ void BestEncInfoCache::init( const Slice &slice )
 #if printoriresi
             TCoeff *resiwoq[MAX_NUM_TBLOCKS] = { 0, };
             TCoeff *resiwq[MAX_NUM_TBLOCKS] = { 0, };
+            Pel *spresiwoq[MAX_NUM_TBLOCKS] = { 0, };
+            Pel *spresiwq[MAX_NUM_TBLOCKS] = { 0, };
 #endif
 
 #if REUSE_CU_RESULTS_WITH_MULTIPLE_TUS
@@ -884,12 +892,14 @@ void BestEncInfoCache::init( const Slice &slice )
 #if printoriresi
                 resiwoq[i] = resiwoqPtr; resiwoqPtr += area.blocks[i].area();
                 resiwq[i] = resiwqPtr; resiwqPtr += area.blocks[i].area();
+                spresiwoq[i] = spresiwoqPtr; spresiwoqPtr += area.blocks[i].area();
+                spresiwq[i] = spresiwqPtr; spresiwqPtr += area.blocks[i].area();
 #endif
               }
 
               tu.cs = &m_dummyCS;
 #if printoriresi
-              tu.init(coeff, pcmbf, resiwoq, resiwq);
+              tu.init(coeff, pcmbf, resiwoq, resiwq, spresiwoq, spresiwq);
 #else
               tu.init(coeff, pcmbf);
 #endif
@@ -904,12 +914,14 @@ void BestEncInfoCache::init( const Slice &slice )
 #if printoriresi
               resiwoq[i] = resiwoqPtr; resiwoqPtr += area.blocks[i].area();
               resiwq[i] = resiwqPtr; resiwqPtr += area.blocks[i].area();
+              spresiwoq[i] = spresiwoqPtr; spresiwoqPtr += area.blocks[i].area();
+              spresiwq[i] = spresiwqPtr; spresiwqPtr += area.blocks[i].area();
 #endif
             }
 
             m_bestEncInfo[x][y][wIdx][hIdx]->tu.cs = &m_dummyCS;
 #if printoriresi
-            m_bestEncInfo[x][y][wIdx][hIdx]->tu.init(coeff, pcmbf, resiwoq, resiwq);
+            m_bestEncInfo[x][y][wIdx][hIdx]->tu.init(coeff, pcmbf, resiwoq, resiwq, spresiwoq, spresiwq);
 #else
             m_bestEncInfo[x][y][wIdx][hIdx]->tu.init( coeff, pcmbf );
 #endif

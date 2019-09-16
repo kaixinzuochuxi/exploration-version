@@ -169,6 +169,7 @@ void EncCu::create( EncCfg* encCfg )
   m_modeCtrl->create( *encCfg );
 
 #endif
+
   for (unsigned ui = 0; ui < MMVD_MRG_MAX_RD_BUF_NUM; ui++)
   {
     m_acMergeBuffer[ui].create( chromaFormat, Area( 0, 0, uiMaxWidth, uiMaxHeight ) );
@@ -195,6 +196,22 @@ void EncCu::create( EncCfg* encCfg )
   {
     m_acTriangleWeightedBuffer[ui].create( chromaFormat, Area( 0, 0, uiMaxWidth, uiMaxHeight ) );
   }
+
+#if predfromori 
+  for (unsigned ui = 0; ui < MMVD_MRG_MAX_RD_BUF_NUM; ui++)
+  {
+    m_acMergeBufferori[ui].create(chromaFormat, Area(0, 0, uiMaxWidth, uiMaxHeight));
+  }
+  for (unsigned ui = 0; ui < MRG_MAX_NUM_CANDS; ui++)
+  {
+    m_acRealMergeBufferori[ui].create(chromaFormat, Area(0, 0, uiMaxWidth, uiMaxHeight));
+  }
+  for (unsigned ui = 0; ui < TRIANGLE_MAX_NUM_CANDS; ui++)
+  {
+    m_acTriangleWeightedBufferori[ui].create(chromaFormat, Area(0, 0, uiMaxWidth, uiMaxHeight));
+  }
+#endif
+
 
   m_CtxBuffer.resize( maxDepth );
   m_CurrCtx = 0;
@@ -292,6 +309,21 @@ void EncCu::destroy()
   {
     m_acTriangleWeightedBuffer[ui].destroy();
   }
+
+#if predfromori 
+  for (unsigned ui = 0; ui < MMVD_MRG_MAX_RD_BUF_NUM; ui++)
+  {
+    m_acMergeBufferori[ui].destroy();
+  }
+  for (unsigned ui = 0; ui < MRG_MAX_NUM_CANDS; ui++)
+  {
+    m_acRealMergeBufferori[ui].destroy();
+  }
+  for (unsigned ui = 0; ui < TRIANGLE_MAX_NUM_CANDS; ui++)
+  {
+    m_acTriangleWeightedBufferori[ui].destroy();
+  }
+#endif
 }
 
 
@@ -529,27 +561,140 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       }
       
 #if printoriresi
-      printf(" | \n");
+      printf(" | ");
 
       if (pu->cu->firstTU == pu->cu->lastTU)
       {
-        for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+        /*for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
         {
-          printf("%d:", pu->cu->firstTU->m_resiwoq[0][p]);
-          printf("%d\n", pu->cu->firstTU->m_resiwq[0][p]);
+          printf("%3d\t", pu->cu->firstTU->m_resiwoq[0][p]);
+          printf("%3d\t", pu->cu->firstTU->m_resiwq[0][p]);
+          printf("%3d\t", pu->cu->firstTU->m_spresiwoq[0][p]);
+          printf("%3d\t\n", pu->cu->firstTU->m_spresiwq[0][p]);
+        }*/
+        for (int y = 0; y < pu->lumaSize().height; y++)
+        {
+          for (int x = 0; x < pu->lumaSize().width; x++)
+          {
+            printf("%4d ", pu->cu->firstTU->m_resiwoq[0][y*pu->lumaSize().width+x]);
+          }
+          printf("\t|\t");
+          for (int x = 0; x < pu->lumaSize().width; x++)
+          {
+            printf("%4d ", pu->cu->firstTU->m_resiwq[0][y*pu->lumaSize().width + x]);
+          }
+          printf("\t|\t");
+          for (int x = 0; x < pu->lumaSize().width; x++)
+          {
+            printf("%4d ", pu->cu->firstTU->m_spresiwoq[0][y*pu->lumaSize().width + x]);
+          }
+          printf("\t|\t");
+          for (int x = 0; x < pu->lumaSize().width; x++)
+          {
+            printf("%4d", pu->cu->firstTU->m_spresiwq[0][y*pu->lumaSize().width + x]);
+          }
+          printf("\n");
         }
+        printf("\n");
       }
       else {
         for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
         {
 
-          for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+          //for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+          //{
+          //  printf("%3d\t", ttu.m_resiwoq[0][p]);
+          //  printf("%3d\t", ttu.m_resiwq[0][p]);
+          //  printf("%3d\t", ttu.m_spresiwoq[0][p]);
+          //  printf("%3d\t\n", ttu.m_spresiwq[0][p]);
+
+          //}
+          for (int y = 0; y < ttu.lheight(); y++)
           {
-            printf("%d:", ttu.m_resiwoq[0][p]);
-            printf("%d\n", ttu.m_resiwq[0][p]);
+            for (int x = 0; x < ttu.lwidth(); x++)
+            {
+              printf("%4d ", ttu.m_resiwoq[0][y* ttu.lheight() + x]);
+            }
+            printf("\t|\t");
+            for (int x = 0; x < ttu.lwidth(); x++)
+            {
+              printf("%4d ", ttu.m_resiwq[0][y* ttu.lheight() + x]);
+            }
+            printf("\t|\t");
+            for (int x = 0; x < ttu.lwidth(); x++)
+            {
+              printf("%4d ", ttu.m_spresiwoq[0][y* ttu.lheight() + x]);
+            }
+            printf("\t|\t");
+            for (int x = 0; x < ttu.lwidth(); x++)
+            {
+              printf("%4d ", ttu.m_spresiwq[0][y* ttu.lheight() + x]);
+            }
+            printf("\n");
           }
+          printf("\n");
         }
       }
+
+      //if (pu->cu->firstTU == pu->cu->lastTU)
+      //{
+      //  for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+      //  {
+      //    printf("%d ", pu->cu->firstTU->m_resiwoq[0][p]);
+      //    
+      //  }
+      //  for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+      //  {
+      //    
+      //    printf("%d ", pu->cu->firstTU->m_resiwq[0][p]);
+      //    
+      //  }
+      //  printf(" | ");
+      //  for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+      //  {
+      //    
+      //    printf("%d ", pu->cu->firstTU->m_spresiwoq[0][p]);
+      //   
+      //  }
+      //  printf(" | ");
+      //  for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+      //  {
+
+      //    printf("%d ", pu->cu->firstTU->m_spresiwq[0][p]);
+      //  }
+      //}
+      //else {
+      //  for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
+      //  {
+
+      //    for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+      //    {
+      //      printf("%d ", ttu.m_resiwoq[0][p]);
+
+      //    }
+      //    printf(" | ");
+      //    for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+      //    {
+      //      
+      //      printf("%d ", ttu.m_resiwq[0][p]);
+      // 
+      //    }
+      //    printf(" | ");
+      //    for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+      //    {
+  
+      //      printf("%d ", ttu.m_spresiwoq[0][p]);
+     
+      //    }
+      //    printf(" | ");
+      //    for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+      //    {
+      //     
+      //      printf("%d ", ttu.m_spresiwq[0][p]);
+      //    }
+      //    printf(" | ");
+      //  }
+      //}
 #endif
       printf(" |\n");
 
@@ -2305,6 +2450,14 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
   PelUnitBuf                                  acMergeRealBuffer[MMVD_MRG_MAX_RD_BUF_NUM];
   PelUnitBuf *                                acMergeTempBuffer[MMVD_MRG_MAX_RD_NUM];
   PelUnitBuf *                                singleMergeTempBuffer;
+
+#if predfromori
+  PelUnitBuf                                  acMergeBufferori[MRG_MAX_NUM_CANDS];
+  PelUnitBuf                                  acMergeRealBufferori[MMVD_MRG_MAX_RD_BUF_NUM];
+  PelUnitBuf *                                acMergeTempBufferori[MMVD_MRG_MAX_RD_NUM];
+  PelUnitBuf *                                singleMergeTempBufferori;
+#endif
+
   int                                         insertPos;
   unsigned                                    uiNumMrgSATDCand = mergeCtx.numValidMergeCand + MMVD_ADD_NUM;
 
@@ -2329,6 +2482,21 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       singleMergeTempBuffer = acMergeRealBuffer + i;
     }
   }
+
+#if predfromori
+  for (unsigned i = 0; i < MMVD_MRG_MAX_RD_BUF_NUM; i++)
+  {
+    acMergeRealBufferori[i] = m_acMergeBufferori[i].getBuf(localUnitArea);
+    if (i < MMVD_MRG_MAX_RD_NUM)
+    {
+      acMergeTempBufferori[i] = acMergeRealBufferori + i;
+    }
+    else
+    {
+      singleMergeTempBufferori = acMergeRealBufferori + i;
+    }
+  }
+#endif
 
   static_vector<unsigned, MRG_MAX_NUM_CANDS + MMVD_ADD_NUM>  RdModeList2; // store the Intra mode for Intrainter
   RdModeList2.clear();
@@ -2431,6 +2599,13 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer);
         acMergeBuffer[uiMergeCand] = m_acRealMergeBuffer[uiMergeCand].getBuf(localUnitArea);
         acMergeBuffer[uiMergeCand].copyFrom(*singleMergeTempBuffer);
+
+#if predfromori
+        m_pcInterSearch->motionCompensationori(pu, *singleMergeTempBufferori);
+        acMergeBufferori[uiMergeCand] = m_acRealMergeBufferori[uiMergeCand].getBuf(localUnitArea);
+        acMergeBufferori[uiMergeCand].copyFrom(*singleMergeTempBufferori);
+#endif
+
 #if JVET_M0147_DMVR
         pu.mvRefine = false;
 #endif
@@ -2483,6 +2658,25 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
             swap(singleMergeTempBuffer, acMergeTempBuffer[insertPos]);
           }
         }
+
+#if predfromori
+        if (insertPos != -1)
+        {
+          if (insertPos == RdModeList.size() - 1)
+          {
+            swap(singleMergeTempBufferori, acMergeTempBufferori[insertPos]);
+        }
+          else
+          {
+            for (uint32_t i = uint32_t(RdModeList.size()) - 1; i > insertPos; i--)
+            {
+              swap(acMergeTempBufferori[i - 1], acMergeTempBufferori[i]);
+            }
+            swap(singleMergeTempBufferori, acMergeTempBufferori[insertPos]);
+          }
+      }
+#endif
+
 #if JVET_M0483_IBC==0
         CHECK(std::min(uiMergeCand + 1 - ibcCand, uiNumMrgSATDCand) != RdModeList.size(), "");
 #else
@@ -2526,8 +2720,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #endif
         {
           uint32_t mergeCand = MHIntraMergeCand[mergeCnt];
+          ////TODO
           acMergeBuffer[mergeCand] = m_acRealMergeBuffer[mergeCand].getBuf(localUnitArea);
-
+#if predfromori 
+          acMergeBufferori[mergeCand] = m_acRealMergeBufferori[mergeCand].getBuf(localUnitArea);
+#endif
           // estimate merge bits
           uint32_t bitsCand = mergeCand + 1;
           if (mergeCand == pu.cs->slice->getMaxNumMergeCand() - 1)
@@ -2561,8 +2758,19 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
               m_pcIntraSearch->initIntraPatternChType(*pu.cu, pu.Y(), isUseFilter);
               m_pcIntraSearch->predIntraAng(COMPONENT_Y, pu.cs->getPredBuf(pu).Y(), pu, isUseFilter);
               m_pcIntraSearch->switchBuffer(pu, COMPONENT_Y, pu.cs->getPredBuf(pu).Y(), m_pcIntraSearch->getPredictorPtr2(COMPONENT_Y, intraCnt));
+
+#if predfromori 
+              
+              m_pcIntraSearch->initIntraPatternChType(*pu.cu, pu.Y(), isUseFilter);
+              m_pcIntraSearch->predIntraAng(COMPONENT_Y, pu.cs->getBuf(pu,PIC_PREDFROMORI).Y(), pu, isUseFilter);
+              m_pcIntraSearch->switchBuffer(pu, COMPONENT_Y, pu.cs->getBuf(pu, PIC_PREDFROMORI).Y(), m_pcIntraSearch->getPredictorPtr2(COMPONENT_Y, intraCnt));
+#endif
+
+
             }
             pu.cs->getPredBuf(pu).copyFrom(acMergeBuffer[mergeCand]);
+
+
 #if JVET_M0427_INLOOP_RESHAPER
             if (pu.cs->slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag())
             {
@@ -2571,6 +2779,17 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #endif
             m_pcIntraSearch->geneWeightedPred(COMPONENT_Y, pu.cs->getPredBuf(pu).Y(), pu, m_pcIntraSearch->getPredictorPtr2(COMPONENT_Y, intraCnt));
 
+#if predfromori 
+            pu.cs->getBuf(pu, PIC_PREDFROMORI).copyFrom(acMergeBufferori[mergeCand]);
+#if JVET_M0427_INLOOP_RESHAPER
+            if (pu.cs->slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag())
+            {
+              pu.cs->getBuf(pu, PIC_PREDFROMORI).Y().rspSignal(m_pcReshape->getFwdLUT());
+            }
+#endif
+            m_pcIntraSearch->geneWeightedPred(COMPONENT_Y, pu.cs->getBuf(pu, PIC_PREDFROMORI).Y(), pu, m_pcIntraSearch->getPredictorPtr2(COMPONENT_Y, intraCnt));
+
+#endif
             // calculate cost
 #if JVET_M0427_INLOOP_RESHAPER
             if (pu.cs->slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag())
@@ -2605,6 +2824,23 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
               bestMHIntraMode = pu.intraDir[0];
               bestMHIntraCost = cost;
             }
+#if predfromori 
+            if (insertPos != -1)
+            {
+              for (int i = int(RdModeList.size()) - 1; i > insertPos; i--)
+              {
+                swap(acMergeTempBufferori[i - 1], acMergeTempBufferori[i]);
+              }
+              swap(singleMergeTempBufferori, acMergeTempBufferori[insertPos]);
+            }
+            // fast 2
+            if (mergeCnt == 0 && cost < bestMHIntraCost)
+            {
+              bestMHIntraMode = pu.intraDir[0];
+              bestMHIntraCost = cost;
+            }
+#endif
+
           }
         }
         pu.mhIntraFlag = false;
@@ -2669,6 +2905,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         CHECK(!pu.mmvdMergeFlag, "MMVD merge should be set");
         // Don't do chroma MC here
         m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer, REF_PIC_LIST_X, true, false);
+
+#if predfromori 
+        m_pcInterSearch->motionCompensationori(pu, *singleMergeTempBufferori, REF_PIC_LIST_X, true, false);
+#endif
+
         pu.mmvdEncOptMode = 0;
 #else
         m_pcInterSearch->motionCompensation(pu, *singleMergeTempBuffer);
@@ -2685,6 +2926,9 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 #endif
         insertPos = -1;
         updateDoubleCandList(mergeCand, cost, RdModeList, candCostList, RdModeList2, (uint32_t)NUM_LUMA_MODE, uiNumMrgSATDCand, &insertPos);
+        
+        
+        
         if (insertPos != -1)
         {
           for (int i = int(RdModeList.size()) - 1; i > insertPos; i--)
@@ -2693,6 +2937,16 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           }
           swap(singleMergeTempBuffer, acMergeTempBuffer[insertPos]);
         }
+#if predfromori 
+        if (insertPos != -1)
+        {
+          for (int i = int(RdModeList.size()) - 1; i > insertPos; i--)
+          {
+            swap(acMergeTempBufferori[i - 1], acMergeTempBufferori[i]);
+          }
+          swap(singleMergeTempBufferori, acMergeTempBufferori[insertPos]);
+        }
+#endif
       }
 
       // Try to limit number of candidates using SATD-costs
@@ -2725,6 +2979,19 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
             m_pcIntraSearch->initIntraPatternChType(*pu.cu, pu.Cr(), isUseFilter);
             m_pcIntraSearch->predIntraAng(COMPONENT_Cr, pu.cs->getPredBuf(pu).Cr(), pu, isUseFilter);
             m_pcIntraSearch->switchBuffer(pu, COMPONENT_Cr, pu.cs->getPredBuf(pu).Cr(), m_pcIntraSearch->getPredictorPtr2(COMPONENT_Cr, bufIdx));
+          
+#if predfromori 
+            isUseFilter = IntraPrediction::useFilteredIntraRefSamples(COMPONENT_Cb, pu, true, pu);
+            m_pcIntraSearch->initIntraPatternChType(*pu.cu, pu.Cb(), isUseFilter);
+            m_pcIntraSearch->predIntraAng(COMPONENT_Cb, pu.cs->getBuf(pu,PIC_PREDFROMORI).Cb(), pu, isUseFilter);
+            m_pcIntraSearch->switchBuffer(pu, COMPONENT_Cb, pu.cs->getBuf(pu, PIC_PREDFROMORI).Cb(), m_pcIntraSearch->getPredictorPtr2(COMPONENT_Cb, bufIdx));
+            isUseFilter = IntraPrediction::useFilteredIntraRefSamples(COMPONENT_Cr, pu, true, pu);
+            m_pcIntraSearch->initIntraPatternChType(*pu.cu, pu.Cr(), isUseFilter);
+            m_pcIntraSearch->predIntraAng(COMPONENT_Cr, pu.cs->getBuf(pu, PIC_PREDFROMORI).Cr(), pu, isUseFilter);
+            m_pcIntraSearch->switchBuffer(pu, COMPONENT_Cr, pu.cs->getBuf(pu, PIC_PREDFROMORI).Cr(), m_pcIntraSearch->getPredictorPtr2(COMPONENT_Cr, bufIdx));
+#endif
+          
+          
           }
         }
         pu.mhIntraFlag = false;
@@ -2762,6 +3029,7 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
   {
     iteration = 2;
   }
+
   for (uint32_t uiNoResidualPass = iterationBegin; uiNoResidualPass < iteration; ++uiNoResidualPass)
 #endif
   {
@@ -2834,6 +3102,8 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
       }
       PU::spanMotionInfo( pu, mergeCtx );
 
+
+      ////reconstruct
       if( mrgTempBufSet )
       {
 #if JVET_M0147_DMVR
@@ -2854,6 +3124,7 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           }
         }
 #endif
+        
         if (pu.mhIntraFlag)
         {
           uint32_t bufIdx = (pu.intraDir[0] > 1) ? (pu.intraDir[0] == HOR_IDX ? 2 : 3) : pu.intraDir[0];
@@ -2872,6 +3143,25 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           tmpBuf = tempCS->getPredBuf(pu).Cr();
           tmpBuf.copyFrom(acMergeBuffer[uiMergeCand].Cr());
           m_pcIntraSearch->geneWeightedPred(COMPONENT_Cr, tmpBuf, pu, m_pcIntraSearch->getPredictorPtr2(COMPONENT_Cr, bufIdx));
+
+#if predfromori 
+          tmpBuf = tempCS->getBuf(pu,PIC_PREDFROMORI).Y();
+          tmpBuf.copyFrom(acMergeBufferori[uiMergeCand].Y());
+#if JVET_M0427_INLOOP_RESHAPER
+          if (pu.cs->slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag())
+          {
+            tmpBuf.rspSignal(m_pcReshape->getFwdLUT());
+          }
+#endif
+          m_pcIntraSearch->geneWeightedPred(COMPONENT_Y, tmpBuf, pu, m_pcIntraSearch->getPredictorPtr2(COMPONENT_Y, bufIdx));
+          tmpBuf = tempCS->getBuf(pu, PIC_PREDFROMORI).Cb();
+          tmpBuf.copyFrom(acMergeBufferori[uiMergeCand].Cb());
+          m_pcIntraSearch->geneWeightedPred(COMPONENT_Cb, tmpBuf, pu, m_pcIntraSearch->getPredictorPtr2(COMPONENT_Cb, bufIdx));
+          tmpBuf = tempCS->getBuf(pu, PIC_PREDFROMORI).Cr();
+          tmpBuf.copyFrom(acMergeBufferori[uiMergeCand].Cr());
+          m_pcIntraSearch->geneWeightedPred(COMPONENT_Cr, tmpBuf, pu, m_pcIntraSearch->getPredictorPtr2(COMPONENT_Cr, bufIdx));
+#endif
+
         }
         else
         {
@@ -2879,16 +3169,26 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
           if (uiMergeCand >= mergeCtx.numValidMergeCand && uiMergeCand < MRG_MAX_NUM_CANDS + MMVD_ADD_NUM) {
             pu.mmvdEncOptMode = 0;
             m_pcInterSearch->motionCompensation(pu);
+
+#if predfromori 
+            m_pcInterSearch->motionCompensationori(pu);
+#endif
           }
           else
 #endif
           if (uiNoResidualPass != 0 && uiMergeCand < mergeCtx.numValidMergeCand && RdModeList[uiMrgHADIdx] >= (MRG_MAX_NUM_CANDS + MMVD_ADD_NUM))
           {
             tempCS->getPredBuf().copyFrom(acMergeBuffer[uiMergeCand]);
+#if predfromori 
+            tempCS->getBuf(*tempCS->pus[0],PIC_PREDFROMORI).copyFrom(acMergeBufferori[uiMergeCand]);
+#endif
           }
           else
           {
             tempCS->getPredBuf().copyFrom(*acMergeTempBuffer[uiMrgHADIdx]);
+#if predfromori 
+            tempCS->getBuf(*tempCS->pus[0], PIC_PREDFROMORI).copyFrom(*acMergeTempBufferori[uiMrgHADIdx]);
+#endif
           }
         }
       }
@@ -2902,6 +3202,11 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         pu.mvRefine = false;
 #endif
       }
+
+#if predfromori 
+
+#endif
+
       if (!cu.mmvdSkip && !pu.mhIntraFlag && uiNoResidualPass != 0)
       {
         CHECK(uiMergeCand >= mergeCtx.numValidMergeCand, "out of normal merge");
@@ -2982,6 +3287,12 @@ void EncCu::xCheckRDCostMergeTriangle2Nx2N( CodingStructure *&tempCS, CodingStru
   uint8_t                                         triangleNumMrgSATDCand = TRIANGLE_MAX_NUM_SATD_CANDS;
   PelUnitBuf                                      triangleBuffer[TRIANGLE_MAX_NUM_UNI_CANDS];
   PelUnitBuf                                      triangleWeightedBuffer[TRIANGLE_MAX_NUM_CANDS];
+
+#if predfromori 
+  PelUnitBuf                                      triangleBufferori[TRIANGLE_MAX_NUM_UNI_CANDS];
+  PelUnitBuf                                      triangleWeightedBufferori[TRIANGLE_MAX_NUM_CANDS];
+#endif
+
   static_vector<uint8_t, TRIANGLE_MAX_NUM_CANDS> triangleRdModeList;
   static_vector<double,  TRIANGLE_MAX_NUM_CANDS> tianglecandCostList;
 
@@ -3024,6 +3335,11 @@ void EncCu::xCheckRDCostMergeTriangle2Nx2N( CodingStructure *&tempCS, CodingStru
       PU::spanMotionInfo( pu, triangleMrgCtx );
 
       m_pcInterSearch->motionCompensation( pu, triangleBuffer[mergeCand] );
+
+#if predfromori 
+      triangleBufferori[mergeCand] = m_acMergeBufferori[mergeCand].getBuf(localUnitArea);
+      m_pcInterSearch->motionCompensationori(pu, triangleBufferori[mergeCand]);
+#endif
     }
   }
 
@@ -3089,11 +3405,25 @@ void EncCu::xCheckRDCostMergeTriangle2Nx2N( CodingStructure *&tempCS, CodingStru
       triangleBuffer[candIdx0] = m_acMergeBuffer[candIdx0].getBuf( localUnitArea );
       triangleBuffer[candIdx1] = m_acMergeBuffer[candIdx1].getBuf( localUnitArea );
 
+
+
 #if JVET_M0328_KEEP_ONE_WEIGHT_GROUP
       m_pcInterSearch->weightedTriangleBlk( pu, splitDir, CHANNEL_TYPE_LUMA, triangleWeightedBuffer[mergeCand], triangleBuffer[candIdx0], triangleBuffer[candIdx1] );
 #else
       m_pcInterSearch->weightedTriangleBlk( pu, PU::getTriangleWeights(pu, triangleMrgCtx, candIdx0, candIdx1), splitDir, CHANNEL_TYPE_LUMA, triangleWeightedBuffer[mergeCand], triangleBuffer[candIdx0], triangleBuffer[candIdx1] );
 #endif
+
+#if predfromori 
+      triangleWeightedBufferori[mergeCand] = m_acTriangleWeightedBufferori[mergeCand].getBuf(localUnitArea);
+      triangleBufferori[candIdx0] = m_acMergeBufferori[candIdx0].getBuf(localUnitArea);
+      triangleBufferori[candIdx1] = m_acMergeBufferori[candIdx1].getBuf(localUnitArea);
+#if JVET_M0328_KEEP_ONE_WEIGHT_GROUP
+      m_pcInterSearch->weightedTriangleBlk(pu, splitDir, CHANNEL_TYPE_LUMA, triangleWeightedBufferori[mergeCand], triangleBufferori[candIdx0], triangleBufferori[candIdx1]);
+#else
+      m_pcInterSearch->weightedTriangleBlk(pu, PU::getTriangleWeights(pu, triangleMrgCtx, candIdx0, candIdx1), splitDir, CHANNEL_TYPE_LUMA, triangleWeightedBufferori[mergeCand], triangleBufferori[candIdx0], triangleBufferori[candIdx1]);
+#endif
+#endif
+
       distParam.cur = triangleWeightedBuffer[mergeCand].Y();
 
       Distortion uiSad = distParam.distFunc( distParam );
@@ -3149,6 +3479,14 @@ void EncCu::xCheckRDCostMergeTriangle2Nx2N( CodingStructure *&tempCS, CodingStru
       m_pcInterSearch->weightedTriangleBlk( pu, splitDir, CHANNEL_TYPE_CHROMA, triangleWeightedBuffer[mergeCand], triangleBuffer[candIdx0], triangleBuffer[candIdx1] );
 #else
       m_pcInterSearch->weightedTriangleBlk( pu, PU::getTriangleWeights(pu, triangleMrgCtx, candIdx0, candIdx1), splitDir, CHANNEL_TYPE_CHROMA, triangleWeightedBuffer[mergeCand], triangleBuffer[candIdx0], triangleBuffer[candIdx1] );
+#endif
+
+#if predfromori 
+#if JVET_M0328_KEEP_ONE_WEIGHT_GROUP
+      m_pcInterSearch->weightedTriangleBlk(pu, splitDir, CHANNEL_TYPE_CHROMA, triangleWeightedBufferori[mergeCand], triangleBufferori[candIdx0], triangleBufferori[candIdx1]);
+#else
+      m_pcInterSearch->weightedTriangleBlk(pu, PU::getTriangleWeights(pu, triangleMrgCtx, candIdx0, candIdx1), splitDir, CHANNEL_TYPE_CHROMA, triangleWeightedBufferori[mergeCand], triangleBufferori[candIdx0], triangleBufferori[candIdx1]);
+#endif
 #endif
     }
 
@@ -3229,6 +3567,10 @@ void EncCu::xCheckRDCostMergeTriangle2Nx2N( CodingStructure *&tempCS, CodingStru
         if( tempBufSet )
         {
           tempCS->getPredBuf().copyFrom( triangleWeightedBuffer[mergeCand] );
+
+#if predfromori 
+          tempCS->getBuf(pu,PIC_PREDFROMORI).copyFrom(triangleWeightedBufferori[mergeCand]);
+#endif
         }
         else
         {
@@ -3239,6 +3581,17 @@ void EncCu::xCheckRDCostMergeTriangle2Nx2N( CodingStructure *&tempCS, CodingStru
           m_pcInterSearch->weightedTriangleBlk( pu, splitDir, MAX_NUM_CHANNEL_TYPE, predBuf, triangleBuffer[candIdx0], triangleBuffer[candIdx1] );
 #else
           m_pcInterSearch->weightedTriangleBlk( pu, PU::getTriangleWeights(pu, triangleMrgCtx, candIdx0, candIdx1), splitDir, MAX_NUM_CHANNEL_TYPE, predBuf, triangleBuffer[candIdx0], triangleBuffer[candIdx1] );
+#endif
+
+#if predfromori 
+          triangleBufferori[candIdx0] = m_acMergeBufferori[candIdx0].getBuf(localUnitArea);
+          triangleBufferori[candIdx1] = m_acMergeBufferori[candIdx1].getBuf(localUnitArea);
+          predBuf = tempCS->getBuf(pu,PIC_PREDFROMORI);
+#if JVET_M0328_KEEP_ONE_WEIGHT_GROUP
+          m_pcInterSearch->weightedTriangleBlk(pu, splitDir, MAX_NUM_CHANNEL_TYPE, predBuf, triangleBufferori[candIdx0], triangleBufferori[candIdx1]);
+#else
+          m_pcInterSearch->weightedTriangleBlk(pu, PU::getTriangleWeights(pu, triangleMrgCtx, candIdx0, candIdx1), splitDir, MAX_NUM_CHANNEL_TYPE, predBuf, triangleBufferori[candIdx0], triangleBufferori[candIdx1]);
+#endif
 #endif
         }
 

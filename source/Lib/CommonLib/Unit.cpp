@@ -677,6 +677,8 @@ TransformUnit::TransformUnit(const UnitArea& unit) : UnitArea(unit), cu(nullptr)
 #if printoriresi
     m_resiwoq[i] = nullptr;
     m_resiwq[i] = nullptr;
+    m_spresiwoq[i] = nullptr;
+    m_spresiwq[i] = nullptr;
 #endif
   }
 
@@ -692,6 +694,8 @@ TransformUnit::TransformUnit(const ChromaFormat _chromaFormat, const Area &_area
 #if printoriresi
     m_resiwoq[i] = nullptr;
     m_resiwq[i] = nullptr;
+    m_spresiwoq[i] = nullptr;
+    m_spresiwq[i] = nullptr;
 #endif
   }
 
@@ -724,7 +728,7 @@ void TransformUnit::initData()
 }
 
 #if printoriresi
-void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq, TCoeff **resiwq)
+void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq, TCoeff **resiwq, Pel **spresiwoq, Pel **spresiwq)
 #else
 void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf)
 #endif
@@ -738,6 +742,8 @@ void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf)
 #if printoriresi
     m_resiwoq[i] = resiwoq[i];
     m_resiwq[i] = resiwq[i];
+    m_spresiwoq[i] = spresiwoq[i];
+    m_spresiwq[i] = spresiwq[i];
 #endif
   }
 }
@@ -758,6 +764,8 @@ TransformUnit& TransformUnit::operator=(const TransformUnit& other)
 #if printoriresi
     if (m_resiwoq[i] && other.m_resiwoq[i] && m_resiwoq[i] != other.m_resiwoq[i]) memcpy(m_resiwoq[i], other.m_resiwoq[i], sizeof(TCoeff) * area);
     if (m_resiwq[i] && other.m_resiwq[i] && m_resiwq[i] != other.m_resiwq[i]) memcpy(m_resiwq[i], other.m_resiwq[i], sizeof(TCoeff) * area);
+    if (m_spresiwoq[i] && other.m_spresiwoq[i] && m_spresiwoq[i] != other.m_spresiwoq[i]) memcpy(m_spresiwoq[i], other.m_spresiwoq[i], sizeof(Pel) * area);
+    if (m_spresiwq[i] && other.m_spresiwq[i] && m_spresiwq[i] != other.m_spresiwq[i]) memcpy(m_spresiwq[i], other.m_spresiwq[i], sizeof(Pel) * area);
 #endif
     cbf[i]           = other.cbf[i];
     rdpcm[i]         = other.rdpcm[i];
@@ -791,6 +799,8 @@ void TransformUnit::copyComponentFrom(const TransformUnit& other, const Componen
 #if printoriresi
   if (m_resiwoq[i] && other.m_resiwoq[i] && m_resiwoq[i] != other.m_resiwoq[i]) memcpy(m_resiwoq[i], other.m_resiwoq[i], sizeof(TCoeff) * area);
   if (m_resiwq[i] && other.m_resiwq[i] && m_resiwq[i] != other.m_resiwq[i]) memcpy(m_resiwq[i], other.m_resiwq[i], sizeof(TCoeff) * area);
+  if (m_spresiwoq[i] && other.m_spresiwoq[i] && m_spresiwoq[i] != other.m_spresiwoq[i]) memcpy(m_spresiwoq[i], other.m_spresiwoq[i], sizeof(Pel) * area);
+  if (m_spresiwq[i] && other.m_spresiwq[i] && m_spresiwq[i] != other.m_spresiwq[i]) memcpy(m_spresiwq[i], other.m_spresiwq[i], sizeof(Pel) * area);
 #endif
   cbf[i]           = other.cbf[i];
   rdpcm[i]         = other.rdpcm[i];

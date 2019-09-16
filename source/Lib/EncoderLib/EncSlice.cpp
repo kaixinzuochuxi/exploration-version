@@ -464,12 +464,19 @@ void EncSlice::initEncSlice(Picture* pcPic, const int pocLast, const int pocCurr
 #endif
   int iQP;
   double dOrigQP = dQP;
-
+#if !usehierarchical
+#if getseqname
+  extern string curr_seq_name;
+  extern int conf_QP;
+#endif
+#endif
   // pre-compute lambda and QP values for all possible QP candidates
   for ( int iDQpIdx = 0; iDQpIdx < 2 * m_pcCfg->getDeltaQpRD() + 1; iDQpIdx++ )
   {
     // compute QP value
     dQP = dOrigQP + ((iDQpIdx+1)>>1)*(iDQpIdx%2 ? -1 : 1);
+
+
 #if SHARP_LUMA_DELTA_QP
     dLambda = calculateLambda(rpcSlice, iGOPid, depth, dQP, dQP, iQP );
 #else
@@ -555,9 +562,19 @@ void EncSlice::initEncSlice(Picture* pcPic, const int pocLast, const int pocCurr
     iQP = Clip3( -rpcSlice->getSPS()->getQpBDOffset( CHANNEL_TYPE_LUMA ), MAX_QP, (int) floor( dQP + 0.5 ) );
 #endif
 
+
     m_vdRdPicLambda[iDQpIdx] = dLambda;
     m_vdRdPicQp    [iDQpIdx] = dQP;
     m_viRdPicQp    [iDQpIdx] = iQP;
+#if disable_hierarchical_qp
+    m_vdRdPicQp[iDQpIdx] = conf_QP;
+    m_viRdPicQp[iDQpIdx] = conf_QP;
+#endif
+#if disable_hierarchical_lambda
+    dQP = conf_QP + ((iDQpIdx + 1) >> 1)*(iDQpIdx % 2 ? -1 : 1);
+    dLambda = calculateLambda(rpcSlice, iGOPid, depth, dQP, dQP, iQP);
+    m_vdRdPicLambda[iDQpIdx] = dLambda;
+#endif
   }
 
   // obtain dQP = 0 case
@@ -1509,7 +1526,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
 
     string file_dir;
-    bool iswindows = 1;
+    bool iswindows = 0;
     if (iswindows) {
       file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
     }
@@ -1529,21 +1546,24 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
 
 #if framelevelQPA
-    int currPOC = pcSlice->getPOC();
+    //int currPOC = pcSlice->getPOC();
+    int currPOC = this->m_pcLib->m_uiNumAllPicCoded+this->m_gopID;
     int baseQP = pcSlice->getSliceQpBase();
     int frameDQP = 0;
     double tempQP = 0;
     ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt"));
     if (!fframe)
     {
-      printf("open failed: %s\n", strerror(errno));
+      printf("open failed: %s\t%s\n", strerror(errno), (file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt")).c_str());
     }
     for (int tempi = 0; tempi <= currPOC; tempi++)
     {
       fframe >> tempQP;
     }
     frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
-
+#if !is_dqp_not_actualqp
+    frameDQP = frameDQP - baseQP;
+#endif
     const double* oldLambdas = pcSlice->getLambdas();
     const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
     const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
@@ -1567,7 +1587,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
 
 #if CTUlevelQPA
-    int currPOC = pcSlice->getPOC();
+    int currPOC = this->m_pcLib->m_uiNumAllPicCoded;
     int baseQP = pcSlice->getSliceQpBase();
     int frameDQP = 0;
     int ctuDQP = 0;
@@ -1762,8 +1782,8 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
   printf("codingparameters:framelevel | ");
   printf("lambda: %f-%f-%f | ", framecp.lambda[0], framecp.lambda[1], framecp.lambda[2]);
   printf("QP: %d-%d-%d | ", framecp.QP[0], framecp.QP[1], framecp.QP[2]);
-  printf("D: %lld-%lld | ", framecp.D_luma, framecp.D_chroma);
-  printf("R: %lld-%lld-%lld-%lld | " ,framecp.R_luma,framecp.R_chroma,framecp.R_mode,framecp.R_resi);
+  printf("D: %lld-%lld-%lld | ", framecp.D[0], framecp.D[1], framecp.D[2]);
+  printf("R: %lld-%lld-%lld-%lld-%lld | " ,framecp.R[0], framecp.R[1], framecp.R[2],framecp.R_mode,framecp.R_resi);
   printf("\n");
 
 #endif
@@ -2223,11 +2243,12 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 
 #if codingparameters 
     extern coding_parameterscy ctucp;
+    
     printf("codingparameters:ctulevel | ");
     printf("lambda: %f-%f-%f | ", ctucp.lambda[0], ctucp.lambda[1], ctucp.lambda[2]);
     printf("QP: %d-%d-%d | ", ctucp.QP[0], ctucp.QP[1], ctucp.QP[2]);
-    printf("D: %lld-%lld | ", ctucp.D_luma, ctucp.D_chroma);
-    printf("R: %lld-%lld-%lld-%lld | ", ctucp.R_luma, ctucp.R_chroma, ctucp.R_mode, ctucp.R_resi);
+    printf("D: %lld-%lld-%lld | ", ctucp.D[0], ctucp.D[1], ctucp.D[2]);
+    printf("R: %lld-%lld-%lld-%lld-%lld | ", ctucp.R[0], ctucp.R[1], ctucp.R[2], ctucp.R_mode, ctucp.R_resi);
     printf("\n");
 
 #endif

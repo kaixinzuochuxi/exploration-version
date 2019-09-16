@@ -133,6 +133,13 @@ private:
   PelStorage            m_acMergeBuffer[MMVD_MRG_MAX_RD_BUF_NUM];
   PelStorage            m_acRealMergeBuffer[MRG_MAX_NUM_CANDS];
   PelStorage            m_acTriangleWeightedBuffer[TRIANGLE_MAX_NUM_CANDS]; // to store weighted prediction pixles
+
+#if predfromori
+  PelStorage            m_acMergeBufferori[MMVD_MRG_MAX_RD_BUF_NUM];
+  PelStorage            m_acRealMergeBufferori[MRG_MAX_NUM_CANDS];
+  PelStorage            m_acTriangleWeightedBufferori[TRIANGLE_MAX_NUM_CANDS]; // to store weighted prediction pixles
+#endif
+
   double                m_mergeBestSATDCost;
   MotionInfo            m_SubPuMiBuf      [( MAX_CU_SIZE * MAX_CU_SIZE ) >> ( MIN_CU_LOG2 << 1 )];
   unsigned int          m_subMergeBlkSize[10];

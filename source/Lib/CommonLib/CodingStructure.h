@@ -59,6 +59,12 @@ enum PictureType
   PIC_PREDICTION,
   PIC_RESIDUAL,
   PIC_ORG_RESI,
+#if predfromori 
+  PIC_PREDFROMORI,
+  PIC_RECOFROMORI,
+  PIC_RESIFROMORI,
+  PIC_ORIRESIFROMORI,
+#endif
   NUM_PIC_TYPES
 };
 enum IbcLumaCoverage
@@ -236,12 +242,21 @@ private:
   PelStorage m_resi;
   PelStorage m_reco;
   PelStorage m_orgr;
+#if predfromori
+  public:
+  PelStorage m_predfromori;
+  PelStorage m_recofromori;
+  PelStorage m_resifromori;
+#endif
+
 
   TCoeff *m_coeffs [ MAX_NUM_COMPONENT ];
   Pel    *m_pcmbuf [ MAX_NUM_COMPONENT ];
 #if printoriresi
   TCoeff *m_resiwoq[MAX_NUM_COMPONENT];
   TCoeff *m_resiwq[MAX_NUM_COMPONENT];
+  Pel *m_spresiwoq[MAX_NUM_TBLOCKS];
+  Pel *m_spresiwq[MAX_NUM_TBLOCKS];
 #endif
   int     m_offsets[ MAX_NUM_COMPONENT ];
 
@@ -321,6 +336,9 @@ public:
   const CPelUnitBuf   getRecoBuf()                           const { return m_reco; }
 
 private:
+#if predfromori
+  public:
+#endif // predfromori
 
   inline        PelBuf       getBuf(const CompArea &blk,  const PictureType &type);
   inline const CPelBuf       getBuf(const CompArea &blk,  const PictureType &type) const;

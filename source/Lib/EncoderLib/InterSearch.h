@@ -106,6 +106,14 @@ private:
   PelStorage      m_tmpStorageLCU;
   PelStorage      m_tmpAffiStorage;
   Pel*            m_tmpAffiError;
+
+#if predfromori
+  PelStorage      m_tmpPredStorageori[NUM_REF_PIC_LIST_01];
+  PelStorage      m_tmpStorageLCUori;
+  PelStorage      m_tmpAffiStorageori;
+  Pel*            m_tmpAffiErrorori;
+#endif // predfromori
+
   int*            m_tmpAffiDeri[2];
 
   CodingStructure ****m_pSplitCS;
@@ -478,6 +486,11 @@ protected:
     , RefPicList eRefPicList, MvField& rCurMvField, MvField& rTarMvField, Distortion uiMinCost, int searchPattern, int nSearchStepShift, uint32_t uiMaxSearchRounds , int gbiIdx );
 
   void xSymmetricMotionEstimation( PredictionUnit& pu, PelUnitBuf& origBuf, Mv& rcMvCurPred, Mv& rcMvTarPred, RefPicList eRefPicList, MvField& rCurMvField, MvField& rTarMvField, Distortion& ruiCost, int gbiIdx );
+
+#if predfromori
+  Distortion InterSearch::xGetSymmetricCostori(PredictionUnit& pu, PelUnitBuf& origBuf, RefPicList eCurRefPicList, const MvField& cCurMvField, MvField& cTarMvField, int gbiIdx);
+#endif // predfromori
+
 #endif
 
   bool xReadBufferedAffineUniMv   ( PredictionUnit& pu, RefPicList eRefPicList, int32_t iRefIdx, Mv acMvPred[3], Mv acMv[3], uint32_t& ruiBits, Distortion& ruiCost
@@ -532,6 +545,30 @@ public:
     , const bool luma = true, const bool chroma = true
   );
   uint64_t xGetSymbolFracBitsInter  (CodingStructure &cs, Partitioner &partitioner);
+
+#if predfromori
+  Distortion InterSearch::xGetTemplateCostori(const PredictionUnit& pu,
+    PelUnitBuf& origBuf,
+    PelUnitBuf& predBuf,
+    Mv          cMvCand,
+    int         iMVPIdx,
+    int         iMVPNum,
+    RefPicList  eRefPicList,
+    int         iRefIdx
+  );
+  Distortion InterSearch::xGetAffineTemplateCostori(PredictionUnit& pu, PelUnitBuf& origBuf, PelUnitBuf& predBuf, Mv acMvCand[3], int iMVPIdx, int iMVPNum, RefPicList eRefPicList, int iRefIdx);
+
+  Distortion InterSearch::xGetInterPredictionErrorori(PredictionUnit& pu, PelUnitBuf& origBuf, const RefPicList &eRefPicList);
+
+
+  void InterSearch::encodeResAndCalcRdInterCUori(CodingStructure &cs, Partitioner &partitioner, const bool &skipResidual
+    , const bool luma, const bool chroma
+  );
+    void InterSearch::xEstimateInterResidualQTori(CodingStructure &cs, Partitioner &partitioner, Distortion *puiZeroDist /*= NULL*/
+      , const bool luma, const bool chroma
+    );
+    void xEncodeInterResidualQTori(CodingStructure &cs, Partitioner &partitioner, const ComponentID &compID);
+#endif // predfromori
 
 };// END CLASS DEFINITION EncSearch
 

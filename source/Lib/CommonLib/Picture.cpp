@@ -746,6 +746,13 @@ void Picture::create(const ChromaFormat &_chromaFormat, const Size &size, const 
     M_BUFS( 0, PIC_TRUE_ORIGINAL ). create( _chromaFormat, a );
 #endif
   }
+
+#if predfromori 
+  M_BUFS(0, PIC_RECOFROMORI).create(_chromaFormat, a, _maxCUSize, _margin, MEMORY_ALIGN_DEF_SIZE);
+
+
+#endif
+
 #if !KEEP_PRED_AND_RESI_SIGNALS
 
   m_ctuArea = UnitArea( _chromaFormat, Area( Position{ 0, 0 }, Size( _maxCUSize, _maxCUSize ) ) );
@@ -821,6 +828,10 @@ void Picture::createTempBuffers( const unsigned _maxCUSize )
   {
     M_BUFS( jId, PIC_PREDICTION                   ).create( chromaFormat, a,   _maxCUSize );
     M_BUFS( jId, PIC_RESIDUAL                     ).create( chromaFormat, a,   _maxCUSize );
+#if predfromori 
+    M_BUFS(jId, PIC_PREDFROMORI).create(chromaFormat, a, _maxCUSize);
+    M_BUFS(jId, PIC_RESIFROMORI).create(chromaFormat, a, _maxCUSize);
+#endif
 #if ENABLE_SPLIT_PARALLELISM
     if( jId > 0 ) M_BUFS( jId, PIC_RECONSTRUCTION ).create( chromaFormat, Y(), _maxCUSize, margin, MEMORY_ALIGN_DEF_SIZE );
 #endif
@@ -1096,7 +1107,21 @@ PelBuf Picture::getBuf( const CompArea &blk, const PictureType &type )
 
     return M_BUFS( jId, type ).getBuf( localBlk );
   }
+#if predfromori 
+
+  if (type == PIC_RESIFROMORI || type == PIC_PREDFROMORI)
+  {
+    CompArea localBlk = blk;
+    localBlk.x &= (cs->pcv->maxCUWidthMask >> getComponentScaleX(blk.compID, blk.chromaFormat));
+    localBlk.y &= (cs->pcv->maxCUHeightMask >> getComponentScaleY(blk.compID, blk.chromaFormat));
+
+    return M_BUFS(jId, type).getBuf(localBlk);
+  }
+
 #endif
+#endif
+
+
 
   return M_BUFS( jId, type ).getBuf( blk );
 }
@@ -1121,6 +1146,17 @@ const CPelBuf Picture::getBuf( const CompArea &blk, const PictureType &type ) co
 
     return M_BUFS( jId, type ).getBuf( localBlk );
   }
+
+#if predfromori 
+  if (type == PIC_RESIFROMORI || type == PIC_PREDFROMORI)
+  {
+    CompArea localBlk = blk;
+    localBlk.x &= (cs->pcv->maxCUWidthMask >> getComponentScaleX(blk.compID, blk.chromaFormat));
+    localBlk.y &= (cs->pcv->maxCUHeightMask >> getComponentScaleY(blk.compID, blk.chromaFormat));
+
+    return M_BUFS(jId, type).getBuf(localBlk);
+  }
+#endif
 #endif
 
   return M_BUFS( jId, type ).getBuf( blk );

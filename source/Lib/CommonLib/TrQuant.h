@@ -180,6 +180,30 @@ private:
   void _initTrQuantX86();
   void initTrQuantX86();
 #endif
+
+
+
+
+#if predfromori 
+  public:
+  void invTransformNxNori(TransformUnit &tu, const ComponentID &compID, PelBuf &pResi, const QpParam &cQPs);
+
+#if JVET_M0464_UNI_MTS
+#if JVET_M0102_INTRA_SUBPARTITIONS
+  void transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, std::vector<TrMode>* trModes, const int maxCand, double* diagRatio = nullptr, double* horVerRatio = nullptr);
+  void transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, TCoeff &uiAbsSum, const Ctx &ctx, const bool loadTr = false, double* diagRatio = nullptr, double* horVerRatio = nullptr);
+#else
+  void transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, std::vector<TrMode>* trModes, const int maxCand);
+  void transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, TCoeff &uiAbsSum, const Ctx &ctx, const bool loadTr = false);
+#endif
+#else
+#if JVET_M0102_INTRA_SUBPARTITIONS
+  void transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, TCoeff &uiAbsSum, const Ctx &ctx, double* diagRatio = nullptr, double* horVerRatio = nullptr);
+#else
+  void transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, TCoeff &uiAbsSum, const Ctx &ctx);
+#endif
+#endif
+#endif
 };// END CLASS DEFINITION TrQuant
 
 //! \}

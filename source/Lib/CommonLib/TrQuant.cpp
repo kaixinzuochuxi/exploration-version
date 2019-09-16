@@ -638,7 +638,9 @@ void TrQuant::transformNxN(TransformUnit &tu, const ComponentID &compID, const Q
   const uint32_t height     = rect.height;
 
   const CPelBuf  resiBuf    = cs.getResiBuf(rect);
-
+#if printoriresi
+  memcpy(tu.m_spresiwoq[compID], resiBuf.buf, width*height*sizeof(Pel));
+#endif
   CHECK( sps.getMaxTrSize() < width, "Unsupported transformation size" );
 
   int pos = 0;
@@ -1045,4 +1047,217 @@ void TrQuant::xTransformSkip(const TransformUnit &tu, const ComponentID &compID,
   }
 }
 
+#if predfromori 
+
+
+#if JVET_M0464_UNI_MTS
+#if JVET_M0102_INTRA_SUBPARTITIONS
+void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, std::vector<TrMode>* trModes, const int maxCand, double* diagRatio, double* horVerRatio)
+#else
+void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, std::vector<TrMode>* trModes, const int maxCand)
+#endif
+{
+  CodingStructure &cs = *tu.cs;
+  const SPS &sps = *cs.sps;
+  const CompArea &rect = tu.blocks[compID];
+  const uint32_t width = rect.width;
+  const uint32_t height = rect.height;
+
+  const CPelBuf  resiBuf = cs.getBuf(rect, PIC_RESIFROMORI);
+#if printoriresi
+  memcpy(tu.m_spresiwoq[compID], resiBuf.buf, width*height * sizeof(Pel));
+#endif
+  CHECK(sps.getMaxTrSize() < width, "Unsupported transformation size");
+
+  int pos = 0;
+  std::vector<TrCost> trCosts;
+  std::vector<TrMode>::iterator it = trModes->begin();
+  const double facBB[] = { 1.2, 1.3, 1.3, 1.4, 1.5 };
+  while (it != trModes->end())
+  {
+    tu.mtsIdx = it->first;
+    CoeffBuf tempCoeff(m_mtsCoeffs[tu.mtsIdx], rect);
+#if JVET_M0140_SBT
+    if (tu.noResidual)
+    {
+      int sumAbs = 0;
+      trCosts.push_back(TrCost(sumAbs, pos++));
+      it++;
+      continue;
+    }
+#endif
+
+    if (isLuma(compID) && tu.mtsIdx == 1)
+    {
+      xTransformSkip(tu, compID, resiBuf, tempCoeff.buf);
+    }
+    else
+    {
+      xT(tu, compID, resiBuf, tempCoeff, width, height);
+    }
+
+    int sumAbs = 0;
+    for (int pos = 0; pos < width*height; pos++)
+    {
+      sumAbs += abs(tempCoeff.buf[pos]);
+    }
+
+#if JVET_M0119_NO_TRANSFORM_SKIP_QUANTISATION_ADJUSTMENT
+    double scaleSAD = 1.0;
+    if (isLuma(compID) && tu.mtsIdx == 1 && ((g_aucLog2[width] + g_aucLog2[height]) & 1) == 1)
+    {
+      scaleSAD = 1.0 / 1.414213562; // compensate for not scaling transform skip coefficients by 1/sqrt(2)
+    }
+    trCosts.push_back(TrCost(int(sumAbs*scaleSAD), pos++));
+#else
+    trCosts.push_back(TrCost(sumAbs, pos++));
+#endif
+    it++;
+  }
+
+#if JVET_M0102_INTRA_SUBPARTITIONS
+  // it gets the distribution of the DCT-II coefficients energy, which will be useful to discard ISP tests
+  CoeffBuf coeffsDCT(m_mtsCoeffs[0], rect);
+  xGetCoeffEnergy(tu, compID, coeffsDCT, diagRatio, horVerRatio);
+#endif
+  int numTests = 0;
+  std::vector<TrCost>::iterator itC = trCosts.begin();
+  const double fac = facBB[g_aucLog2[std::max(width, height)] - 2];
+  const double thr = fac * trCosts.begin()->first;
+  const double thrTS = trCosts.begin()->first;
+  while (itC != trCosts.end())
+  {
+    const bool testTr = itC->first <= (itC->second == 1 ? thrTS : thr) && numTests <= maxCand;
+    trModes->at(itC->second).second = testTr;
+    numTests += testTr;
+    itC++;
+  }
+}
+#endif
+
+#if JVET_M0464_UNI_MTS
+#if JVET_M0102_INTRA_SUBPARTITIONS
+void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, TCoeff &uiAbsSum, const Ctx &ctx, const bool loadTr, double* diagRatio, double* horVerRatio)
+#else
+void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, TCoeff &uiAbsSum, const Ctx &ctx, const bool loadTr)
+#endif
+#else
+#if JVET_M0102_INTRA_SUBPARTITIONS
+void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, TCoeff &uiAbsSum, const Ctx &ctx, double* diagRatio, double* horVerRatio)
+#else
+void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, const QpParam &cQP, TCoeff &uiAbsSum, const Ctx &ctx)
+#endif
+#endif
+{
+  CodingStructure &cs = *tu.cs;
+  const SPS &sps = *cs.sps;
+  const CompArea &rect = tu.blocks[compID];
+  const uint32_t uiWidth = rect.width;
+  const uint32_t uiHeight = rect.height;
+
+  const CPelBuf resiBuf = cs.getBuf(rect, PIC_RESIFROMORI);
+  CoeffBuf rpcCoeff = tu.getCoeffs(compID);
+
+#if JVET_M0140_SBT
+  if (tu.noResidual)
+  {
+    uiAbsSum = 0;
+    TU::setCbfAtDepth(tu, compID, tu.depth, uiAbsSum > 0);
+    return;
+  }
+#endif
+
+  RDPCMMode rdpcmMode = RDPCM_OFF;
+  rdpcmNxN(tu, compID, cQP, uiAbsSum, rdpcmMode);
+
+  if (rdpcmMode == RDPCM_OFF)
+  {
+    uiAbsSum = 0;
+
+    // transform and quantize
+    if (CU::isLosslessCoded(*tu.cu))
+    {
+      const bool rotateResidual = TU::isNonTransformedResidualRotated(tu, compID);
+
+      for (uint32_t y = 0; y < uiHeight; y++)
+      {
+        for (uint32_t x = 0; x < uiWidth; x++)
+        {
+          const Pel currentSample = resiBuf.at(x, y);
+
+          if (rotateResidual)
+          {
+            rpcCoeff.at(uiWidth - x - 1, uiHeight - y - 1) = currentSample;
+          }
+          else
+          {
+            rpcCoeff.at(x, y) = currentSample;
+          }
+
+          uiAbsSum += TCoeff(abs(currentSample));
+        }
+      }
+    }
+    else
+    {
+      CHECK(sps.getMaxTrSize() < uiWidth, "Unsupported transformation size");
+
+#if JVET_M0464_UNI_MTS
+      CoeffBuf tempCoeff(loadTr ? m_mtsCoeffs[tu.mtsIdx] : m_plTempCoeff, rect);
+#else
+      CoeffBuf tempCoeff(m_plTempCoeff, rect);
+#endif
+
+
+      DTRACE_PEL_BUF(D_RESIDUALS, resiBuf, tu, tu.cu->predMode, compID);
+
+#if JVET_M0464_UNI_MTS
+      if (!loadTr)
+      {
+        if (isLuma(compID) && tu.mtsIdx == 1)
+#else
+      if (tu.transformSkip[compID])
+#endif
+      {
+        xTransformSkip(tu, compID, resiBuf, tempCoeff.buf);
+      }
+      else
+      {
+        xT(tu, compID, resiBuf, tempCoeff, uiWidth, uiHeight);
+      }
+#if JVET_M0464_UNI_MTS
+      }
+#endif
+
+#if JVET_M0102_INTRA_SUBPARTITIONS
+    //we do this only with the DCT-II coefficients
+    if (isLuma(compID) &&
+#if JVET_M0464_UNI_MTS
+      !loadTr && tu.mtsIdx == 0
+#else
+      !tu.cu->emtFlag
+#endif
+      )
+    {
+      //it gets the distribution of the coefficients energy, which will be useful to discard ISP tests
+      xGetCoeffEnergy(tu, compID, tempCoeff, diagRatio, horVerRatio);
+    }
+#endif
+#if printoriresi
+    memcpy(tu.m_resiwoq[compID], m_mtsCoeffs[tu.mtsIdx], rect.height*rect.width * sizeof(TCoeff));
+#endif
+    DTRACE_COEFF_BUF(D_TCOEFF, tempCoeff, tu, tu.cu->predMode, compID);
+
+    xQuant(tu, compID, tempCoeff, uiAbsSum, cQP, ctx);
+
+    DTRACE_COEFF_BUF(D_TCOEFF, tu.getCoeffs(compID), tu, tu.cu->predMode, compID);
+    }
+  }
+
+// set coded block flag (CBF)
+TU::setCbfAtDepth(tu, compID, tu.depth, uiAbsSum > 0);
+}
+
+
+#endif
 //! \}
