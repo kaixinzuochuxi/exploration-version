@@ -3,7 +3,7 @@ rec.yuv
 str.bin
 /build/
 /bin/
-/lib/
+/lib/vs14/
 core
 deploy
 *.sdf
