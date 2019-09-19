@@ -418,6 +418,9 @@ void Slice::setRefPicList( PicList& rcListPic, bool checkNumPocTotalCurr, bool b
       pcRefPic = xGetRefPic(rcListPic, getPOC()+m_pRPS->getDeltaPOC(i));
       pcRefPic->longTerm = false;
       pcRefPic->extendPicBorder();
+#if predfromori
+      pcRefPic->extendPicBorderori();
+#endif
       RefPicSetStCurr0[NumPicStCurr0] = pcRefPic;
       NumPicStCurr0++;
     }
@@ -430,6 +433,9 @@ void Slice::setRefPicList( PicList& rcListPic, bool checkNumPocTotalCurr, bool b
       pcRefPic = xGetRefPic(rcListPic, getPOC()+m_pRPS->getDeltaPOC(i));
       pcRefPic->longTerm = false;
       pcRefPic->extendPicBorder();
+#if predfromori
+      pcRefPic->extendPicBorderori();
+#endif
       RefPicSetStCurr1[NumPicStCurr1] = pcRefPic;
       NumPicStCurr1++;
     }
@@ -442,6 +448,9 @@ void Slice::setRefPicList( PicList& rcListPic, bool checkNumPocTotalCurr, bool b
       pcRefPic = xGetLongTermRefPic(rcListPic, m_pRPS->getPOC(i), m_pRPS->getCheckLTMSBPresent(i));
       pcRefPic->longTerm = true;
       pcRefPic->extendPicBorder();
+#if predfromori
+      pcRefPic->extendPicBorderori();
+#endif
       RefPicSetLtCurr[NumPicLtCurr] = pcRefPic;
       NumPicLtCurr++;
     }

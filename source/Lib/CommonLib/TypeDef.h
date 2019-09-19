@@ -66,10 +66,10 @@
 
 #define AdaptiveGOP 0
 
-#define printoriresi 0
+
 
 // QPA related
-#define useoriaqp 0
+#define useoriaqp 1
 #define is_dqp_not_actualqp 0 // 1 dqp, should add with baseqp; 0 acutal qp,should not add with base qp
 /////
 #if useoriaqp
@@ -97,12 +97,12 @@
 #endif
 
 // build cu tree, print CU level information
-#define build_cu_tree 0
+#define build_cu_tree 1
 /////
 #if build_cu_tree 
 #define disablefast 0
 #define printchormacu 1
-#define printoriresi 1
+#define printoriresi 0
 #endif
 
 // weighted D

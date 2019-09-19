@@ -1930,6 +1930,10 @@ bool InterSearch::predInterHashSearch(CodingUnit& cu, Partitioner& partitioner, 
     PU::spanMotionInfo(pu);
     PelUnitBuf predBuf = pu.cs->getPredBuf(pu);
     motionCompensation(pu, predBuf, REF_PIC_LIST_X);
+#if predfromori
+    predBuf = pu.cs->getBuf(pu,PIC_PREDFROMORI);
+    motionCompensationori(pu, predBuf, REF_PIC_LIST_X);
+#endif
     return true;
   }
   else
@@ -2749,7 +2753,7 @@ void InterSearch::predInterSearch(CodingUnit& cu, Partitioner& partitioner)
 
 #if predfromori
     predBuf = pu.cs->getBuf(pu,PIC_PREDFROMORI);
-    motionCompensation(pu, predBuf, REF_PIC_LIST_X);
+    motionCompensationori(pu, predBuf, REF_PIC_LIST_X);
 #endif // predfromori
 
     puIdx++;
@@ -7270,10 +7274,10 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
     pu.interdist = distortion;
     // pu.cost = cs.cost;
     pu.interbits = cs.fracBits;
-#if predfromori
-    cu.firstPU->interdistori = oridistortion;
-    cu.firstPU->interbitsori = oridistortion;
-#endif
+//#if predfromori
+//    cu.firstPU->interdistori = oridistortion;
+//    cu.firstPU->interbitsori = oridistortion;
+//#endif
 #endif
     return;
   }
@@ -7492,10 +7496,10 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #if build_cu_tree
   cu.firstPU->interdist = finalDistortion;
   cu.firstPU->interbits = finalFracBits;
-#if predfromori
-  cu.firstPU->interdistori = finalDistortionori;
-  cu.firstPU->interbitsori = finalFracBitsori;
-#endif
+//#if predfromori
+//  cu.firstPU->interdistori = finalDistortionori;
+//  cu.firstPU->interbitsori = finalFracBitsori;
+//#endif
   //cu.firstPU->cost = cs.cost;
 #endif
   CHECK(cs.tus.size() == 0, "No TUs present");
@@ -7904,11 +7908,11 @@ void InterSearch::symmvdCheckBestMvp(
         const bool isCrossCPredictionAvailable = TU::hasCrossCompPredInfo(tu, compID);
 
         int8_t preCalcAlpha = 0;
-        const CPelBuf lumaResi = csFull->getResiBuf(tu.Y());
+        const CPelBuf lumaResi = csFull->getBuf(tu, PIC_RESIFROMORI).Y();
 
         if (isCrossCPredictionAvailable)
         {
-          csFull->getResiBuf(compArea).copyFrom(cs.getOrgResiBuf(compArea));
+          csFull->getBuf(compArea, PIC_RESIFROMORI).copyFrom(cs.getOrgResiBuf(compArea));
           preCalcAlpha = xCalcCrossComponentPredictionAlpha(tu, compID, m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate());
         }
 
@@ -8291,6 +8295,11 @@ void InterSearch::symmvdCheckBestMvp(
       else
 #endif
         csFull->cost = m_pcRdCost->calcRdCost(csFull->fracBits, csFull->dist);
+
+#if predfromori
+      m_CABACEstimator->getCtx() = ctxStart;
+      m_CABACEstimator->resetBits();
+#endif
     } // check full
 
     // code sub-blocks
@@ -8422,6 +8431,10 @@ void InterSearch::symmvdCheckBestMvp(
         csSplit->releaseIntermediateData();
         csFull->releaseIntermediateData();
       }
+#if predfromori
+      m_CABACEstimator->getCtx() = ctxStart;
+      m_CABACEstimator->resetBits();
+#endif
     }
 
   }
@@ -8536,13 +8549,22 @@ void InterSearch::symmvdCheckBestMvp(
     , const bool luma, const bool chroma
   )
   {
-    CodingUnit &cu = *cs.getCU(partitioner.chType);
+    //CodingUnit &cu = *cs.getCU(partitioner.chType);
+    CodingUnit &cu= *cs.getCU(partitioner.chType);
 
     const ChromaFormat format = cs.area.chromaFormat;;
     const int  numValidComponents = getNumberValidComponents(format);
     const SPS &sps = *cs.sps;
     const PPS &pps = *cs.pps;
 
+    bool cuskip = cu.skip;
+    bool curootcbf = cu.rootCbf;
+    uint8_t cusbtinfo = cu.sbtInfo;
+
+    Distortion csdist = cs.dist;
+    uint64_t csbit = cs.fracBits;
+    double cscost = cs.cost;
+    double cslumacost = cs.lumaCost;
 
     if (skipResidual) //  No residual coding : SKIP mode
     {
@@ -8599,7 +8621,7 @@ void InterSearch::symmvdCheckBestMvp(
           {
             const CompArea &areaY = cu.Y();
             CompArea      tmpArea1(COMPONENT_Y, areaY.chromaFormat, Position(0, 0), areaY.size());
-            PelBuf tmpRecLuma = m_tmpStorageLCU.getBuf(tmpArea1);
+            PelBuf tmpRecLuma = m_tmpStorageLCUori.getBuf(tmpArea1);
             tmpRecLuma.copyFrom(reco);
             tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
 #if !disableWD
@@ -8641,6 +8663,10 @@ void InterSearch::symmvdCheckBestMvp(
 
 
       ////COMPUTE DISTORTION
+#if predfromori
+      const TempCtx ctxStart(m_CtxCache, m_CABACEstimator->getCtx());
+#endif
+
       m_CABACEstimator->resetBits();
 
       if (pps.getTransquantBypassEnabledFlag())
@@ -8648,7 +8674,8 @@ void InterSearch::symmvdCheckBestMvp(
         m_CABACEstimator->cu_transquant_bypass_flag(cu);
       }
 
-      PredictionUnit &pu = *cs.getPU(partitioner.chType);
+      //PredictionUnit &pu = *cs.getPU(partitioner.chType);
+      PredictionUnit pu( *cs.getPU(partitioner.chType));
 
       m_CABACEstimator->cu_skip_flag(cu);
 #if JVET_M0483_IBC
@@ -8671,18 +8698,28 @@ void InterSearch::symmvdCheckBestMvp(
       }
 #endif
 
-      cs.dist = oridistortion;
-      cs.fracBits = m_CABACEstimator->getEstFracBits();
-      cs.cost = m_pcRdCost->calcRdCost(cs.fracBits, cs.dist);
 
+      //cs.dist = oridistortion;
+      //cs.fracBits = m_CABACEstimator->getEstFracBits();
+      //cs.cost = m_pcRdCost->calcRdCost(cs.fracBits, cs.dist);
+      cs.dist = csdist;
+      cs.fracBits = csbit;
+      cs.cost = cscost;
+      cs.lumaCost = cslumacost;
 #if build_cu_tree
-      pu.interdist = distortion;
-      // pu.cost = cs.cost;
-      pu.interbits = cs.fracBits;
+      //pu.interdist = distortion;
+      //// pu.cost = cs.cost;
+      //pu.interbits = cs.fracBits;
 #if predfromori
-      cu.firstPU->interdistori = oridistortion;
-      cu.firstPU->interbitsori = m_CABACEstimator->getEstFracBits();
+      cs.pus[0]->interdistori = oridistortion;
+      cs.pus[0]->interbitsori = m_CABACEstimator->getEstFracBits();
 #endif
+#endif
+#if predfromori
+      m_CABACEstimator->getCtx() = ctxStart;
+      m_CABACEstimator->resetBits();
+      cu.skip = cuskip;
+      cu.rootCbf = curootcbf;
 #endif
       return;
     }
@@ -8693,6 +8730,7 @@ void InterSearch::symmvdCheckBestMvp(
 
     /////predfromori
 #if predfromori 
+
     if (luma)
     {
       cs.getBuf(*cs.pus[0], PIC_RESIFROMORI).bufs[0].copyFrom(cs.getOrgBuf().bufs[0]);
@@ -8791,6 +8829,9 @@ void InterSearch::symmvdCheckBestMvp(
     m_CABACEstimator->getCtx() = ctxStart;
 
     uint64_t finalFracBitsori = xGetSymbolFracBitsInter(cs, partitioner);
+    //uint64_t finalFracBitsori = 0;
+
+
     // we've now encoded the CU, and so have a valid bit cost
     if (!cu.rootCbf)
     {
@@ -8897,19 +8938,35 @@ void InterSearch::symmvdCheckBestMvp(
       }
     }
 
-    cs.dist = finalDistortionori;
+    /*cs.dist = finalDistortionori;
     cs.fracBits = finalFracBitsori;
-    cs.cost = m_pcRdCost->calcRdCost(cs.fracBits, cs.dist);
+    cs.cost = m_pcRdCost->calcRdCost(cs.fracBits, cs.dist);*/
+    cs.dist = csdist;
+    cs.fracBits = csbit;
+    cs.cost = cscost;
+    cs.lumaCost = cslumacost;
 #endif
 
+    //cs.getBuf(cu, PIC_RECOFROMORI).bufs[0].copyFrom(cs.picture->m_bufs[PIC_TRUE_ORIGINAL].bufs[0]);
+    //cs.getBuf(cu, PIC_RECOFROMORI).bufs[1].copyFrom(cs.picture->m_bufs[PIC_TRUE_ORIGINAL].bufs[1]);
+    //cs.getBuf(cu, PIC_RECOFROMORI).bufs[2].copyFrom(cs.picture->m_bufs[PIC_TRUE_ORIGINAL].bufs[2]);
+   
 #if build_cu_tree
-    cu.firstPU->interdist = finalDistortion;
-    cu.firstPU->interbits = finalFracBits;
+    //cu.firstPU->interdist = finalDistortion;
+    //cu.firstPU->interbits = finalFracBits;
 #if predfromori
-    cu.firstPU->interdistori = finalDistortionori;
-    cu.firstPU->interbitsori = finalFracBitsori;
+    cs.pus[0]->interdistori = finalDistortionori;
+    cs.pus[0]->interbitsori = finalFracBitsori;
 #endif
     //cu.firstPU->cost = cs.cost;
+#endif
+
+#if predfromori
+    m_CABACEstimator->getCtx() = ctxStart;
+    m_CABACEstimator->resetBits();
+    cu.skip = cuskip;
+    cu.rootCbf = curootcbf;
+    cu.sbtInfo = cusbtinfo;
 #endif
     CHECK(cs.tus.size() == 0, "No TUs present");
   }

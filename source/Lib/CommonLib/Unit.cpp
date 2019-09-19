@@ -565,6 +565,10 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
   interdist = predData.interdist;
   // cost = predData.cost;
   interbits = predData.interdist;
+#if predfromori
+  interdistori = predData.interdistori;
+  interbitsori = predData.interbitsori;
+#endif
 #endif
   return *this;
 }
@@ -625,6 +629,11 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
   //cost = other.cost;
   interbits = other.interbits;
   intrabits = other.intrabits;
+#if predfromori
+  interdistori = other.interdistori;
+  interbitsori = other.interbitsori;
+#endif
+
 #endif
   return *this;
 }

@@ -109,6 +109,7 @@ void CodingStructure::destroy()
   m_predfromori.destroy();
   m_recofromori.destroy();
   m_resifromori.destroy();
+  m_oriresifromori.destroy();
 #endif
   destroyCoeffs();
 
@@ -695,6 +696,7 @@ void CodingStructure::create(const ChromaFormat &_chromaFormat, const Area& _are
   m_predfromori.create(area);
   m_recofromori.create(area);
   m_resifromori.create(area);
+  m_oriresifromori.create(area);
 #endif
 }
 
@@ -712,6 +714,7 @@ void CodingStructure::create(const UnitArea& _unit, const bool isTopLayer)
   m_predfromori.create(area);
   m_recofromori.create(area);
   m_resifromori.create(area);
+  m_oriresifromori.create(area);
 #endif
 }
 
@@ -772,6 +775,8 @@ void CodingStructure::rebindPicBufs()
   if (!picture->M_BUFS(0, PIC_RECOFROMORI).bufs.empty()) m_recofromori.createFromBuf(picture->M_BUFS(0, PIC_RECOFROMORI));
   else                                                         m_recofromori.destroy();
   if (!picture->M_BUFS(0, PIC_RESIFROMORI).bufs.empty()) m_resifromori.createFromBuf(picture->M_BUFS(0, PIC_RESIFROMORI));
+  else                                                         m_resifromori.destroy();
+  if (!picture->M_BUFS(0, PIC_ORIRESIFROMORI).bufs.empty()) m_oriresifromori.createFromBuf(picture->M_BUFS(0, PIC_ORIRESIFROMORI));
   else                                                         m_resifromori.destroy();
 #endif
 }
@@ -1047,6 +1052,10 @@ void CodingStructure::useSubStructure( const CodingStructure& subStruct, const C
       pu.intradist = ppu->intradist;
       pu.intrabits = ppu->intrabits;
       pu.interbits = ppu->interbits;
+#if predfromori
+      pu.interdistori = ppu->interdistori;
+      pu.interbitsori = ppu->interbitsori;
+#endif
       //pu.cost = cost;
 
 #endif
@@ -1389,6 +1398,7 @@ PelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &type )
   buf = type == PIC_PREDFROMORI ? &m_predfromori : buf;
   buf = type == PIC_RECOFROMORI ? &m_recofromori : buf;
   buf = type == PIC_RESIFROMORI ? &m_resifromori : buf;
+  buf = type == PIC_ORIRESIFROMORI ? &m_oriresifromori : buf;
 #endif
 
   CHECK( !buf, "Unknown buffer requested" );
@@ -1436,6 +1446,7 @@ const CPelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &t
   buf = type == PIC_PREDFROMORI ? &m_predfromori : buf;
   buf = type == PIC_RECOFROMORI ? &m_recofromori : buf;
   buf = type == PIC_RESIFROMORI ? &m_resifromori : buf;
+  buf = type == PIC_ORIRESIFROMORI ? &m_oriresifromori : buf;
 #endif
 
   CHECK( !buf, "Unknown buffer requested" );

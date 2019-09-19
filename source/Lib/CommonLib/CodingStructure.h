@@ -91,6 +91,10 @@ public:
 #if JVET_M0246_AFFINE_AMVR
   CodingStructure *bestCS;
 #endif
+
+
+
+
   Slice           *slice;
 
   UnitScale        unitScale[MAX_NUM_COMPONENT];
@@ -213,6 +217,10 @@ public:
   std::vector<PredictionUnit*> pus;
   std::vector< TransformUnit*> tus;
 
+#if predfromori 
+  std::vector< TransformUnit*> tuoris;
+#endif
+
 private:
 
 #if build_cu_tree
@@ -247,6 +255,7 @@ private:
   PelStorage m_predfromori;
   PelStorage m_recofromori;
   PelStorage m_resifromori;
+  PelStorage m_oriresifromori;
 #endif
 
 
@@ -337,7 +346,7 @@ public:
 
 private:
 #if predfromori
-  public:
+public:
 #endif // predfromori
 
   inline        PelBuf       getBuf(const CompArea &blk,  const PictureType &type);

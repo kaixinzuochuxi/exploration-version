@@ -1526,12 +1526,12 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
 
     string file_dir;
-    bool iswindows = 1;
+    bool iswindows = 0;
     if (iswindows) {
       file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
     }
     else {
-      string date = string("20190729-1");
+      string date = string("20190729-3");
       file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
     }
     // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
@@ -1583,11 +1583,12 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
     if(m_pcRdCost->getLambda()<= oldLambdas[0])
       m_pcRdCost->saveUnadjustedLambda();
+    setUpLambda(pcSlice, newLambdas[0],frameDQP + baseQP);
 #endif
 
 
 #if CTUlevelQPA
-    int currPOC = this->m_pcLib->m_uiNumAllPicCoded;
+    int currPOC = this->m_pcLib->m_uiNumAllPicCoded + this->m_gopID;
     int baseQP = pcSlice->getSliceQpBase();
     int frameDQP = 0;
     int ctuDQP = 0;
@@ -1719,6 +1720,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
 
 #endif
+    
   }
 #endif
   

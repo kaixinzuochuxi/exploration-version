@@ -562,10 +562,10 @@ public:
 
 
   void InterSearch::encodeResAndCalcRdInterCUori(CodingStructure &cs, Partitioner &partitioner, const bool &skipResidual
-    , const bool luma, const bool chroma
+    , const bool luma = true, const bool chroma = true
   );
-    void InterSearch::xEstimateInterResidualQTori(CodingStructure &cs, Partitioner &partitioner, Distortion *puiZeroDist /*= NULL*/
-      , const bool luma, const bool chroma
+    void InterSearch::xEstimateInterResidualQTori(CodingStructure &cs, Partitioner &partitioner, Distortion *puiZeroDist = NULL /*= NULL*/
+      , const bool luma = true, const bool chroma = true
     );
     void xEncodeInterResidualQTori(CodingStructure &cs, Partitioner &partitioner, const ComponentID &compID);
 #endif // predfromori

@@ -744,11 +744,11 @@ void InterPrediction::xPredInterBlkori(const ComponentID & compID, const Predict
 #if JVET_M0147_DMVR
     if (dmvrWidth)
     {
-      refBuf = refPic->getTrueOrigBuf(CompArea(compID, chFmt, offset, Size(dmvrWidth, dmvrHeight)));
+      refBuf = refPic->getBuf(CompArea(compID, chFmt, offset, Size(dmvrWidth, dmvrHeight)),PIC_RECOFROMORI);
     }
     else
 #endif
-      refBuf = refPic->getTrueOrigBuf(CompArea(compID, chFmt, offset, pu.blocks[compID].size()));
+      refBuf = refPic->getBuf(CompArea(compID, chFmt, offset, pu.blocks[compID].size()), PIC_RECOFROMORI);
   }
 
 #if JVET_M0147_DMVR
@@ -1063,7 +1063,7 @@ void InterPrediction::xPredAffineBlkori(const ComponentID & compID, const Predic
         yFrac = iMvScaleTmpVer & 31;
       }
 
-      const CPelBuf refBuf = refPic->getTrueOrigBuf(CompArea(compID, chFmt, pu.blocks[compID].offset(xInt + w, yInt + h), pu.blocks[compID]));
+      const CPelBuf refBuf = refPic->getBuf(CompArea(compID, chFmt, pu.blocks[compID].offset(xInt + w, yInt + h), pu.blocks[compID]),PIC_RECOFROMORI);
       PelBuf &dstBuf = dstPic.bufs[compID];
 
       if (yFrac == 0)

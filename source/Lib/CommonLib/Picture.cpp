@@ -742,9 +742,14 @@ void Picture::create(const ChromaFormat &_chromaFormat, const Size &size, const 
   if( !_decoder )
   {
     M_BUFS( 0, PIC_ORIGINAL ).    create( _chromaFormat, a );
+
+
 #if JVET_M0427_INLOOP_RESHAPER
     M_BUFS( 0, PIC_TRUE_ORIGINAL ). create( _chromaFormat, a );
 #endif
+
+    //M_BUFS(0, PIC_TRUE_ORIGINAL).create(_chromaFormat, a, _maxCUSize, _margin, MEMORY_ALIGN_DEF_SIZE);
+
   }
 
 #if predfromori 
@@ -852,6 +857,12 @@ void Picture::destroyTempBuffers()
     if( t == PIC_RESIDUAL || t == PIC_PREDICTION ) M_BUFS( jId, t ).destroy();
 #if ENABLE_SPLIT_PARALLELISM
     if( t == PIC_RECONSTRUCTION &&       jId > 0 ) M_BUFS( jId, t ).destroy();
+#endif
+#if predfromori
+    if (t == PIC_RESIFROMORI || t == PIC_PREDFROMORI) M_BUFS(jId, t).destroy();
+#if ENABLE_SPLIT_PARALLELISM
+    if (t == PIC_RECOFROMORI && jId > 0) M_BUFS(jId, t).destroy();
+#endif
 #endif
   }
 
@@ -1076,6 +1087,72 @@ void Picture::extendPicBorder()
 
   m_bIsBorderExtended = true;
 }
+
+#if predfromori
+void Picture::extendPicBorderori()
+{
+  //if (m_bIsBorderExtended)
+  //{
+  //  return;
+  //}
+
+  for (int comp = 0; comp < getNumberValidComponents(cs->area.chromaFormat); comp++)
+  {
+    ComponentID compID = ComponentID(comp);
+    PelBuf p = M_BUFS(0, PIC_RECOFROMORI).get(compID);
+    p.copyFrom(M_BUFS(0, PIC_TRUE_ORIGINAL).get(compID));
+    Pel *piTxt = p.bufAt(0, 0);
+    int xmargin = margin >> getComponentScaleX(compID, cs->area.chromaFormat);
+    int ymargin = margin >> getComponentScaleY(compID, cs->area.chromaFormat);
+
+    Pel*  pi = piTxt;
+    // do left and right margins
+    if (cs->sps->getWrapAroundEnabledFlag())
+    {
+      int xoffset = cs->sps->getWrapAroundOffset() >> getComponentScaleX(compID, cs->area.chromaFormat);
+      for (int y = 0; y < p.height; y++)
+      {
+        for (int x = 0; x < xmargin; x++)
+        {
+          pi[-x - 1] = pi[-x - 1 + xoffset];
+          pi[p.width + x] = pi[p.width + x - xoffset];
+        }
+        pi += p.stride;
+      }
+    }
+    else
+    {
+      for (int y = 0; y < p.height; y++)
+      {
+        for (int x = 0; x < xmargin; x++)
+        {
+          pi[-xmargin + x] = pi[0];
+          pi[p.width + x] = pi[p.width - 1];
+        }
+        pi += p.stride;
+      }
+    }
+
+    // pi is now the (0,height) (bottom left of image within bigger picture
+    pi -= (p.stride + xmargin);
+    // pi is now the (-marginX, height-1)
+    for (int y = 0; y < ymargin; y++)
+    {
+      ::memcpy(pi + (y + 1)*p.stride, pi, sizeof(Pel)*(p.width + (xmargin << 1)));
+    }
+
+    // pi is still (-marginX, height-1)
+    pi -= ((p.height - 1) * p.stride);
+    // pi is now (-marginX, 0)
+    for (int y = 0; y < ymargin; y++)
+    {
+      ::memcpy(pi - (y + 1)*p.stride, pi, sizeof(Pel)*(p.width + (xmargin << 1)));
+    }
+  }
+
+  //m_bIsBorderExtended = true;
+}
+#endif
 
 PelBuf Picture::getBuf( const ComponentID compID, const PictureType &type )
 {
