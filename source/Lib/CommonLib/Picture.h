@@ -331,7 +331,7 @@ public:
   }
 
 #if predfromori
-  void Picture::extendPicBorderori();
+  void extendPicBorderori();
 #endif
 };
 

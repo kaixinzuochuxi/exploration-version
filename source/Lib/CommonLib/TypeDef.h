@@ -62,7 +62,7 @@
 #define printresi 0
 
 #define intermediate 0
-#define codingparameters 0
+#define codingparameters 1
 
 #define AdaptiveGOP 0
 
@@ -84,8 +84,13 @@
 #if usecutreeaqp
 #define getseqname 1
 #define dqp_apply_to_low_resolution 1
-#define CTUlevelQPA 0
-#define framelevelQPA 1
+#define CTUlevelQPA 1
+#define framelevelQPA 0
+#define disable_RA_cusize_limit 1 // 0: default, limit cu size to 64; 1: donot limit
+#define disable_QPA_with_auto_chormaQPflag 1 //0: default, when open QPA chormaQPflagwill be opened; 1 QPA without chormaQPflagwill
+#if framelevelQPA
+
+#endif
 
 #endif
 
@@ -97,7 +102,7 @@
 #endif
 
 // build cu tree, print CU level information
-#define build_cu_tree 1
+#define build_cu_tree 0
 /////
 #if build_cu_tree 
 #define disablefast 0
@@ -121,7 +126,9 @@
 #endif
 
 #define predfromori 0
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// DEBUG log
+#define debug20190924 0
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define JVET_M0055_DEBUG_CTU                              1 // DebugCTU encoder debug option

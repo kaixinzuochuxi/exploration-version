@@ -158,11 +158,19 @@ void CABACWriter::end_of_slice()
 
 void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, int (&qps)[2], unsigned ctuRsAddr, bool skipSao /* = false */ )
 {
-  CUCtx cuCtx( qps[CH_L] );
-  Partitioner *partitioner = PartitionerFactory::get( *cs.slice );
+  CUCtx cuCtx(qps[CH_L]);
+  Partitioner *partitioner = PartitionerFactory::get(*cs.slice);
 
-  partitioner->initCtu( area, CH_L, *cs.slice );
-
+  partitioner->initCtu(area, CH_L, *cs.slice);
+#if codingparameters
+  extern bool estbits;
+  if (estbits)
+  {
+    extern coding_parameterscy ctucp,framecp;
+    ctucp.initializeR();
+    ctucp.R_mode = getEstFracBits();
+  }
+#endif
   if( !skipSao )
   {
     sao( *cs.slice, ctuRsAddr );
@@ -196,7 +204,30 @@ void CABACWriter::coding_tree_unit( CodingStructure& cs, const UnitArea& area, i
       qps[CH_C] = cuCtxChroma.qp;
     }
   }
-
+#if codingparameters
+  if (estbits)
+  {
+    extern int lastcuidx;
+  for (int j= lastcuidx;j<cs.cus.size();j++)
+  {
+    auto *cu = cs.cus[j];
+    for (int i = 0; i < MAX_NUM_COMPONENT; i++)
+    {
+      ctucp.R_resi[i] += cu->cucp.R_resi[i];
+      ctucp.D[i] += cu->cucp.D[i];
+    }
+    
+  }
+  lastcuidx = (int)cs.cus.size();
+  ctucp.R_mode = getEstFracBits() - ctucp.R_mode - ctucp.R_resi[0] - ctucp.R_resi[1] - ctucp.R_resi[2];
+  framecp.R_mode += ctucp.R_mode;
+  for (int i = 0; i < MAX_NUM_COMPONENT; i++)
+  {
+    framecp.R_resi[i] += ctucp.R_resi[i];
+    framecp.D[i] += ctucp.D[i];
+  }
+  }
+#endif
   delete partitioner;
 }
 
@@ -372,8 +403,14 @@ void CABACWriter::coding_tree(const CodingStructure& cs, Partitioner& partitione
 {
   const PPS      &pps         = *cs.pps;
   const UnitArea &currArea    = partitioner.currArea();
-  const CodingUnit &cu        = *cs.getCU( currArea.blocks[partitioner.chType], partitioner.chType );
+  //const CodingUnit &cu        = *cs.getCU( currArea.blocks[partitioner.chType], partitioner.chType );
+#if codingparameters
 
+  CodingUnit &cu = (CodingUnit) *cs.getCU(currArea.blocks[partitioner.chType], partitioner.chType);
+  
+#else
+  const CodingUnit &cu = *cs.getCU(currArea.blocks[partitioner.chType], partitioner.chType);
+#endif
   // Reset delta QP coding flag and ChromaQPAdjustemt coding flag
   if( pps.getUseDQP() && partitioner.currDepth <= pps.getMaxCuDQPDepth() )
   {
@@ -701,15 +738,26 @@ void CABACWriter::split_cu_mode_mt(const PartSplit split, const CodingStructure&
 //    void  rqt_root_cbf              ( cu )
 //    void  end_of_ctu                ( cu, cuCtx )
 //================================================================================
-
-void CABACWriter::coding_unit( const CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx )
+#if codingparameters
+void CABACWriter::coding_unit(CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx)
+#else
+void CABACWriter::coding_unit(const CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx)
+#endif
 {
   CodingStructure& cs = *cu.cs;
   cs.chType = partitioner.chType;
   // transquant bypass flag
-  if( cs.pps->getTransquantBypassEnabledFlag() )
+#if codingparameters
+  extern bool estbits;
+  if (estbits)
   {
-    cu_transquant_bypass_flag( cu );
+    cu.cucp.initializeR();
+    cu.cucp.R_mode = getEstFracBits();
+  }
+#endif
+  if (cs.pps->getTransquantBypassEnabledFlag())
+  {
+    cu_transquant_bypass_flag(cu);
   }
 
   // skip flag
@@ -719,48 +767,67 @@ void CABACWriter::coding_unit( const CodingUnit& cu, Partitioner& partitioner, C
   if (!cs.slice->isIntra() && cu.Y().valid())
 #endif
   {
-    cu_skip_flag( cu );
+    cu_skip_flag(cu);
   }
 
 
   // skip data
-  if( cu.skip )
+  if (cu.skip)
   {
-    CHECK( !cu.firstPU->mergeFlag, "Merge flag has to be on!" );
+    CHECK(!cu.firstPU->mergeFlag, "Merge flag has to be on!");
     PredictionUnit&   pu = *cu.firstPU;
-    prediction_unit ( pu );
-    end_of_ctu      ( cu, cuCtx );
+    prediction_unit(pu);
+    end_of_ctu(cu, cuCtx);
+#if codingparameters
+    if (estbits)
+    {
+      pu.cu->cucp.R_mode = getEstFracBits() - cu.cucp.R_mode;
+    }
+
+#endif
     return;
   }
 
   // pcm samples
-  if( CU::isIntra(cu) )
+  if (CU::isIntra(cu))
   {
-    pcm_data( cu, partitioner );
-    if( cu.ipcm )
+    pcm_data(cu, partitioner);
+    if (cu.ipcm)
     {
-      end_of_ctu( cu, cuCtx );
+      end_of_ctu(cu, cuCtx);
+#if codingparameters
+      if (estbits)
+      {
+        cu.firstPU->cu->cucp.R_mode = getEstFracBits() - cu.cucp.R_mode;
+      }
+#endif
       return;
     }
   }
 
   // prediction mode and partitioning data
-  pred_mode ( cu );
+  pred_mode(cu);
 
   extend_ref_line(cu);
 
 #if JVET_M0102_INTRA_SUBPARTITIONS
-  isp_mode( cu );
+  isp_mode(cu);
 #endif
 
   // prediction data ( intra prediction modes / reference indexes + motion vectors )
-  cu_pred_data( cu );
+  cu_pred_data(cu);
 
   // residual data ( coded block flags + transform coefficient levels )
-  cu_residual( cu, partitioner, cuCtx );
+  cu_residual(cu, partitioner, cuCtx);
 
   // end of cu
-  end_of_ctu( cu, cuCtx );
+  end_of_ctu(cu, cuCtx);
+#if codingparameters
+  if (estbits)
+  {
+    cu.firstPU->cu->cucp.R_mode = getEstFracBits() - cu.cucp.R_mode- cu.cucp.R_resi[0] - cu.cucp.R_resi[1] - cu.cucp.R_resi[2];
+}
+#endif
 }
 
 
@@ -1317,8 +1384,12 @@ void CABACWriter::intra_chroma_pred_mode( const PredictionUnit& pu )
   }
 }
 
-
-void CABACWriter::cu_residual( const CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx )
+#if codingparameters
+void CABACWriter::cu_residual( CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx)
+#else
+void CABACWriter::cu_residual(const CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx)
+#endif
+//void CABACWriter::cu_residual( const CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx )
 {
 #if JVET_M0483_IBC
   if (!CU::isIntra(cu))
@@ -1358,6 +1429,27 @@ void CABACWriter::cu_residual( const CodingUnit& cu, Partitioner& partitioner, C
   }
 #else
   transform_tree( *cu.cs, partitioner, cuCtx, chromaCbfs );
+#endif
+
+#if codingparameters
+  if (cu.firstTU == cu.lastTU)
+  {
+    for (int i = 0; i < MAX_NUM_COMPONENT; i++)
+    {
+      cu.cucp.R_resi[i] += cu.firstTU->cu->cucp.R_resi[i];
+    }
+  }
+  else
+  {
+    for (auto tu : TUTraverser(cu.firstTU, cu.lastTU))
+    {
+      for (int i = 0; i < MAX_NUM_COMPONENT; i++)
+      {
+        cu.cucp.R_resi[i] += tu.cu->cucp.R_resi[i];
+      }
+    }
+  }
+
 #endif
 }
 
@@ -2152,9 +2244,19 @@ void CABACWriter::pcm_samples( const TransformUnit& tu )
 //================================================================================
 
 #if JVET_M0102_INTRA_SUBPARTITIONS
-void CABACWriter::transform_tree( const CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, ChromaCbfs& chromaCbfs, const PartSplit ispType, const int subTuIdx )
+#if codingparameters
+void CABACWriter::transform_tree( CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, ChromaCbfs& chromaCbfs, const PartSplit ispType, const int subTuIdx)
 #else
-void CABACWriter::transform_tree( const CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, ChromaCbfs& chromaCbfs )
+void CABACWriter::transform_tree(const CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, ChromaCbfs& chromaCbfs, const PartSplit ispType, const int subTuIdx)
+#endif
+//void CABACWriter::transform_tree( const CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, ChromaCbfs& chromaCbfs, const PartSplit ispType, const int subTuIdx )
+#else
+#if codingparameters
+void CABACWriter::transform_tree( CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, ChromaCbfs& chromaCbfs)
+#else
+void CABACWriter::transform_tree(const CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, ChromaCbfs& chromaCbfs)
+#endif
+//void CABACWriter::transform_tree( const CodingStructure& cs, Partitioner& partitioner, CUCtx& cuCtx, ChromaCbfs& chromaCbfs )
 #endif
 {
 #if JVET_M0140_SBT
@@ -2165,11 +2267,21 @@ void CABACWriter::transform_tree( const CodingStructure& cs, Partitioner& partit
   const UnitArea&       area          = partitioner.currArea();
 #if JVET_M0102_INTRA_SUBPARTITIONS
         int             subTuCounter  = subTuIdx;
-  const TransformUnit&  tu            = *cs.getTU( area.blocks[partitioner.chType].pos(), partitioner.chType, subTuIdx );
+#if codingparameters
+        TransformUnit&  tu = *cs.getTU(area.blocks[partitioner.chType].pos(), partitioner.chType, subTuIdx);
+#else
+        const TransformUnit&  tu = *cs.getTU(area.blocks[partitioner.chType].pos(), partitioner.chType, subTuIdx);
+#endif
+  //const TransformUnit&  tu            = *cs.getTU( area.blocks[partitioner.chType].pos(), partitioner.chType, subTuIdx );
 #else
   const TransformUnit&  tu            = *cs.getTU( area.blocks[partitioner.chType].pos(), partitioner.chType );
 #endif
-  const CodingUnit&     cu            = *tu.cu;
+#if codingparameters
+  CodingUnit&     cu = *tu.cu;
+#else
+  const CodingUnit&     cu = *tu.cu;
+#endif
+  //const CodingUnit&     cu            = *tu.cu;
   const unsigned        trDepth       = partitioner.currTrDepth;
   const bool            split         = ( tu.depth > trDepth );
 #if JVET_M0102_INTRA_SUBPARTITIONS
@@ -2477,8 +2589,12 @@ void CABACWriter::mvd_coding( const Mv &rMvd, uint8_t imv )
 //    void  cu_qp_delta         ( cu )
 //    void  cu_chroma_qp_offset ( cu )
 //================================================================================
-
-void CABACWriter::transform_unit( const TransformUnit& tu, CUCtx& cuCtx, ChromaCbfs& chromaCbfs )
+#if codingparameters
+void CABACWriter::transform_unit( TransformUnit& tu, CUCtx& cuCtx, ChromaCbfs& chromaCbfs)
+#else
+void CABACWriter::transform_unit(const TransformUnit& tu, CUCtx& cuCtx, ChromaCbfs& chromaCbfs)
+#endif
+//void CABACWriter::transform_unit( const TransformUnit& tu, CUCtx& cuCtx, ChromaCbfs& chromaCbfs )
 {
   // data: tu affliated cu
   CodingUnit& cu        = *tu.cu;
@@ -2526,10 +2642,25 @@ void CABACWriter::transform_unit( const TransformUnit& tu, CUCtx& cuCtx, ChromaC
       cu_chroma_qp_offset( cu );
       cuCtx.isChromaQpAdjCoded = true;
     }
-    if( cbfLuma )
+    if (cbfLuma)
     {
       // luma residual coding
-      residual_coding( tu, COMPONENT_Y );
+#if codingparameters
+      extern bool estbits;
+      if (estbits)
+      {
+        uint64_t tempr = getEstFracBits();
+        residual_coding(tu, COMPONENT_Y);
+        cu.cucp.R_resi[COMPONENT_Y] = getEstFracBits() - tempr;
+    }
+      else
+      {
+        residual_coding(tu, COMPONENT_Y);
+      }
+#else
+      residual_coding(tu, COMPONENT_Y);
+#endif
+      
     }
     if( !lumaOnly )
     {
@@ -2542,9 +2673,23 @@ void CABACWriter::transform_unit( const TransformUnit& tu, CUCtx& cuCtx, ChromaC
           cross_comp_pred( tu, compID );
         }
         // residual coding
-        if( cbf[ compID ] )
+        if (cbf[compID])
         {
+#if codingparameters
+          extern bool estbits;
+          if (estbits)
+          {
+            uint64_t temprc = getEstFracBits();
+            residual_coding(tu, compID);
+            cu.cucp.R_resi[compID] = getEstFracBits() - temprc;
+        }
+          else
+          {
+            residual_coding(tu, compID);
+          }
+#else
           residual_coding( tu, compID );
+#endif
         }
       }
     }
@@ -3440,3 +3585,8 @@ void CABACWriter::codeAlfCtuEnableFlag( CodingStructure& cs, uint32_t ctuRsAddr,
 }
 
 //! \}
+
+#if codingparameters
+bool estbits=false;
+
+#endif

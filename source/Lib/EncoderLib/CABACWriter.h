@@ -75,7 +75,6 @@ public:
 
   // coding tree unit (clause 7.3.8.2)
   void        coding_tree_unit          (       CodingStructure&        cs,       const UnitArea&   area,       int (&qps)[2],  unsigned ctuRsAddr,  bool skipSao = false );
-
   // sao (clause 7.3.8.3)
   void        sao                       ( const Slice&                  slice,    unsigned          ctuRsAddr );
   void        sao_block_pars            ( const SAOBlkParam&            saoPars,  const BitDepths&  bitDepths,  bool* sliceEnabled, bool leftMergeAvail, bool aboveMergeAvail, bool onlyEstMergeInfo );
@@ -90,7 +89,12 @@ public:
 #endif
 
   // coding unit (clause 7.3.8.5)
-  void        coding_unit               ( const CodingUnit&             cu,       Partitioner&      pm,         CUCtx& cuCtx );
+  //void        coding_unit               ( const CodingUnit&             cu,       Partitioner&      pm,         CUCtx& cuCtx );
+#if codingparameters
+  void        coding_unit( CodingUnit&             cu, Partitioner&      pm, CUCtx& cuCtx);
+#else
+  void        coding_unit(const CodingUnit&             cu, Partitioner&      pm, CUCtx& cuCtx);
+#endif
   void        cu_transquant_bypass_flag ( const CodingUnit&             cu );
   void        cu_skip_flag              ( const CodingUnit&             cu );
   void        pred_mode                 ( const CodingUnit&             cu );
@@ -105,7 +109,12 @@ public:
   void        intra_chroma_pred_modes   ( const CodingUnit&             cu );
   void        intra_chroma_lmc_mode     ( const PredictionUnit&         pu );
   void        intra_chroma_pred_mode    ( const PredictionUnit&         pu );
-  void        cu_residual               ( const CodingUnit&             cu,       Partitioner&      pm,         CUCtx& cuCtx );
+#if codingparameters
+  void cu_residual(CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx);
+#else
+  void cu_residual(const CodingUnit& cu, Partitioner& partitioner, CUCtx& cuCtx);
+#endif
+  //void        cu_residual               ( const CodingUnit&             cu,       Partitioner&      pm,         CUCtx& cuCtx );
   void        rqt_root_cbf              ( const CodingUnit&             cu );
 #if JVET_M0140_SBT
   void        sbt_mode                  ( const CodingUnit&             cu );
@@ -139,10 +148,20 @@ public:
 
   // transform tree (clause 7.3.8.8)
 #if JVET_M0102_INTRA_SUBPARTITIONS
-  void        transform_tree            ( const CodingStructure&        cs,       Partitioner&      pm,     CUCtx& cuCtx, ChromaCbfs& chromaCbfs, const PartSplit ispType = TU_NO_ISP, const int subTuIdx = -1 );
+#if codingparameters
+  void        transform_tree( CodingStructure&        cs, Partitioner&      pm, CUCtx& cuCtx, ChromaCbfs& chromaCbfs, const PartSplit ispType = TU_NO_ISP, const int subTuIdx = -1);
+#else
+  void        transform_tree(const CodingStructure&        cs, Partitioner&      pm, CUCtx& cuCtx, ChromaCbfs& chromaCbfs, const PartSplit ispType = TU_NO_ISP, const int subTuIdx = -1);
+#endif
+  //void        transform_tree            ( const CodingStructure&        cs,       Partitioner&      pm,     CUCtx& cuCtx, ChromaCbfs& chromaCbfs, const PartSplit ispType = TU_NO_ISP, const int subTuIdx = -1 );
   void        cbf_comp                  ( const CodingStructure&        cs,       bool              cbf,    const CompArea& area, unsigned depth, const bool prevCbCbf = false, const bool useISP = false );
 #else
-  void        transform_tree            ( const CodingStructure&        cs,       Partitioner&      pm,     CUCtx& cuCtx,   ChromaCbfs& chromaCbfs );
+#if codingparameters
+  void        transform_tree( CodingStructure&        cs, Partitioner&      pm, CUCtx& cuCtx, ChromaCbfs& chromaCbfs);
+#else
+  void        transform_tree(const CodingStructure&        cs, Partitioner&      pm, CUCtx& cuCtx, ChromaCbfs& chromaCbfs);
+#endif
+  //void        transform_tree            ( const CodingStructure&        cs,       Partitioner&      pm,     CUCtx& cuCtx,   ChromaCbfs& chromaCbfs );
   void        cbf_comp                  ( const CodingStructure&        cs,       bool              cbf,    const CompArea& area, unsigned depth, const bool prevCbCbf = false );
 #endif
 
@@ -153,7 +172,12 @@ public:
   void        mvd_coding                ( const Mv &rMvd, uint8_t imv );
 #endif
   // transform unit (clause 7.3.8.10)
-  void        transform_unit            ( const TransformUnit&          tu,       CUCtx&            cuCtx,  ChromaCbfs& chromaCbfs );
+#if codingparameters
+  void transform_unit(TransformUnit& tu, CUCtx& cuCtx, ChromaCbfs& chromaCbfs);
+#else
+  void transform_unit(const TransformUnit& tu, CUCtx& cuCtx, ChromaCbfs& chromaCbfs);
+#endif
+  //void        transform_unit            ( const TransformUnit&          tu,       CUCtx&            cuCtx,  ChromaCbfs& chromaCbfs );
   void        cu_qp_delta               ( const CodingUnit&             cu,       int               predQP, const int8_t qp );
   void        cu_chroma_qp_offset       ( const CodingUnit&             cu );
 

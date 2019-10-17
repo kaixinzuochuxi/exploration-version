@@ -234,41 +234,47 @@ public:
   int QP[3];
 
   uint64_t R_mode;
-  uint64_t R_resi;
-  uint64_t R_luma;
-  uint64_t R[MAX_NUM_COMPONENT];
+  //uint64_t R_resi;
+  //uint64_t R_luma;
+  uint64_t R_resi[MAX_NUM_COMPONENT];
   Distortion D[MAX_NUM_COMPONENT];
   
 
   coding_parameterscy() {
     memset(lambda, 0, sizeof(lambda));
     memset(QP, 0, sizeof(QP));
+    memset(R_resi, 0, sizeof(R_resi));
+    memset(D, 0, sizeof(D));
   }
 
   void initialize() {
     memset(lambda, 0, sizeof(lambda));
     memset(QP, 0, sizeof(QP));
     R_mode = 0;
-    R_resi = 0;
+    //R_resi = 0;
     memset(D, 0, sizeof(D));
-    memset(R, 0, sizeof(R));
+    memset(R_resi, 0, sizeof(R_resi));
   }
-
+  void initializeR() {    
+    R_mode = 0;
+    //R_resi = 0;
+    memset(R_resi, 0, sizeof(R_resi));
+  }
   void setlambdas(double luma, double cb, double cr) { lambda[0] = luma; lambda[1] = cb; lambda[2] = cr; }
 
   void setQPs(int QPL, int QPCb, int QPCr) { QP[0] = QPL; QP[1] = QPCb; QP[2] = QPCr; }
 
   //void updateRlumachroma(uint64_t rluma, uint64_t rchroma) { R_luma = rluma; R_chroma = rchroma; }
 
-  void updateRmoderesi(uint64_t rmode, uint64_t rresi) { R_mode = rmode; R_resi = rresi; }
+  //void updateRmoderesi(uint64_t rmode, uint64_t rresi) { R_mode = rmode; R_resi = rresi; }
 
   //void updateDlumachroma(Distortion dluma, Distortion dchroma) { D_luma = dluma; D_chroma = dchroma; }
   coding_parameterscy& operator=(const coding_parameterscy& cp) {
     memcpy(lambda, cp.lambda, sizeof(lambda));
     memcpy(QP, cp.QP, sizeof(QP));
     R_mode = cp.R_mode;
-    R_resi = cp.R_resi;
-    memcpy(R, cp.R, sizeof(R));
+    //R_resi = cp.R_resi;
+    memcpy(R_resi, cp.R_resi, sizeof(R_resi));
     memcpy(D, cp.D, sizeof(D));
     return *this;
   }

@@ -872,4 +872,6 @@ int AdaptiveGOPstart = 0;
 #if codingparameters
 coding_parameterscy framecp;
 coding_parameterscy ctucp;
+uint64_t cu_resibits;
+int lastcuidx;
 #endif

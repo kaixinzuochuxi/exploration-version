@@ -590,12 +590,13 @@ void EncSlice::initEncSlice(Picture* pcPic, const int pocLast, const int pocCurr
 #if W0038_CQP_ADJ
  #if ENABLE_QPA
   m_adaptedLumaQP = -1;
-
+#if useoriaqp
   if ((m_pcCfg->getUsePerceptQPA() || m_pcCfg->getSliceChromaOffsetQpPeriodicity() > 0) && !m_pcCfg->getUseRateCtrl() && rpcSlice->getPPS()->getSliceChromaQpFlag() &&
       (rpcSlice->isIntra() || (m_pcCfg->getSliceChromaOffsetQpPeriodicity() > 0 && (rpcSlice->getPOC() % m_pcCfg->getSliceChromaOffsetQpPeriodicity()) == 0)))
   {
     m_adaptedLumaQP = applyQPAdaptationChroma (pcPic, rpcSlice, m_pcCfg, iQP);
   }
+#endif
  #endif
   if(rpcSlice->getPPS()->getSliceChromaQpFlag())
   {
@@ -1526,12 +1527,12 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
 
     string file_dir;
-    bool iswindows = 0;
+    bool iswindows = 1;
     if (iswindows) {
       file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
     }
     else {
-      string date = string("20190729-3");
+      string date = string("20190919-3");
       file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
     }
     // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
@@ -1623,6 +1624,9 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 #endif
       fctu >> tempQP;
       ctuDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+#if !is_dqp_not_actualqp
+      ctuDQP -= baseQP;
+#endif
       pcPic->m_iOffsetCtu[ctuRsAddr] = (baseQP+ ctuDQP)>MAX_QP? MAX_QP: (baseQP + ctuDQP)<1?1: (baseQP + ctuDQP);
     }
 
@@ -1782,10 +1786,10 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 #if codingparameters 
   extern coding_parameterscy framecp;
   printf("codingparameters:framelevel | ");
-  printf("lambda: %f-%f-%f | ", framecp.lambda[0], framecp.lambda[1], framecp.lambda[2]);
-  printf("QP: %d-%d-%d | ", framecp.QP[0], framecp.QP[1], framecp.QP[2]);
-  printf("D: %lld-%lld-%lld | ", framecp.D[0], framecp.D[1], framecp.D[2]);
-  printf("R: %lld-%lld-%lld-%lld-%lld | " ,framecp.R[0], framecp.R[1], framecp.R[2],framecp.R_mode,framecp.R_resi);
+  printf("lambda: %f,%f,%f | ", framecp.lambda[0], framecp.lambda[1], framecp.lambda[2]);
+  printf("QP: %d,%d,%d | ", framecp.QP[0], framecp.QP[1], framecp.QP[2]);
+  printf("D: %lld,%lld,%lld | ", framecp.D[0], framecp.D[1], framecp.D[2]);
+  printf("R: %lld,%lld,%lld,%lld | " ,framecp.R_resi[0], framecp.R_resi[1], framecp.R_resi[2],framecp.R_mode);
   printf("\n");
 
 #endif
@@ -1918,7 +1922,10 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   checkDisFracMmvd( pcPic, startCtuTsAddr, boundingCtuTsAddr );
 #endif
 
-
+#if codingparameters
+  extern int lastcuidx ;
+  lastcuidx = 0;
+#endif
   // for every CTU in the slice segment (may terminate sooner if there is a byte limit on the slice-segment)
   for( uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++ )
   {
@@ -2048,6 +2055,8 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 
     }
 #if ENABLE_QPA
+
+#if useoriaqp
     else if (pCfg->getUsePerceptQPA() && pcSlice->getPPS()->getUseDQP())
     {
       const int adaptedQP    = pcPic->m_iOffsetCtu[ctuRsAddr];
@@ -2065,6 +2074,28 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       currQP[0] = currQP[1] = adaptedQP;
 
     }
+#endif
+
+#if usecutreeaqp && CTUlevelQPA
+    else if (pCfg->getUsePerceptQPA() && pcSlice->getPPS()->getUseDQP())
+    {
+      const int adaptedQP = pcPic->m_iOffsetCtu[ctuRsAddr];
+      const double newLambda = oldLambda * pow(2.0, double(adaptedQP - iQPIndex) / 3.0);
+      pcPic->m_uEnerHpCtu[ctuRsAddr] = newLambda;
+#if RDOQ_CHROMA_LAMBDA
+      pTrQuant->getLambdas(oldLambdaArray); // save the old lambdas
+      const double chromaLambda = newLambda / pRdCost->getChromaWeight();
+      const double lambdaArray[MAX_NUM_COMPONENT] = { newLambda, chromaLambda, chromaLambda };
+      pTrQuant->setLambdas(lambdaArray);
+#else
+      pTrQuant->setLambda(newLambda);
+#endif
+      pRdCost->setLambda(newLambda, pcSlice->getSPS()->getBitDepths());
+      currQP[0] = currQP[1] = adaptedQP;
+
+    }
+#endif
+
 #endif
 
 #if codingparameters
@@ -2091,11 +2122,12 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
 
 #if JVET_M0055_DEBUG_CTU
-  if (pCfg->getSwitchPOC() != pcPic->poc || ctuRsAddr >= pCfg->getDebugCTU())
+    if (pCfg->getSwitchPOC() != pcPic->poc || ctuRsAddr >= pCfg->getDebugCTU())
 #endif
 #if ENABLE_WPP_PARALLELISM
-    pEncLib->getCuEncoder( dataId )->compressCtu( cs, ctuArea, ctuRsAddr, prevQP, currQP );
+      pEncLib->getCuEncoder(dataId)->compressCtu(cs, ctuArea, ctuRsAddr, prevQP, currQP);
 #else
+   
     m_pcCuEncoder->compressCtu( cs, ctuArea, ctuRsAddr, prevQP, currQP );
 #endif
 
@@ -2104,9 +2136,18 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
 
     pCABACWriter->resetBits();
-    pCABACWriter->coding_tree_unit( cs, ctuArea, prevQP, ctuRsAddr, true );
+    
+#if codingparameters
+    extern bool estbits;
+    estbits = 1;
+    pCABACWriter->coding_tree_unit(cs, ctuArea, prevQP, ctuRsAddr, true);
+    estbits = 0;
+#else
+    pCABACWriter->coding_tree_unit(cs, ctuArea, prevQP, ctuRsAddr, true);
+    //printf("%lld,\n", pCABACWriter->getEstFracBits());
+#endif
     const int numberOfWrittenBits = int( pCABACWriter->getEstFracBits() >> SCALE_BITS );
-
+    
     // Calculate if this CTU puts us over slice bit size.
     // cannot terminate if current slice/slice-segment would be 0 Ctu in size,
     const uint32_t validEndOfSliceCtuTsAddr = ctuTsAddr + (ctuTsAddr == startCtuTsAddr ? 1 : 0);
@@ -2157,8 +2198,12 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
 
 #if !ENABLE_WPP_PARALLELISM
+#if debug20190924
+    int actualBits = numberOfWrittenBits;
+#else
     int actualBits = int(cs.fracBits >> SCALE_BITS);
     actualBits    -= (int)m_uiPicTotalBits;
+#endif
 #endif
     if ( pCfg->getUseRateCtrl() )
     {
@@ -2246,13 +2291,14 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if codingparameters 
     extern coding_parameterscy ctucp;
     
-    printf("codingparameters:ctulevel | ");
-    printf("lambda: %f-%f-%f | ", ctucp.lambda[0], ctucp.lambda[1], ctucp.lambda[2]);
-    printf("QP: %d-%d-%d | ", ctucp.QP[0], ctucp.QP[1], ctucp.QP[2]);
-    printf("D: %lld-%lld-%lld | ", ctucp.D[0], ctucp.D[1], ctucp.D[2]);
-    printf("R: %lld-%lld-%lld-%lld-%lld | ", ctucp.R[0], ctucp.R[1], ctucp.R[2], ctucp.R_mode, ctucp.R_resi);
+   /* printf("codingparameters:ctulevel | ");
+    printf("lambda: %f,%f,%f | ", ctucp.lambda[0], ctucp.lambda[1], ctucp.lambda[2]);
+    printf("QP: %d,%d,%d | ", ctucp.QP[0], ctucp.QP[1], ctucp.QP[2]);
+    printf("D: %lld,%lld,%lld | ", ctucp.D[0], ctucp.D[1], ctucp.D[2]);
+    printf("R: %lld,%lld,%lld,%lld | ", ctucp.R_resi[0], ctucp.R_resi[1], ctucp.R_resi[2], ctucp.R_mode );
     printf("\n");
-
+    */
+    printf(" [%lld,%lld,%lld,%lld],\n", ctucp.R_resi[0], ctucp.R_resi[1], ctucp.R_resi[2], ctucp.R_mode);
 #endif
   }
 

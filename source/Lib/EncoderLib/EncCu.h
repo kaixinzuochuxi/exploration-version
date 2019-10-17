@@ -115,7 +115,14 @@ private:
   InterSearch*          m_pcInterSearch;
   TrQuant*              m_pcTrQuant;
   RdCost*               m_pcRdCost;
+#if codingparameters
+public:
   EncSlice*             m_pcSliceEncoder;
+private:
+#else
+  EncSlice*             m_pcSliceEncoder;
+#endif
+
 
   CABACWriter*          m_CABACEstimator;
   RateCtrl*             m_pcRateCtrl;

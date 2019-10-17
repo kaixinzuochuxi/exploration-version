@@ -64,8 +64,13 @@ private:
   // encoder configuration
   EncCfg*                 m_pcCfg;                              ///< encoder configuration class
 
+#if codingparameters
+public:
   EncLib*                 m_pcLib;
-
+private:
+#else
+  EncLib*                 m_pcLib;
+#endif
   // pictures
   PicList*                m_pcListPic;                          ///< list of pictures
 

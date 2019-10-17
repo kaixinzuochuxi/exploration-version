@@ -1887,6 +1887,7 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
     msg( WARNING, "*************************************************************************\n" );
   }
 
+#if !disable_RA_cusize_limit
  #if QP_SWITCHING_FOR_PARALLEL
   if( ( m_iQP < 38 ) && ( m_iGOPSize > 4 ) && m_bUsePerceptQPA && !m_bUseAdaptiveQP && ( m_iSourceHeight <= 1280 ) && ( m_iSourceWidth <= 2048 ) )
  #else
@@ -1904,7 +1905,7 @@ bool EncAppCfg::parseCfg( int argc, char* argv[] )
     if( ( 1u << m_quadtreeTULog2MaxSize ) > m_uiCTUSize ) m_quadtreeTULog2MaxSize--;
     if( ( 1u << m_tuLog2MaxSize         ) > m_uiCTUSize ) m_tuLog2MaxSize--;
   }
-
+#endif
   const int minCuSize = 1 << MIN_CU_LOG2;
   m_uiMaxCodingDepth = 0;
   while( ( m_uiCTUSize >> m_uiMaxCodingDepth ) > minCuSize )

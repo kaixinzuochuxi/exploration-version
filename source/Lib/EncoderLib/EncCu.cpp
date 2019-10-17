@@ -2005,6 +2005,8 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
 #endif
       m_pcIntraSearch->estIntraPredLumaQT( cu, partitioner, bestCostSoFar );
 
+
+
       useIntraSubPartitions = cu.ispMode != NOT_INTRA_SUBPARTITIONS;
       if( !CS::isDualITree( *tempCS ) )
       {
@@ -2039,6 +2041,24 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
         cu.cs->picture->getPredBuf(cu.Y()).copyFrom(cu.cs->getPredBuf(COMPONENT_Y));
 #endif
       }
+#if codingparameters
+      
+      
+        Pel *reco = (Pel*)xMalloc(Pel, tempCS->getRecoBuf(cu.blocks[0]).area());
+        Pel *org = (Pel*)xMalloc(Pel, tempCS->getOrgBuf(cu.blocks[0]).area());
+        PelBuf reco2 = PelBuf(reco, tempCS->getRecoBuf(cu.blocks[0]).width, tempCS->getRecoBuf(cu.blocks[0]).height);// = tempCS->getRecoBuf(cu.blocks[0]);
+        PelBuf org2 = PelBuf(org, tempCS->getOrgBuf(cu.blocks[0]).width, tempCS->getOrgBuf(cu.blocks[0]).height);// = tempCS->getOrgBuf(cu.blocks[0]);
+        reco2.copyFrom(tempCS->getRecoBuf(cu.blocks[0]));
+        org2.copyFrom(tempCS->getOrgBuf(cu.blocks[0]));
+#if JVET_M0427_INLOOP_RESHAPER
+        reco2.rspSignal(this->m_pcSliceEncoder->m_pcLib->getReshaper()->getInvLUT());
+        org2.rspSignal(this->m_pcSliceEncoder->m_pcLib->getReshaper()->getInvLUT());
+#endif
+        CPelBuf reco1 = reco2;
+        CPelBuf org1 = org2;
+        cu.cucp.D[0] = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org1);
+      
+#endif
     }
 
 
@@ -2049,6 +2069,14 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
 #if JVET_M0102_INTRA_SUBPARTITIONS
       TUIntraSubPartitioner subTuPartitioner( partitioner );
       m_pcIntraSearch->estIntraPredChromaQT( cu, ( !useIntraSubPartitions || ( CS::isDualITree( *cu.cs ) && !isLuma( CHANNEL_TYPE_CHROMA ) ) ) ? partitioner : subTuPartitioner, maxCostAllowedForChroma );
+#if codingparameters
+      CPelBuf reco = tempCS->getRecoBuf(cu.blocks[1]);
+      CPelBuf org = tempCS->getOrgBuf(cu.blocks[1]);
+      cu.cucp.D[1] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
+      reco = tempCS->getRecoBuf(cu.blocks[2]);
+      org = tempCS->getOrgBuf(cu.blocks[2]);
+      cu.cucp.D[2] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
+#endif
       if( useIntraSubPartitions && !cu.ispMode )
       {
         //At this point the temp cost is larger than the best cost. Therefore, we can already skip the remaining calculations
@@ -2070,6 +2098,14 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
       }
 #else
       m_pcIntraSearch->estIntraPredChromaQT( cu, partitioner );
+#if codingparameters
+      CPelBuf reco = tempCS->getRecoBuf(cu.blocks[1]);
+      CPelBuf org = tempCS->getOrgBuf(cu.blocks[1]);
+      cu.cucp.D[1] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
+      reco = tempCS->getRecoBuf(cu.blocks[2]);
+      org = tempCS->getOrgBuf(cu.blocks[2]);
+      cu.cucp.D[2] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
+#endif
 #endif
     }
 
@@ -2110,7 +2146,9 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
     CUCtx cuCtx;
     cuCtx.isDQPCoded = true;
     cuCtx.isChromaQpAdjCoded = true;
+    
     m_CABACEstimator->cu_residual( cu, partitioner, cuCtx );
+    
 
     tempCS->fracBits = m_CABACEstimator->getEstFracBits();
     tempCS->cost     = m_pcRdCost->calcRdCost(tempCS->fracBits, tempCS->dist);

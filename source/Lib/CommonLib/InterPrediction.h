@@ -255,10 +255,10 @@ public:
   void    motionCompensationori(PredictionUnit &pu, PelUnitBuf& predBuf, const RefPicList &eRefPicList = REF_PIC_LIST_X
     , const bool luma = true, const bool chroma = true
   );
-  void InterPrediction::motionCompensationori(CodingUnit &cu, const RefPicList &eRefPicList = REF_PIC_LIST_X
+  void motionCompensationori(CodingUnit &cu, const RefPicList &eRefPicList = REF_PIC_LIST_X
     , const bool luma = true, const bool chroma = true
   );
-  void InterPrediction::motionCompensationori(PredictionUnit &pu, const RefPicList &eRefPicList = REF_PIC_LIST_X /*= REF_PIC_LIST_X*/
+  void motionCompensationori(PredictionUnit &pu, const RefPicList &eRefPicList = REF_PIC_LIST_X /*= REF_PIC_LIST_X*/
     , const bool luma = true, const bool chroma = true
   );
 #endif

@@ -2578,6 +2578,10 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 
       // write various parameter sets
       actualTotalBits += xWriteParameterSets( accessUnit, pcSlice, m_bSeqFirst );
+#if codingparameters
+      extern coding_parameterscy framecp;
+      framecp.R_mode += actualTotalBits << SCALE_BITS;
+#endif
 
       if ( m_bSeqFirst )
       {
@@ -2644,12 +2648,17 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
           }
         }
 
+        ////slice header
         tmpBitsBeforeWriting = m_HLSWriter->getNumberOfWrittenBits();
         m_HLSWriter->codeSliceHeader( pcSlice );
         actualHeadBits += ( m_HLSWriter->getNumberOfWrittenBits() - tmpBitsBeforeWriting );
-
+#if codingparameters
+        extern coding_parameterscy framecp;
+        framecp.R_mode += actualHeadBits << SCALE_BITS;
+#endif
         pcSlice->setFinalized(true);
 
+        ////
         pcSlice->clearSubstreamSizes(  );
         {
           uint32_t numBinsCoded = 0;

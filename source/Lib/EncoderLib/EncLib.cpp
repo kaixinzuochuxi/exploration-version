@@ -1272,7 +1272,7 @@ void EncLib::xInitPPS(PPS &pps, const SPS &sps)
     bUseDQP = true;
   }
 
-#if SHARP_LUMA_DELTA_QP
+#if SHARP_LUMA_DELTA_QP  
   if ( getLumaLevelToDeltaQPMapping().isEnabled() )
   {
     bUseDQP = true;
@@ -1281,12 +1281,16 @@ void EncLib::xInitPPS(PPS &pps, const SPS &sps)
 #if ENABLE_QPA
   if (getUsePerceptQPA() && !bUseDQP)
   {
+#if framelevelQPA && !CTUlevelQPA
+    ;
+#else
     CHECK( m_iMaxCuDQPDepth != 0, "max. delta-QP depth must be zero!" );
 #if dqp_apply_to_low_resolution
-    //bUseDQP = (getBaseQP() < 38) && (getSourceWidth() > 512 || getSourceHeight() > 320);
+    
     bUseDQP = (getBaseQP() < 38);
 #else
     bUseDQP = (getBaseQP() < 38) && (getSourceWidth() > 512 || getSourceHeight() > 320);
+#endif
 #endif
   }
 #endif
@@ -1382,7 +1386,11 @@ void EncLib::xInitPPS(PPS &pps, const SPS &sps)
     }
   }
  #if ENABLE_QPA
+#if !disable_QPA_with_auto_chormaQPflag
   if ((getUsePerceptQPA() || getSliceChromaOffsetQpPeriodicity() > 0) && (getChromaFormatIdc() != CHROMA_400))
+#else
+  if (( getSliceChromaOffsetQpPeriodicity() > 0) && (getChromaFormatIdc() != CHROMA_400))
+#endif
   {
     bChromaDeltaQPEnabled = true;
   }

@@ -488,7 +488,7 @@ protected:
   void xSymmetricMotionEstimation( PredictionUnit& pu, PelUnitBuf& origBuf, Mv& rcMvCurPred, Mv& rcMvTarPred, RefPicList eRefPicList, MvField& rCurMvField, MvField& rTarMvField, Distortion& ruiCost, int gbiIdx );
 
 #if predfromori
-  Distortion InterSearch::xGetSymmetricCostori(PredictionUnit& pu, PelUnitBuf& origBuf, RefPicList eCurRefPicList, const MvField& cCurMvField, MvField& cTarMvField, int gbiIdx);
+  Distortion xGetSymmetricCostori(PredictionUnit& pu, PelUnitBuf& origBuf, RefPicList eCurRefPicList, const MvField& cCurMvField, MvField& cTarMvField, int gbiIdx);
 #endif // predfromori
 
 #endif
@@ -547,7 +547,7 @@ public:
   uint64_t xGetSymbolFracBitsInter  (CodingStructure &cs, Partitioner &partitioner);
 
 #if predfromori
-  Distortion InterSearch::xGetTemplateCostori(const PredictionUnit& pu,
+  Distortion xGetTemplateCostori(const PredictionUnit& pu,
     PelUnitBuf& origBuf,
     PelUnitBuf& predBuf,
     Mv          cMvCand,
@@ -556,15 +556,15 @@ public:
     RefPicList  eRefPicList,
     int         iRefIdx
   );
-  Distortion InterSearch::xGetAffineTemplateCostori(PredictionUnit& pu, PelUnitBuf& origBuf, PelUnitBuf& predBuf, Mv acMvCand[3], int iMVPIdx, int iMVPNum, RefPicList eRefPicList, int iRefIdx);
+  Distortion xGetAffineTemplateCostori(PredictionUnit& pu, PelUnitBuf& origBuf, PelUnitBuf& predBuf, Mv acMvCand[3], int iMVPIdx, int iMVPNum, RefPicList eRefPicList, int iRefIdx);
 
-  Distortion InterSearch::xGetInterPredictionErrorori(PredictionUnit& pu, PelUnitBuf& origBuf, const RefPicList &eRefPicList);
+  Distortion xGetInterPredictionErrorori(PredictionUnit& pu, PelUnitBuf& origBuf, const RefPicList &eRefPicList);
 
 
-  void InterSearch::encodeResAndCalcRdInterCUori(CodingStructure &cs, Partitioner &partitioner, const bool &skipResidual
+  void encodeResAndCalcRdInterCUori(CodingStructure &cs, Partitioner &partitioner, const bool &skipResidual
     , const bool luma = true, const bool chroma = true
   );
-    void InterSearch::xEstimateInterResidualQTori(CodingStructure &cs, Partitioner &partitioner, Distortion *puiZeroDist = NULL /*= NULL*/
+    void xEstimateInterResidualQTori(CodingStructure &cs, Partitioner &partitioner, Distortion *puiZeroDist = NULL /*= NULL*/
       , const bool luma = true, const bool chroma = true
     );
     void xEncodeInterResidualQTori(CodingStructure &cs, Partitioner &partitioner, const ComponentID &compID);
