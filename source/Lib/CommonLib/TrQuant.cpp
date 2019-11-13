@@ -210,8 +210,17 @@ void TrQuant::invTransformNxN( TransformUnit &tu, const ComponentID &compID, Pel
     //{
     //  printf("%d:", tempCoeff.buf[x]);
     //}
-    
+    const SPS&        sps = *tu.cs->sps;
+    const CompArea&   area = tu.blocks[compID];
+    const ChannelType chType = toChannelType(compID);
+    const int         channelBitDepth = sps.getBitDepth(chType);
+    const int         maxLog2TrDynamicRange = sps.getMaxLog2TrDynamicRange(chType);
+    const int         nomTransformShift = getTransformShift(channelBitDepth, area.size(), maxLog2TrDynamicRange);
     memcpy(tu.m_resiwq[compID], tempCoeff.buf, uiWidth*uiHeight * sizeof(TCoeff));
+    for (int i = 0; i < uiWidth*uiHeight; i++)
+    {
+      tu.m_resiwq[compID][i] = tu.m_resiwq[compID][i] >> nomTransformShift;
+    }
 #endif
 #if JVET_M0464_UNI_MTS
     if( isLuma(compID) && tu.mtsIdx == 1 )

@@ -1449,8 +1449,15 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
     string file_dir;
     bool iswindows = 1;
-    if (iswindows) {
+    /*if (iswindows) {
       file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+    }
+    else {
+      string date = string("20190729-1");
+      file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+    }*/
+    if (iswindows) {
+      file_dir = "../code/";
     }
     else {
       string date = string("20190729-1");
@@ -1469,10 +1476,11 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     int baseQP = pcSlice->getSliceQpBase();
     int frameDQP = 0;
     double templambda = 0;
-    ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt"));
+    //ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt"));
+    ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(conf_QP) + string("/frame.txt"));
     if (!fframe)
     {
-      printf("open failed: %s\n", strerror(errno));
+      printf("open failed: %s--%s\n", strerror(errno), (file_dir + to_string(conf_QP) + string(".txt")).c_str());
       //printf("open failed\n");
     }
     for (int tempi = 0; tempi <= currPOC; tempi++)
@@ -1480,35 +1488,48 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       fframe >> templambda;
     }
     //frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
-
-    const double* oldLambdas = pcSlice->getLambdas();
-    //const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
-    //const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
-    double tempQP = 3 * log2(templambda / oldLambdas[0]);
-    frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
-
-    //pcSlice->setLambdas(newLambdas);
-    pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
-    pcSlice->setSliceQpBase(frameDQP + baseQP);
-    setUpLambda(pcSlice, templambda, frameDQP + baseQP);
-    for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
-    {
-#if HEVC_TILES_WPP
-      const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
-#else
-      const uint32_t ctuRsAddr = ctuTsAddr;
-#endif
-      pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
+    if (templambda == 0) {
+      templambda = pcSlice->getLambdas()[0];
     }
+    bool changeqp = 0;
+    if (changeqp)
+    {
+      const double* oldLambdas = pcSlice->getLambdas();
+      //const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
+      //const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
+      double tempQP = 3 * log2(templambda / oldLambdas[0]);
+      frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+
+      //pcSlice->setLambdas(newLambdas);
+      pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
+      pcSlice->setSliceQpBase(frameDQP + baseQP);
+      setUpLambda(pcSlice, templambda, frameDQP + baseQP);
+      for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+      {
+#if HEVC_TILES_WPP
+        const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+        const uint32_t ctuRsAddr = ctuTsAddr;
 #endif
-    if (m_pcRdCost->getLambda() <= oldLambdas[0])
-   m_pcRdCost->saveUnadjustedLambda();
-  }
+        pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
+      }
+#endif
+      if (m_pcRdCost->getLambda() <= oldLambdas[0])
+        m_pcRdCost->saveUnadjustedLambda();
+     }
+    else 
+    {
+      const double* oldLambdas = pcSlice->getLambdas();
+      setUpLambda(pcSlice, templambda, frameDQP + baseQP);
+      m_pcRdCost->saveUnadjustedLambda();
+    }
+    }
+  
 #endif
 #if usecutreeaqp
   if (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && (boundingCtuTsAddr > startCtuTsAddr))
   {
-    int curpoc = pcPic->getPOC();
+    int currPOC = pcPic->getPOC();
     extern string curr_seq_name;
     extern int conf_QP;
     //printf("%s %d\t", curr_seq_name.c_str(), curpoc);
@@ -1527,7 +1548,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
 
     string file_dir;
-    bool iswindows = 1;
+    bool iswindows = 0;
     if (iswindows) {
       file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
     }
@@ -1548,7 +1569,8 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
 #if framelevelQPA
     //int currPOC = pcSlice->getPOC();
-    int currPOC = this->m_pcLib->m_uiNumAllPicCoded+this->m_gopID;
+    //int currPOC = this->m_pcLib->m_uiNumAllPicCoded+this->m_gopID;
+    //printf("%d\n",pcSlice->getPOC());
     int baseQP = pcSlice->getSliceQpBase();
     int frameDQP = 0;
     double tempQP = 0;
@@ -1589,7 +1611,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 
 
 #if CTUlevelQPA
-    int currPOC = this->m_pcLib->m_uiNumAllPicCoded + this->m_gopID;
+    //int currPOC = this->m_pcLib->m_uiNumAllPicCoded + this->m_gopID;
     int baseQP = pcSlice->getSliceQpBase();
     int frameDQP = 0;
     int ctuDQP = 0;
@@ -1783,16 +1805,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     m_lastSliceSegmentEndContextState = m_CABACEstimator->getCtx();//ctx end of dep.slice
   }
 #endif
-#if codingparameters 
-  extern coding_parameterscy framecp;
-  printf("codingparameters:framelevel | ");
-  printf("lambda: %f,%f,%f | ", framecp.lambda[0], framecp.lambda[1], framecp.lambda[2]);
-  printf("QP: %d,%d,%d | ", framecp.QP[0], framecp.QP[1], framecp.QP[2]);
-  printf("D: %lld,%lld,%lld | ", framecp.D[0], framecp.D[1], framecp.D[2]);
-  printf("R: %lld,%lld,%lld,%lld | " ,framecp.R_resi[0], framecp.R_resi[1], framecp.R_resi[2],framecp.R_mode);
-  printf("\n");
 
-#endif
 }
 
 #if JVET_M0255_FRACMMVD_SWITCH
@@ -1997,6 +2010,9 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     
 #if RDOQ_CHROMA_LAMBDA && ENABLE_QPA
     double oldLambdaArray[MAX_NUM_COMPONENT] = {0.0};
+    /////debug
+    pTrQuant->getLambdas(oldLambdaArray);
+    /////
 #endif
     const double oldLambda = pRdCost->getLambda();
     if ( pCfg->getUseRateCtrl() )
@@ -2299,6 +2315,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     printf("\n");
     */
     printf(" [%lld,%lld,%lld,%lld],\n", ctucp.R_resi[0], ctucp.R_resi[1], ctucp.R_resi[2], ctucp.R_mode);
+    //printf("[ %lld,%lld,%lld ],\n ", ctucp.D[0], ctucp.D[1], ctucp.D[2]);
 #endif
   }
 

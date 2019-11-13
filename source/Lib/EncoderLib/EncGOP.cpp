@@ -2654,7 +2654,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         actualHeadBits += ( m_HLSWriter->getNumberOfWrittenBits() - tmpBitsBeforeWriting );
 #if codingparameters
         extern coding_parameterscy framecp;
-        framecp.R_mode += actualHeadBits << SCALE_BITS;
+        framecp.R_mode += (actualHeadBits/8+(actualHeadBits % 8!=0))*8 << SCALE_BITS;
 #endif
         pcSlice->setFinalized(true);
 
@@ -2746,7 +2746,16 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       }
 
       m_pcCfg->setEncodedFlag(iGOPid, true);
+#if codingparameters 
+      extern coding_parameterscy framecp;
+      printf("codingparameters:framelevel | ");
+      printf("lambda: %f,%f,%f | ", framecp.lambda[0], framecp.lambda[1], framecp.lambda[2]);
+      printf("QP: %d,%d,%d | ", framecp.QP[0], framecp.QP[1], framecp.QP[2]);
+      printf("D: %lld,%lld,%lld | ", framecp.D[0], framecp.D[1], framecp.D[2]);
+      printf("R: %lld,%lld,%lld,%lld | ", framecp.R_resi[0], framecp.R_resi[1], framecp.R_resi[2], framecp.R_mode);
+      printf("\n");
 
+#endif
       double PSNR_Y;
       xCalculateAddPSNRs(isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, encTime, snr_conversion, printFrameMSE, &PSNR_Y
                        , isEncodeLtRef

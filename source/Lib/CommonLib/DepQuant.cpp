@@ -799,7 +799,12 @@ namespace DQIntern
     const bool        clipTransformShift    = ( tu.transformSkip[ compID ] && sps.getSpsRangeExtension().getExtendedPrecisionProcessingFlag() );
 #endif
     const int         transformShift        = ( clipTransformShift ? std::max<int>( 0, nomTransformShift ) : nomTransformShift );
-
+#if printoriresi
+    for (int i = 0; i < area.area(); i++)
+    {
+      tu.m_resiwoq[compID][i] = tu.m_resiwoq[compID][i] >> transformShift;
+    }
+#endif
     // quant parameters
     m_QShift                    = QUANT_SHIFT  - 1 + qpPer + transformShift;
     m_QAdd                      = -( ( 3 << m_QShift ) >> 1 );

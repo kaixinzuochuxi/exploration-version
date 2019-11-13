@@ -7278,6 +7278,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
 #if build_cu_tree
     pu.interdist = distortion;
+    pu.dist = distortion;
     // pu.cost = cs.cost;
     pu.interbits = cs.fracBits;
 //#if predfromori
@@ -7444,7 +7445,9 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
   // update with clipped distortion and cost (previously unclipped reconstruction values were used)
   Distortion finalDistortion = 0;
-
+#if build_cu_tree
+  Distortion dist = 0;
+#endif
   for (int comp = 0; comp < numValidComponents; comp++)
   {
     const ComponentID compID = ComponentID(comp);
@@ -7454,7 +7457,9 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
       continue;
     CPelBuf reco = cs.getRecoBuf (compID);
     CPelBuf org  = cs.getOrgBuf  (compID);
-
+#if build_cu_tree
+    CPelBuf pred = cs.getPredBuf(compID);
+#endif
 #if WCG_EXT
 #if JVET_M0427_INLOOP_RESHAPER
     if (m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() || (
@@ -7477,6 +7482,12 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #else
         finalDistortion += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
+#if build_cu_tree
+        tmpRecLuma.copyFrom(reco);
+        tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
+        dist += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
+#endif
+
 #if codingparameters
         cu.cucp.D[compID] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);
 #endif
@@ -7488,6 +7499,9 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
         finalDistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
 #else
         finalDistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#endif
+#if build_cu_tree
+        dist += m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
 #endif
 #if codingparameters
         cu.cucp.D[compID] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);
@@ -7502,6 +7516,9 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #if codingparameters
       cu.cucp.D[compID] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE);
 #endif
+#if build_cu_tree
+      dist += m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+#endif
     }
   }
 
@@ -7514,6 +7531,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #if build_cu_tree
   cu.firstPU->interdist = finalDistortion;
   cu.firstPU->interbits = finalFracBits;
+  cu.firstPU->dist = dist;
 //#if predfromori
 //  cu.firstPU->interdistori = finalDistortionori;
 //  cu.firstPU->interbitsori = finalFracBitsori;
@@ -8731,6 +8749,7 @@ void InterSearch::symmvdCheckBestMvp(
 #if predfromori
       cs.pus[0]->interdistori = oridistortion;
       cs.pus[0]->interbitsori = m_CABACEstimator->getEstFracBits();
+      cs.pus[0]->distori = oridistortion;
 #endif
 #endif
 #if predfromori
@@ -8907,7 +8926,7 @@ void InterSearch::symmvdCheckBestMvp(
 
     // update with clipped distortion and cost (previously unclipped reconstruction values were used)
     Distortion finalDistortionori = 0;
-
+    Distortion distori = 0;
     for (int comp = 0; comp < numValidComponents; comp++)
     {
       const ComponentID compID = ComponentID(comp);
@@ -8917,7 +8936,7 @@ void InterSearch::symmvdCheckBestMvp(
         continue;
       CPelBuf reco = cs.getBuf(*cs.pus[0], PIC_RECOFROMORI).bufs[compID];
       CPelBuf org = cs.getOrgBuf(compID);
-
+      CPelBuf pred = cs.getBuf(*cs.pus[0], PIC_PREDFROMORI).bufs[compID];
 #if WCG_EXT
 #if JVET_M0427_INLOOP_RESHAPER
       if (m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() || (
@@ -8940,6 +8959,13 @@ void InterSearch::symmvdCheckBestMvp(
 #else
           finalDistortionori += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
+          tmpRecLuma.copyFrom(pred);
+          tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
+#if !disableWD
+          distori += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
+#else
+          distori += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#endif
         }
         else
 #endif
@@ -8948,11 +8974,13 @@ void InterSearch::symmvdCheckBestMvp(
 #else
           finalDistortionori += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
+        distori += m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
       }
       else
 #endif
       {
         finalDistortionori += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+        distori += m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
       }
     }
 
@@ -8975,6 +9003,7 @@ void InterSearch::symmvdCheckBestMvp(
 #if predfromori
     cs.pus[0]->interdistori = finalDistortionori;
     cs.pus[0]->interbitsori = finalFracBitsori;
+    cs.pus[0]->distori = distori;
 #endif
     //cu.firstPU->cost = cs.cost;
 #endif

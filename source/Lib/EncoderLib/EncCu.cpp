@@ -519,20 +519,22 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
     Distortion temp = 0;
     for (auto pu : bestCS->pus)
     {
-      printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,bestCS->slice->getPOC()
-        
-        );
+      printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC()
+
+      );
       printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu ",
         pu->intradist, pu->interdist, pu->intrabits, pu->interbits);
 #if predfromori
-      printf(" interdistori:%llu  interbitsori:%llu ",
-        pu->interdistori, pu->interbitsori);
+      printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu ",
+        pu->interdistori, pu->interbitsori, pu->dist,pu->distori);
 #endif
-      printf("\t QP : %d | ", pu->cu->qp);
-      printf("affine:%d*imv:%d*affinetype:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
+      printf("\t QP:%d lambda:%f | ", pu->cu->qp,m_pcRdCost->getLambda());
+      printf("affine:%d*imv:%d*affinetype:%d*skip:%d*cbf:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
         pu->cu->affine,
-        pu->cu->imv, 
+        pu->cu->imv,
         pu->cu->affineType,
+        pu->cu->skip,
+        pu->cu->rootCbf,
 
         pu->mv[0].hor,
         pu->mv[0].ver,
@@ -550,154 +552,216 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         pu->mvAffi[1][1].ver,
         pu->mvAffi[1][2].hor,
         pu->mvAffi[1][2].ver
-        
-        );
+
+      );
       printf("interDir:%d ref:%d*%d ", pu->interDir, pu->refIdx[0], pu->refIdx[1]);
       for (int iRefList = 0; iRefList < 2; iRefList++)
       {
-        printf( "L%d:", iRefList);
+        printf("L%d:", iRefList);
         for (int iRefIndex = 0; iRefIndex < bestCS->slice->getNumRefIdx(RefPicList(iRefList)); iRefIndex++)
         {
-          printf( "%d-", bestCS->slice->getRefPOC(RefPicList(iRefList), iRefIndex) - bestCS->slice->getLastIDR());
+          printf("%d-", bestCS->slice->getRefPOC(RefPicList(iRefList), iRefIndex) - bestCS->slice->getLastIDR());
         }
         //printf( " ");
       }
-      
-#if printoriresi
-      printf(" | ");
 
-      if (pu->cu->firstTU == pu->cu->lastTU)
+#if printoriresi
+      
+      bool resiwoq = 1;
+      bool resiwq = 1;
+      bool spresiwoq = 0;
+      bool spresiwq = 0;
+      bool printinaline = 1;
+
+      if (!printinaline)
       {
-        /*for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+        printf(" | \n");
+        if (pu->cu->firstTU == pu->cu->lastTU)
         {
-          printf("%3d\t", pu->cu->firstTU->m_resiwoq[0][p]);
-          printf("%3d\t", pu->cu->firstTU->m_resiwq[0][p]);
-          printf("%3d\t", pu->cu->firstTU->m_spresiwoq[0][p]);
-          printf("%3d\t\n", pu->cu->firstTU->m_spresiwq[0][p]);
-        }*/
-        for (int y = 0; y < pu->lumaSize().height; y++)
-        {
-          for (int x = 0; x < pu->lumaSize().width; x++)
+          /*for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
           {
-            printf("%4d ", pu->cu->firstTU->m_resiwoq[0][y*pu->lumaSize().width+x]);
-          }
-          printf("\t|\t");
-          for (int x = 0; x < pu->lumaSize().width; x++)
+            printf("%3d\t", pu->cu->firstTU->m_resiwoq[0][p]);
+            printf("%3d\t", pu->cu->firstTU->m_resiwq[0][p]);
+            printf("%3d\t", pu->cu->firstTU->m_spresiwoq[0][p]);
+            printf("%3d\t\n", pu->cu->firstTU->m_spresiwq[0][p]);
+          }*/
+          for (int y = 0; y < pu->lumaSize().height; y++)
           {
-            printf("%4d ", pu->cu->firstTU->m_resiwq[0][y*pu->lumaSize().width + x]);
-          }
-          printf("\t|\t");
-          for (int x = 0; x < pu->lumaSize().width; x++)
-          {
-            printf("%4d ", pu->cu->firstTU->m_spresiwoq[0][y*pu->lumaSize().width + x]);
-          }
-          printf("\t|\t");
-          for (int x = 0; x < pu->lumaSize().width; x++)
-          {
-            printf("%4d", pu->cu->firstTU->m_spresiwq[0][y*pu->lumaSize().width + x]);
+            if (resiwoq)
+            {
+              for (int x = 0; x < pu->lumaSize().width; x++)
+              {
+                printf("%4d ", pu->cu->firstTU->m_resiwoq[0][y*pu->lumaSize().width + x]);
+              }
+              printf("\t|\t");
+            }
+            if (resiwq)
+            {
+              for (int x = 0; x < pu->lumaSize().width; x++)
+              {
+                printf("%4d ", pu->cu->firstTU->m_resiwq[0][y*pu->lumaSize().width + x]);
+              }
+              printf("\t|\t");
+            }
+            if (spresiwoq)
+            {
+              for (int x = 0; x < pu->lumaSize().width; x++)
+              {
+                printf("%4d ", pu->cu->firstTU->m_spresiwoq[0][y*pu->lumaSize().width + x]);
+              }
+              printf("\t|\t");
+            }
+            if (spresiwq)
+            {
+              for (int x = 0; x < pu->lumaSize().width; x++)
+              {
+                printf("%4d", pu->cu->firstTU->m_spresiwq[0][y*pu->lumaSize().width + x]);
+              }
+              printf("\n");
+            }
           }
           printf("\n");
         }
-        printf("\n");
+        else {
+          for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
+          {
+
+            //for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+            //{
+            //  printf("%3d\t", ttu.m_resiwoq[0][p]);
+            //  printf("%3d\t", ttu.m_resiwq[0][p]);
+            //  printf("%3d\t", ttu.m_spresiwoq[0][p]);
+            //  printf("%3d\t\n", ttu.m_spresiwq[0][p]);
+
+            //}
+            for (int y = 0; y < ttu.lheight(); y++)
+            {
+              if (resiwoq)
+              {
+                for (int x = 0; x < ttu.lwidth(); x++)
+                {
+                  printf("%4d ", ttu.m_resiwoq[0][y* ttu.lheight() + x]);
+                }
+                printf("\t|\t");
+              }
+              if (resiwq)
+              {
+                for (int x = 0; x < ttu.lwidth(); x++)
+                {
+                  printf("%4d ", ttu.m_resiwq[0][y* ttu.lheight() + x]);
+                }
+                printf("\t|\t");
+              }
+              if (spresiwoq)
+              {
+                for (int x = 0; x < ttu.lwidth(); x++)
+                {
+                  printf("%4d ", ttu.m_spresiwoq[0][y* ttu.lheight() + x]);
+                }
+                printf("\t|\t");
+              }
+              if (spresiwq)
+              {
+                for (int x = 0; x < ttu.lwidth(); x++)
+                {
+                  printf("%4d ", ttu.m_spresiwq[0][y* ttu.lheight() + x]);
+                }
+                printf("\n");
+              }
+            }
+            printf("\n");
+          }
+        }
+      }
+      else
+      {
+      printf(" | ");
+      if (pu->cu->firstTU == pu->cu->lastTU)
+      {
+        if (resiwoq)
+        {
+          for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+          {
+            printf("%d ", pu->cu->firstTU->m_resiwoq[0][p]);
+
+          }
+          printf(" resiwoq! ");
+        }
+        if (resiwq)
+        {
+          for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+          {
+
+            printf("%d ", pu->cu->firstTU->m_resiwq[0][p]);
+
+          }
+          printf(" resiwq! ");
+        }
+        if (spresiwoq)
+        {
+          for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+          {
+
+            printf("%d ", pu->cu->firstTU->m_spresiwoq[0][p]);
+
+          }
+          printf(" spresiwoq! ");
+        }
+        if (spresiwq)
+        {
+          for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
+          {
+
+            printf("%d ", pu->cu->firstTU->m_spresiwq[0][p]);
+          }
+          printf(" spresiwq! ");
+        }
       }
       else {
         for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
         {
-
-          //for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
-          //{
-          //  printf("%3d\t", ttu.m_resiwoq[0][p]);
-          //  printf("%3d\t", ttu.m_resiwq[0][p]);
-          //  printf("%3d\t", ttu.m_spresiwoq[0][p]);
-          //  printf("%3d\t\n", ttu.m_spresiwq[0][p]);
-
-          //}
-          for (int y = 0; y < ttu.lheight(); y++)
+          if (resiwoq)
           {
-            for (int x = 0; x < ttu.lwidth(); x++)
+            for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
             {
-              printf("%4d ", ttu.m_resiwoq[0][y* ttu.lheight() + x]);
+              printf("%d ", ttu.m_resiwoq[0][p]);
+
             }
-            printf("\t|\t");
-            for (int x = 0; x < ttu.lwidth(); x++)
-            {
-              printf("%4d ", ttu.m_resiwq[0][y* ttu.lheight() + x]);
-            }
-            printf("\t|\t");
-            for (int x = 0; x < ttu.lwidth(); x++)
-            {
-              printf("%4d ", ttu.m_spresiwoq[0][y* ttu.lheight() + x]);
-            }
-            printf("\t|\t");
-            for (int x = 0; x < ttu.lwidth(); x++)
-            {
-              printf("%4d ", ttu.m_spresiwq[0][y* ttu.lheight() + x]);
-            }
-            printf("\n");
+            printf(" resiwoq! ");
           }
-          printf("\n");
+          if (resiwq)
+          {
+            for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+            {
+
+              printf("%d ", ttu.m_resiwq[0][p]);
+
+            }
+            printf(" resiwq! ");
+          }
+          if (spresiwoq)
+          {
+            for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+            {
+
+              printf("%d ", ttu.m_spresiwoq[0][p]);
+
+            }
+            printf(" spresiwoq! ");
+          }
+          if (spresiwq)
+          {
+            for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+            {
+
+              printf("%d ", ttu.m_spresiwq[0][p]);
+            }
+            printf(" spresiwq! ");
+          }
         }
       }
-
-      //if (pu->cu->firstTU == pu->cu->lastTU)
-      //{
-      //  for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
-      //  {
-      //    printf("%d ", pu->cu->firstTU->m_resiwoq[0][p]);
-      //    
-      //  }
-      //  for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
-      //  {
-      //    
-      //    printf("%d ", pu->cu->firstTU->m_resiwq[0][p]);
-      //    
-      //  }
-      //  printf(" | ");
-      //  for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
-      //  {
-      //    
-      //    printf("%d ", pu->cu->firstTU->m_spresiwoq[0][p]);
-      //   
-      //  }
-      //  printf(" | ");
-      //  for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
-      //  {
-
-      //    printf("%d ", pu->cu->firstTU->m_spresiwq[0][p]);
-      //  }
-      //}
-      //else {
-      //  for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
-      //  {
-
-      //    for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
-      //    {
-      //      printf("%d ", ttu.m_resiwoq[0][p]);
-
-      //    }
-      //    printf(" | ");
-      //    for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
-      //    {
-      //      
-      //      printf("%d ", ttu.m_resiwq[0][p]);
-      // 
-      //    }
-      //    printf(" | ");
-      //    for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
-      //    {
-  
-      //      printf("%d ", ttu.m_spresiwoq[0][p]);
-     
-      //    }
-      //    printf(" | ");
-      //    for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
-      //    {
-      //     
-      //      printf("%d ", ttu.m_spresiwq[0][p]);
-      //    }
-      //    printf(" | ");
-      //  }
-      //}
+      }
+      
 #endif
       printf(" |\n");
 
@@ -778,8 +842,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu ",
         pu->intradist, pu->interdist, pu->intrabits, pu->interbits);
 #if predfromori
-      printf(" interdistori:%llu  interbitsori:%llu ",
-         pu->interdistori, pu->interbitsori);
+      printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu ",
+         pu->interdistori, pu->interbitsori, pu->dist,pu->distori);
 #endif
       printf("\t QP : %d | ", pu->cu->qp);
       printf("affine:%d*imv:%d*affinetype:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
@@ -2186,9 +2250,11 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
       if (tempCS->cost < bestCS->cost) {
         cu.firstPU->interdist = bestCS->pus[0]->interdist;
         cu.firstPU->interbits = bestCS->pus[0]->interbits;
+        cu.firstPU->dist = bestCS->pus[0]->dist;
 #if predfromori
         cu.firstPU->interdistori = bestCS->pus[0]->interdistori;
         cu.firstPU->interbitsori = bestCS->pus[0]->interbitsori;
+        cu.firstPU->distori = bestCS->pus[0]->distori;
 #endif
       }
       else {

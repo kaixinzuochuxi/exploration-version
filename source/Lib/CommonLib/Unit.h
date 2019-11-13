@@ -671,8 +671,10 @@ struct InterPredictionData
   //Distortion intradist;
   Distortion interdist;
   uint64_t interbits;
+  Distortion dist;
 #if predfromori
   Distortion interdistori;
+  Distortion distori;
   uint64_t interbitsori;
 #endif
   //double cost;
@@ -766,7 +768,7 @@ struct TransformUnit : public UnitArea
 #endif
 
 #if printoriresi
-  void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq , TCoeff **resiwq, Pel **spresiwoq, Pel **spresiwq);
+  void init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq , TCoeff **resiwq, Pel **spresiwoq, Pel **spresiwq);
 #else
   //void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf);
   void init(TCoeff **coeffs, Pel **pcmbuf);

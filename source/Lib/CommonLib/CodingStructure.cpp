@@ -1049,12 +1049,14 @@ void CodingStructure::useSubStructure( const CodingStructure& subStruct, const C
       //Distortion interdist = ppu->interdist;
 
       pu.interdist = ppu->interdist;
+      pu.dist = ppu->dist;
       pu.intradist = ppu->intradist;
       pu.intrabits = ppu->intrabits;
       pu.interbits = ppu->interbits;
 #if predfromori
       pu.interdistori = ppu->interdistori;
       pu.interbitsori = ppu->interbitsori;
+      pu.distori = ppu->distori;
 #endif
       //pu.cost = cost;
 

@@ -62,7 +62,7 @@
 #define printresi 0
 
 #define intermediate 0
-#define codingparameters 1
+#define codingparameters 0
 
 #define AdaptiveGOP 0
 
@@ -70,22 +70,22 @@
 
 // QPA related
 #define useoriaqp 1
-#define is_dqp_not_actualqp 0 // 1 dqp, should add with baseqp; 0 acutal qp,should not add with base qp
+#define is_dqp_not_actualqp 1 // 1 dqp, should add with baseqp; 0 acutal qp,should not add with base qp
 /////
 #if useoriaqp
 #define usecutreeaqp 0
 #define alambda 0
 #else 
-#define usecutreeaqp 1
+#define usecutreeaqp 0
 #define mbtreeQPA 0
-#define alambda 0
+#define alambda 1
 #endif
 
 #if usecutreeaqp
 #define getseqname 1
 #define dqp_apply_to_low_resolution 1
-#define CTUlevelQPA 1
-#define framelevelQPA 0
+#define CTUlevelQPA 0
+#define framelevelQPA 1
 #define disable_RA_cusize_limit 1 // 0: default, limit cu size to 64; 1: donot limit
 #define disable_QPA_with_auto_chormaQPflag 1 //0: default, when open QPA chormaQPflagwill be opened; 1 QPA without chormaQPflagwill
 #if framelevelQPA
@@ -102,12 +102,12 @@
 #endif
 
 // build cu tree, print CU level information
-#define build_cu_tree 0
+#define build_cu_tree 1
 /////
 #if build_cu_tree 
 #define disablefast 0
-#define printchormacu 1
-#define printoriresi 0
+#define printchormacu 0
+#define printoriresi 1
 #endif
 
 // weighted D
@@ -125,7 +125,7 @@
 #define getseqname 1
 #endif
 
-#define predfromori 0
+#define predfromori 1
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DEBUG log
 #define debug20190924 0
