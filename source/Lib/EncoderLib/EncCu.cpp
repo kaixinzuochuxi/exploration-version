@@ -474,12 +474,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   tempCS->baseQP       = bestCS->baseQP       = currQP[CH_L];
   tempCS->prevQP[CH_L] = bestCS->prevQP[CH_L] = prevQP[CH_L];
 
-#if build_cu_tree
 
-  if (tempCS->area.lx() == 320 && tempCS->area.ly() == 224 && tempCS->slice->getPOC() == 9) {
-    int xxx = 0;
-  }
-#endif
   xCompressCU( tempCS, bestCS, *partitioner
     , tempMotCandLUTs
     , bestMotCandLUTs
@@ -519,23 +514,34 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
     Distortion temp = 0;
     for (auto pu : bestCS->pus)
     {
+	  // location
       printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC()
 
       );
+	  // dist,bits
       printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu ",
         pu->intradist, pu->interdist, pu->intrabits, pu->interbits);
 #if predfromori
       printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu ",
         pu->interdistori, pu->interbitsori, pu->dist,pu->distori);
 #endif
+	  // parameter
       printf("\t QP:%d lambda:%f | ", pu->cu->qp,m_pcRdCost->getLambda());
-      printf("affine:%d*imv:%d*affinetype:%d*skip:%d*cbf:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
-        pu->cu->affine,
-        pu->cu->imv,
-        pu->cu->affineType,
-        pu->cu->skip,
-        pu->cu->rootCbf,
+	  // mode
+	  printf("affine:%d*imv:%d*affinetype:%d*skip:%d*cbf:%d*mhintra:%d*intradir:%lu&%lu*multiRefIdx:%d  ",
+		  pu->cu->affine,
+		  pu->cu->imv,
+		  pu->cu->affineType,
+		  pu->cu->skip,
+		  pu->cu->rootCbf,
+		  pu->mhIntraFlag,
 
+
+		  pu->intraDir[0],
+		  pu->intraDir[1],
+		  pu->multiRefIdx
+		  );
+	  printf(" MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
         pu->mv[0].hor,
         pu->mv[0].ver,
         pu->mv[1].hor,

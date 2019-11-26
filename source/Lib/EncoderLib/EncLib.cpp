@@ -533,6 +533,10 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* cPicYuvTru
     {
       m_cRateCtrl.initRCGOP(m_iNumPicRcvd);
     }
+#if he2017adaptive
+	m_cGOPEncoder.premegop(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut,
+		false, false, snrCSC, m_printFrameMSE, true);
+#endif
     m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut,
       false, false, snrCSC, m_printFrameMSE, true);
     m_cGOPEncoder.setEncodedLTRef(true);
@@ -603,6 +607,50 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* cPicYuvTru
     m_cRateCtrl.initRCGOP( m_iNumPicRcvd );
   }
   
+#if he2017adaptive
+  m_cGOPEncoder.premegop(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut,
+	  false, false, snrCSC, m_printFrameMSE, false);
+//  if (pcPicYuvOrg != NULL)
+//  {
+//	  // get original YUV
+//	  Picture* pcPicCurr = NULL;
+//
+//#if ER_CHROMA_QP_WCG_PPS
+//	  int ppsID = -1; // Use default PPS ID
+//	  if (getWCGChromaQPControl().isEnabled())
+//	  {
+//		  ppsID = getdQPs()[m_iPOCLast / (m_compositeRefEnabled ? 2 : 1) + 1];
+//		  ppsID += (getSwitchPOC() != -1 && (m_iPOCLast + 1 >= getSwitchPOC()) ? 1 : 0);
+//	  }
+//	  xGetNewPicBuffer(rcListPicYuvRecOut,
+//		  pcPicCurr, ppsID);
+//#else
+//	  xGetNewPicBuffer(rcListPicYuvRecOut,
+//		  pcPicCurr, -1); // Uses default PPS ID. However, could be modified, for example, to use a PPS ID as a function of POC (m_iPOCLast+1)
+//#endif
+//
+//	  {
+//		  const PPS *pPPS = (ppsID<0) ? m_ppsMap.getFirstPS() : m_ppsMap.getPS(ppsID);
+//		  const SPS *pSPS = m_spsMap.getPS(pPPS->getSPSId());
+//
+//		  pcPicCurr->M_BUFS(0, PIC_ORIGINAL).swap(*pcPicYuvOrg);
+//#if JVET_M0427_INLOOP_RESHAPER
+//		  pcPicCurr->M_BUFS(0, PIC_TRUE_ORIGINAL).swap(*cPicYuvTrueOrg);
+//#endif
+//
+//		  pcPicCurr->finalInit(*pSPS, *pPPS);
+//	  }
+//
+//	  pcPicCurr->poc = m_iPOCLast;
+//
+//	  // compute image characteristics
+//	  if (getUseAdaptiveQP())
+//	  {
+//		  AQpPreanalyzer::preanalyze(pcPicCurr);
+//	  }
+//  }
+
+#endif
   // compress GOP
   m_cGOPEncoder.compressGOP(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut,
                             false, false, snrCSC, m_printFrameMSE

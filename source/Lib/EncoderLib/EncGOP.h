@@ -289,6 +289,17 @@ protected:
 #if W0038_DB_OPT
   void applyDeblockingFilterParameterSelection( Picture* pcPic, const uint32_t numSlices, const int gopID );
 #endif
+
+
+#if he2017adaptive
+  public:
+
+  void premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
+	  std::list<PelUnitBuf*>& rcListPicYuvRecOut,
+	  bool isField, bool isTff, const InputColourSpaceConversion snr_conversion, const bool printFrameMSE
+	  , bool isEncodeLtRef
+  );
+#endif
 };// END CLASS DEFINITION EncGOP
 
 //! \}
