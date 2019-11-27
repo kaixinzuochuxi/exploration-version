@@ -608,8 +608,13 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* cPicYuvTru
   }
   
 #if he2017adaptive
+  //m_cGOPEncoder.premegop(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut,
+	 // false, false, snrCSC, m_printFrameMSE, false);
+  
   m_cGOPEncoder.premegop(m_iPOCLast, m_iNumPicRcvd, m_cListPic, rcListPicYuvRecOut,
 	  false, false, snrCSC, m_printFrameMSE, false);
+  
+  
 //  if (pcPicYuvOrg != NULL)
 //  {
 //	  // get original YUV

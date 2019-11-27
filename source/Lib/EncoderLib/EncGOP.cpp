@@ -1460,10 +1460,12 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     xGetBuffer( rcListPic, rcListPicYuvRecOut,
                 iNumPicRcvd, iTimeOffset, pcPic, pocCurr, isField );
 	/////
+#if he2017adaptive
 	if (pcPic->slices[0]->getPOC() == 1)
 	{
 		int xxx = 1;
 	}
+#endif
 	/////
     // th this is a hot fix for the choma qp control
     if( m_pcEncLib->getWCGChromaQPControl().isEnabled() && m_pcEncLib->getSwitchPOC() != -1 )
@@ -1610,7 +1612,12 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       pcSlice->setAssociatedIRAPType(m_associatedIRAPType);
       pcSlice->setAssociatedIRAPPOC(m_associatedIRAPPOC);
     }
-
+    /////
+    if (pcSlice->getPOC() == 5)
+    {
+      int xxx = 1;
+    }
+    /////
     if ((pcSlice->checkThatAllRefPicsAreAvailable(rcListPic, pcSlice->getRPS(), false, m_iLastRecoveryPicPOC, m_pcCfg->getDecodingRefreshType() == 3) != 0) || (pcSlice->isIRAP())
       || (m_pcCfg->getEfficientFieldIRAPEnabled() && isField && pcSlice->getAssociatedIRAPType() >= NAL_UNIT_CODED_SLICE_BLA_W_LP && pcSlice->getAssociatedIRAPType() <= NAL_UNIT_CODED_SLICE_CRA && pcSlice->getAssociatedIRAPPOC() == pcSlice->getPOC()+1)
       )
@@ -1787,6 +1794,12 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       }
     }
 #endif
+    /////
+    if (pcSlice->getPOC() == 5)
+    {
+      int xxx = 5;
+    }
+    /////
     if( m_pcCfg->getUseAMaxBT() )
     {
       if( !pcSlice->isIRAP() )
@@ -1847,7 +1860,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     }
 #endif
     xUpdateRasInit( pcSlice );
-
+    //printf("xUpdateRasInit:%d", pcSlice->getPendingRasInit());
     // Do decoding refresh marking if any
 #if COM16_C806_ALF_TEMPPRED_NUM
     if ( pcSlice->getPendingRasInit() || pcSlice->isIDRorBLA() )
@@ -2368,12 +2381,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       m_pcReshaper->setCTUFlag(false);
     }
 #endif
-	/////
-	if (pcSlice->getPOC() == 1)
-	{
-		int xxx = 1;
-	}
-	/////
+
     if( encPic )
     // now compress (trial encode) the various slice segments (slices, and dependent slices)
     {
@@ -2501,7 +2509,12 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       CS::setRefinedMotionField(cs);
 #endif
       DTRACE_UPDATE( g_trace_ctx, ( std::make_pair( "final", 1 ) ) );
-
+      /////
+      if (pcSlice->getPOC() == 5)
+      {
+        int xxx = 5;
+      }
+      /////
       if( pcSlice->getSPS()->getSAOEnabledFlag() )
       {
         bool sliceEnabled[MAX_NUM_COMPONENT];
@@ -2660,9 +2673,9 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         ////slice header
         tmpBitsBeforeWriting = m_HLSWriter->getNumberOfWrittenBits();
 		/////
-		if (pcSlice->getPOC() == 1)
+		if (pcSlice->getPOC() == 5)
 		{
-			int xxx = 1;
+			int xxx = 5;
 		}
 		/////
         m_HLSWriter->codeSliceHeader( pcSlice );
@@ -4683,7 +4696,17 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 	{
 		m_pcCfg->setEncodedFlag(iGOPid, false);
 	}
-	for (int iGOPid = 0; iGOPid < m_iGopSize; iGOPid++)
+	
+  ///
+  int temp_lastraspoc = m_lastRasPoc;
+  int tempbinitamaxbt = m_bInitAMaxBT;
+  
+  bool tempfirst = m_bSeqFirst;
+  
+  ///
+  
+  
+  for (int iGOPid = 0; iGOPid < m_iGopSize; iGOPid++)
 	{
 		if (m_pcCfg->getEfficientFieldIRAPEnabled())
 		{
@@ -4788,6 +4811,13 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 		m_pcSliceEncoder->initEncSlice(pcPic, iPOCLast, pocCurr, iGOPid, pcSlice, isField
 			, isEncodeLtRef
 		);
+    ///
+    Slice* tempslice;
+    m_pcSliceEncoder->initEncSlice(pcPic, iPOCLast, pocCurr, iGOPid, tempslice, isField
+      , isEncodeLtRef
+    );
+    tempslice->copySliceInfo(pcPic->slices[0]);
+    ///
 
 		DTRACE_UPDATE(g_trace_ctx, (std::make_pair("poc", pocCurr)));
 		DTRACE_UPDATE(g_trace_ctx, (std::make_pair("final", 0)));
@@ -4902,7 +4932,12 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 			pcSlice->setAssociatedIRAPType(m_associatedIRAPType);
 			pcSlice->setAssociatedIRAPPOC(m_associatedIRAPPOC);
 		}
-
+    /////
+    if (pcSlice->getPOC() == 5)
+    {
+      int xxx = 1;
+    }
+    /////
 		if ((pcSlice->checkThatAllRefPicsAreAvailable(rcListPic, pcSlice->getRPS(), false, m_iLastRecoveryPicPOC, m_pcCfg->getDecodingRefreshType() == 3) != 0) || (pcSlice->isIRAP())
 			|| (m_pcCfg->getEfficientFieldIRAPEnabled() && isField && pcSlice->getAssociatedIRAPType() >= NAL_UNIT_CODED_SLICE_BLA_W_LP && pcSlice->getAssociatedIRAPType() <= NAL_UNIT_CODED_SLICE_CRA && pcSlice->getAssociatedIRAPPOC() == pcSlice->getPOC() + 1)
 			)
@@ -4912,7 +4947,7 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 			);
 		}
 		//printf("ok");
-		pcSlice->applyReferencePictureSet(rcListPic, pcSlice->getRPS());
+		//pcSlice->applyReferencePictureSet(rcListPic, pcSlice->getRPS());
 
 		if (pcSlice->getTLayer() > 0
 			&& !(pcSlice->getNalUnitType() == NAL_UNIT_CODED_SLICE_RADL_N     // Check if not a leading picture
@@ -5079,6 +5114,12 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 			}
 		}
 #endif
+    /////
+    if (pcSlice->getPOC() == 5)
+    {
+      int xxx = 1;
+    }
+    /////
 		if (m_pcCfg->getUseAMaxBT())
 		{
 			if (!pcSlice->isIRAP())
@@ -5138,8 +5179,10 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 			m_pcSliceEncoder->setEncCABACTableIdx(P_SLICE);
 		}
 #endif
-		xUpdateRasInit(pcSlice);
 
+
+		xUpdateRasInit(pcSlice);
+    //printf("xUpdateRasInit:%d", pcSlice->getPendingRasInit());
 		// Do decoding refresh marking if any
 #if COM16_C806_ALF_TEMPPRED_NUM
 		if (pcSlice->getPendingRasInit() || pcSlice->isIDRorBLA())
@@ -5662,7 +5705,9 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 			m_pcReshaper->setCTUFlag(false);
 		}
 #endif
-
+    /////
+    //const TempCtx ctxStart(m_pcEncLib->getCtxCache());
+    /////
 		if (encPic)
 			// now compress (trial encode) the various slice segments (slices, and dependent slices)
 		{
@@ -5733,12 +5778,6 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 					// prepare for next slice
 					pcSlice = pcPic->slices[uiNumSliceSegments];
 					CHECK(!(pcSlice->getPPS() != 0), "Unspecified error");
-					/////
-					if (pcSlice->getPOC() == 1)
-					{
-						int xxx = 1;
-					}
-					/////
 					pcSlice->copySliceInfo(pcPic->slices[uiNumSliceSegments - 1]);
 					pcSlice->setSliceCurStartCtuTsAddr(curSliceEnd);
 					pcSlice->setSliceBits(0);
@@ -5796,7 +5835,12 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 			CS::setRefinedMotionField(cs);
 #endif
 			DTRACE_UPDATE(g_trace_ctx, (std::make_pair("final", 1)));
-
+      /////
+      if (pcSlice->getPOC() == 5)
+      {
+        int xxx = 1;
+      }
+      /////
 			if (pcSlice->getSPS()->getSAOEnabledFlag())
 			{
 				bool sliceEnabled[MAX_NUM_COMPONENT];
@@ -5873,9 +5917,7 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 				}
 			}
 		}
-		///
-		bool tempfirst = m_bSeqFirst;
-		///
+#if !disablepsnr
 		if (encPic || decPic)
 		{
 			pcSlice = pcPic->slices[0];
@@ -5961,7 +6003,7 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 				////slice header
 				tmpBitsBeforeWriting = m_HLSWriter->getNumberOfWrittenBits();
 				/////
-				if (pcSlice->getPOC() == 1)
+				if (pcSlice->getPOC() == 5)
 				{
 					int xxx = 1;
 				}
@@ -6148,8 +6190,11 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 			fflush(stdout);
 
 		}
-
-
+#endif
+    /////
+    //m_pcEncLib->getCABACEncoder()->getCABACEstimator(pcSlice->getSPS())->getCtx() = ctxStart;
+    //m_pcEncLib->getCABACEncoder()->getCABACEstimator(pcSlice->getSPS())->resetBits();
+    /////
 		DTRACE_UPDATE(g_trace_ctx, (std::make_pair("final", 0)));
 
 		pcPic->reconstructed = true;
@@ -6173,10 +6218,18 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 		pcPic->cs->releaseIntermediateData();
 
 		///
-		m_bSeqFirst = tempfirst;
-
+		
+    ///
+    pcPic->slices[0]->copySliceInfo(tempslice);
+    ///
+    ///
 	} // iGOPid-loop
 
+  ///
+  m_bSeqFirst = tempfirst;
+  m_lastRasPoc = temp_lastraspoc;
+  m_bInitAMaxBT = tempbinitamaxbt;
+  ///
 	delete pcBitstreamRedirect;
 	CHECK(!((m_iNumPicCoded == iNumPicRcvd)), "Unspecified error");
 

@@ -77,6 +77,7 @@
 #define alambda 0
 #define he2017adaptive 1
 #define donotwritenal 1
+#define disablepsnr 0
 #else 
 #define usecutreeaqp 0
 #define mbtreeQPA 0
