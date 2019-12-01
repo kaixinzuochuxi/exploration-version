@@ -66,6 +66,7 @@
 
 #define AdaptiveGOP 0
 
+#define test1 1
 
 
 // QPA related
@@ -75,9 +76,9 @@
 #if useoriaqp
 #define usecutreeaqp 0
 #define alambda 0
-#define he2017adaptive 1
+#define he2017adaptive 0
 #define donotwritenal 1
-#define disablepsnr 0
+#define disablepsnr 1
 #else 
 #define usecutreeaqp 0
 #define mbtreeQPA 0
@@ -105,7 +106,7 @@
 #endif
 
 // build cu tree, print CU level information
-#define build_cu_tree 0
+#define build_cu_tree 1
 /////
 #if build_cu_tree 
 #define disablefast 0
@@ -128,7 +129,7 @@
 #define getseqname 1
 #endif
 
-#define predfromori 1
+#define predfromori 0
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DEBUG log
 #define debug20190924 0
@@ -1478,6 +1479,9 @@ public:
 template<typename T>
 class dynamic_cache
 {
+#if test1
+public:
+#endif
   std::vector<T*> m_cache;
 #if ENABLE_SPLIT_PARALLELISM || ENABLE_WPP_PARALLELISM
   int64_t         m_cacheId;

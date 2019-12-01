@@ -62,6 +62,10 @@ extern recursive_mutex g_cache_mutex;
 #if codingparameters
 #include "CodingStructure.h"
 #endif
+//#if test
+//#include "CommonLib/Buffer.h"
+//#endif
+
 //! \ingroup EncoderLib
 //! \{
 
@@ -744,6 +748,21 @@ void EncSlice::initEncSlice(Picture* pcPic, const int pocLast, const int pocCurr
     rpcSlice->setMaxBTSizeIChroma( rpcSlice->getSPS()->getMaxBTSizeIChroma() );
     rpcSlice->setMaxTTSizeIChroma( rpcSlice->getSPS()->getMaxTTSizeIChroma() );
   }
+
+#if test1
+  Pel avg = rpcSlice->getPic()->getTrueOrigBuf().Y().computeAvg();
+  int stride = rpcSlice->getPic()->getTrueOrigBuf().Y().stride;
+  rpcSlice->slice_sigma = 0;
+  for (int y = 0; y < rpcSlice->getPic()->getTrueOrigBuf().Y().height; y++)
+  {
+    for (int x = 0; x < rpcSlice->getPic()->getTrueOrigBuf().Y().width; x++)
+    {
+      rpcSlice->slice_sigma += (rpcSlice->getPic()->getTrueOrigBuf().Y().buf[y*stride + x]-avg)*(rpcSlice->getPic()->getTrueOrigBuf().Y().buf[y*stride + x]-avg);
+    }
+  }
+  int xxx = 0;
+
+#endif 
 }
 
 
@@ -1939,13 +1958,19 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   extern int lastcuidx ;
   lastcuidx = 0;
 #endif
+
+
   // for every CTU in the slice segment (may terminate sooner if there is a byte limit on the slice-segment)
-  for( uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++ )
+  for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
   {
+#if test1
+    //printf("%d", ctuTsAddr);
+
+#endif 
 #if JVET_M0055_DEBUG_CTU
- #if HEVC_TILES_WPP
-    const int32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap( ctuTsAddr );
- #else
+#if HEVC_TILES_WPP
+    const int32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
     const int32_t ctuRsAddr = ctuTsAddr;
 #endif
 #else
@@ -1959,38 +1984,38 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if HEVC_TILES_WPP
     // update CABAC state
     const uint32_t firstCtuRsAddrOfTile = tileMap.tiles[tileMap.getTileIdxMap(ctuRsAddr)].getFirstCtuRsAddr();
-    const uint32_t tileXPosInCtus       = firstCtuRsAddrOfTile % widthInCtus;
+    const uint32_t tileXPosInCtus = firstCtuRsAddrOfTile % widthInCtus;
 #endif
-    const uint32_t ctuXPosInCtus        = ctuRsAddr % widthInCtus;
-    const uint32_t ctuYPosInCtus        = ctuRsAddr / widthInCtus;
+    const uint32_t ctuXPosInCtus = ctuRsAddr % widthInCtus;
+    const uint32_t ctuYPosInCtus = ctuRsAddr / widthInCtus;
 
-    const Position pos (ctuXPosInCtus * pcv.maxCUWidth, ctuYPosInCtus * pcv.maxCUHeight);
-    const UnitArea ctuArea( cs.area.chromaFormat, Area( pos.x, pos.y, pcv.maxCUWidth, pcv.maxCUHeight ) );
-    DTRACE_UPDATE( g_trace_ctx, std::make_pair( "ctu", ctuRsAddr ) );
+    const Position pos(ctuXPosInCtus * pcv.maxCUWidth, ctuYPosInCtus * pcv.maxCUHeight);
+    const UnitArea ctuArea(cs.area.chromaFormat, Area(pos.x, pos.y, pcv.maxCUWidth, pcv.maxCUHeight));
+    DTRACE_UPDATE(g_trace_ctx, std::make_pair("ctu", ctuRsAddr));
 
 #if JVET_M0055_DEBUG_CTU
-    if( pCfg->getSwitchPOC() != pcPic->poc || -1 == pCfg->getDebugCTU() )
+    if (pCfg->getSwitchPOC() != pcPic->poc || -1 == pCfg->getDebugCTU())
 #endif
-    if ( pcSlice->getSliceType() != I_SLICE && ctuXPosInCtus == 0)
-    {
-      pcSlice->resetMotionLUTs();
-    }
+      if (pcSlice->getSliceType() != I_SLICE && ctuXPosInCtus == 0)
+      {
+        pcSlice->resetMotionLUTs();
+      }
 
 #if ENABLE_WPP_PARALLELISM
-    pcPic->scheduler.wait( ctuXPosInCtus, ctuYPosInCtus );
+    pcPic->scheduler.wait(ctuXPosInCtus, ctuYPosInCtus);
 #endif
 
 #if HEVC_TILES_WPP
     if (ctuRsAddr == firstCtuRsAddrOfTile)
     {
-      pCABACWriter->initCtxModels( *pcSlice );
+      pCABACWriter->initCtxModels(*pcSlice);
       prevQP[0] = prevQP[1] = pcSlice->getSliceQp();
     }
     else if (ctuXPosInCtus == tileXPosInCtus && pEncLib->getEntropyCodingSyncEnabledFlag())
     {
       // reset and then update contexts to the state at the end of the top-right CTU (if within current slice and tile).
-      pCABACWriter->initCtxModels( *pcSlice );
-      if( cs.getCURestricted( pos.offset(pcv.maxCUWidth, -1), pcSlice->getIndependentSliceIdx(), tileMap.getTileIdxMap( pos ), CH_L ) )
+      pCABACWriter->initCtxModels(*pcSlice);
+      if (cs.getCURestricted(pos.offset(pcv.maxCUWidth, -1), pcSlice->getIndependentSliceIdx(), tileMap.getTileIdxMap(pos), CH_L))
       {
         // Top-right is available, we use it.
         pCABACWriter->getCtx() = pEncLib->m_entropyCodingSyncContextState;
@@ -2000,35 +2025,35 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
 
 #if ENABLE_WPP_PARALLELISM
-    if( ctuXPosInCtus == 0 && ctuYPosInCtus > 0 && widthInCtus > 1 && ( pEncLib->getNumWppThreads() > 1 || pEncLib->getEnsureWppBitEqual() ) )
+    if (ctuXPosInCtus == 0 && ctuYPosInCtus > 0 && widthInCtus > 1 && (pEncLib->getNumWppThreads() > 1 || pEncLib->getEnsureWppBitEqual()))
     {
-      pCABACWriter->getCtx() = pEncLib->m_entropyCodingSyncContextStateVec[ctuYPosInCtus-1];  // last line
+      pCABACWriter->getCtx() = pEncLib->m_entropyCodingSyncContextStateVec[ctuYPosInCtus - 1];  // last line
     }
 #else
 #endif
 
-    
+
 #if RDOQ_CHROMA_LAMBDA && ENABLE_QPA
-    double oldLambdaArray[MAX_NUM_COMPONENT] = {0.0};
+    double oldLambdaArray[MAX_NUM_COMPONENT] = { 0.0 };
     /////debug
     pTrQuant->getLambdas(oldLambdaArray);
     /////
 #endif
     const double oldLambda = pRdCost->getLambda();
-    if ( pCfg->getUseRateCtrl() )
+    if (pCfg->getUseRateCtrl())
     {
-      int estQP        = pcSlice->getSliceQp();
+      int estQP = pcSlice->getSliceQp();
       double estLambda = -1.0;
-      double bpp       = -1.0;
+      double bpp = -1.0;
 
-      if( ( pcPic->slices[0]->isIRAP() && pCfg->getForceIntraQP() ) || !pCfg->getLCULevelRC() )
+      if ((pcPic->slices[0]->isIRAP() && pCfg->getForceIntraQP()) || !pCfg->getLCULevelRC())
       {
         estQP = pcSlice->getSliceQp();
       }
       else
       {
         bpp = pRateCtrl->getRCPic()->getLCUTargetBpp(pcSlice->isIRAP());
-        if ( pcPic->slices[0]->isIRAP())
+        if (pcPic->slices[0]->isIRAP())
         {
           estLambda = pRateCtrl->getRCPic()->getLCUEstLambdaAndQP(bpp, pcSlice->getSliceQp(), &estQP);
 
@@ -2036,29 +2061,29 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
         }
         else
         {
-          estLambda = pRateCtrl->getRCPic()->getLCUEstLambda( bpp );
-          estQP     = pRateCtrl->getRCPic()->getLCUEstQP    ( estLambda, pcSlice->getSliceQp() );
+          estLambda = pRateCtrl->getRCPic()->getLCUEstLambda(bpp);
+          estQP = pRateCtrl->getRCPic()->getLCUEstQP(estLambda, pcSlice->getSliceQp());
         }
 
-        estQP     = Clip3( -pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, estQP );
-        
+        estQP = Clip3(-pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, estQP);
+
         pRdCost->setLambda(estLambda, pcSlice->getSPS()->getBitDepths());
         //pRdCost->saveUnadjustedLambda();
 #if RDOQ_CHROMA_LAMBDA
         // set lambda for RDOQ
         const double chromaLambda = estLambda / pRdCost->getChromaWeight();
         const double lambdaArray[MAX_NUM_COMPONENT] = { estLambda, chromaLambda, chromaLambda };
-        pTrQuant->setLambdas( lambdaArray );
+        pTrQuant->setLambdas(lambdaArray);
 
 #if intermediate
         cl.m_cp.setlambda(lambdaArray);
 #endif // intermediate
 #else
-        pTrQuant->setLambda( estLambda );
+        pTrQuant->setLambda(estLambda);
 #endif
       }
 
-      pRateCtrl->setRCQP( estQP );
+      pRateCtrl->setRCQP(estQP);
       //printf("%d\t", estQP);
 #if intermediate
       cl.m_cp.setqp(estQP);
@@ -2066,7 +2091,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       //cl.output_prefix();
       //cl.output_cp_qp();
       //cl.output_cp_lambda(COMPONENT_Y);
-      
+
 #endif // intermediate
 
     }
@@ -2075,18 +2100,18 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if useoriaqp
     else if (pCfg->getUsePerceptQPA() && pcSlice->getPPS()->getUseDQP())
     {
-      const int adaptedQP    = pcPic->m_iOffsetCtu[ctuRsAddr];
-      const double newLambda = oldLambda * pow (2.0, double (adaptedQP - iQPIndex) / 3.0);
+      const int adaptedQP = pcPic->m_iOffsetCtu[ctuRsAddr];
+      const double newLambda = oldLambda * pow(2.0, double(adaptedQP - iQPIndex) / 3.0);
       pcPic->m_uEnerHpCtu[ctuRsAddr] = newLambda;
 #if RDOQ_CHROMA_LAMBDA
-      pTrQuant->getLambdas (oldLambdaArray); // save the old lambdas
+      pTrQuant->getLambdas(oldLambdaArray); // save the old lambdas
       const double chromaLambda = newLambda / pRdCost->getChromaWeight();
-      const double lambdaArray[MAX_NUM_COMPONENT] = {newLambda, chromaLambda, chromaLambda};
-      pTrQuant->setLambdas (lambdaArray);
+      const double lambdaArray[MAX_NUM_COMPONENT] = { newLambda, chromaLambda, chromaLambda };
+      pTrQuant->setLambdas(lambdaArray);
 #else
-      pTrQuant->setLambda (newLambda);
+      pTrQuant->setLambda(newLambda);
 #endif
-      pRdCost->setLambda (newLambda, pcSlice->getSPS()->getBitDepths());
+      pRdCost->setLambda(newLambda, pcSlice->getSPS()->getBitDepths());
       currQP[0] = currQP[1] = adaptedQP;
 
     }
@@ -2125,7 +2150,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 
 
     bool updateGbiCodingOrder = cs.slice->getSliceType() == B_SLICE && ctuTsAddr == startCtuTsAddr;
-    if( updateGbiCodingOrder )
+    if (updateGbiCodingOrder)
     {
       resetGbiCodingOrder(false, cs);
       m_pcInterSearch->initWeightIdxBits();
@@ -2143,7 +2168,156 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if ENABLE_WPP_PARALLELISM
       pEncLib->getCuEncoder(dataId)->compressCtu(cs, ctuArea, ctuRsAddr, prevQP, currQP);
 #else
-   
+
+
+#if test1
+      /////
+      
+
+     int temptest = cs.slice->getNumRefIdx(REF_PIC_LIST_0);
+     int refnumidx0 = cs.slice->getNumRefIdx(REF_PIC_LIST_0);
+     int refnumidx1 = cs.slice->getNumRefIdx(REF_PIC_LIST_1);
+     Picture* tempreflist[NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+     int temprefpoc[NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+     memcpy(tempreflist, cs.slice->m_apcRefPicList,sizeof(tempreflist));
+     memcpy(temprefpoc, cs.slice->m_aiRefPOCList, sizeof(temprefpoc));
+     int offsets[3];
+     memcpy(offsets, cs.m_offsets, sizeof(cs.m_offsets));
+
+     for (int iRefList = 0; iRefList < 2; iRefList++)
+     {
+       RefPicList  eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
+#if JVET_M0483_IBC==0
+        int refPicNumber = cs.sl#ice->getNumRefIdx(eRefPicList);
+        if (cs.slice->getSPS()->getIBCMode() && eRefPicList == REF_PIC_LIST_0)
+        {
+          refPicNumber--;
+        }
+        for (int iRefIdxTemp = 0; iRefIdxTemp < refPicNumber; iRefIdxTemp++)
+#else
+       for (int iRefIdxTemp = 0; iRefIdxTemp < cs.slice->getNumRefIdx(eRefPicList); iRefIdxTemp++)
+#endif
+        {
+          cs.slice->setNumRefIdx(REF_PIC_LIST_0,1) ;
+          cs.slice->setNumRefIdx(REF_PIC_LIST_1,1) ;
+          cs.slice->m_apcRefPicList[0][0] = tempreflist[eRefPicList][iRefIdxTemp];
+          cs.slice->m_aiRefPOCList[0][0] = temprefpoc[eRefPicList][iRefIdxTemp];
+          cs.slice->m_apcRefPicList[1][0] = tempreflist[eRefPicList][iRefIdxTemp];
+          cs.slice->m_aiRefPOCList[1][0] = temprefpoc[eRefPicList][iRefIdxTemp];
+          /////
+          Ctx ctxstart = pCABACWriter->getCtx();
+          auto numcu = cs.cus.size();
+          auto numpu = cs.pus.size();
+          auto numtu = cs.tus.size();
+          auto numcachedcu = cs.m_cuCache.m_cache.size();
+          auto numcachedpu = cs.m_puCache.m_cache.size();
+          auto numcachedtu = cs.m_tuCache.m_cache.size();
+          auto tfracBits = cs.fracBits;
+          Distortion tdist = cs.dist;
+          double tcost = cs.cost;
+#if JVET_M0102_INTRA_SUBPARTITIONS
+          auto tlumaCost = cs.lumaCost;
+#endif
+          if (cs.slice->getPOC() == 2 && ctuTsAddr == 174)
+            int xxx = 1;
+          extern bool skipmerge;
+          skipmerge = 1;
+          m_pcCuEncoder->compressCtu(cs, ctuArea, ctuRsAddr, prevQP, currQP);
+          skipmerge = 0;
+
+#if K0149_BLOCK_STATISTICS
+          getAndStoreBlockStatistics(cs, ctuArea);
+#endif
+
+          pCABACWriter->resetBits();
+          pCABACWriter->coding_tree_unit(cs, ctuArea, prevQP, ctuRsAddr, true);
+          
+          pCABACWriter->getCtx() = ctxstart;
+          //reset cs dist,bits
+          //cs.initStructData();
+          uint32_t numCh = ::getNumberValidChannels(cs.area.chromaFormat);
+          /////
+
+          while (numcu < cs.cus.size())
+          {
+            CodingUnit* cu = cs.cus.back();
+            for (int i = 0; i < numCh; i++)
+            {
+              const CompArea &_selfBlk = cs.area.blocks[i];
+              const CompArea     &_blk = cu->blocks[i];
+              const UnitScale& scale = cs.unitScale[_blk.compID];
+              const Area scaledSelf = scale.scale(_selfBlk);
+              const Area scaledBlk = scale.scale(_blk);
+              unsigned *idxPtr = cs.m_cuIdx[i] + rsAddr(scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width);
+              AreaBuf<uint32_t>(idxPtr, scaledSelf.width, scaledBlk.size()).fill(0);
+            }
+            cs.cus.pop_back();
+
+          }
+          while (numpu < cs.pus.size())
+          {
+            PredictionUnit* pu = cs.pus.back();         
+            for (int i = 0; i < numCh; i++)
+            {
+              const CompArea &_selfBlk = cs.area.blocks[i];
+              const CompArea     &_blk = pu->blocks[i];
+              const UnitScale& scale = cs.unitScale[_blk.compID];
+              const Area scaledSelf = scale.scale(_selfBlk);
+              const Area scaledBlk = scale.scale(_blk);
+              unsigned *idxPtr = cs.m_puIdx[i] + rsAddr(scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width);
+              AreaBuf<uint32_t>(idxPtr, scaledSelf.width, scaledBlk.size()).fill(0);
+            }
+            cs.pus.pop_back();
+
+          }         
+          while (numtu < cs.tus.size())
+          {
+            TransformUnit* tu = cs.tus.back();
+            for (int i = 0; i < numCh; i++)
+            {
+              const CompArea &_selfBlk = cs.area.blocks[i];
+              const CompArea     &_blk = tu->blocks[i];
+              const UnitScale& scale = cs.unitScale[_blk.compID];
+              const Area scaledSelf = scale.scale(_selfBlk);
+              const Area scaledBlk = scale.scale(_blk);
+              unsigned *idxPtr = cs.m_tuIdx[i] + rsAddr(scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width);
+              AreaBuf<uint32_t>(idxPtr, scaledSelf.width, scaledBlk.size()).fill(0);
+            }
+            
+            cs.tus.pop_back();
+          }
+          //while (numcachedcu < cs.m_cuCache.m_cache.size())
+          //  cs.m_cuCache.m_cache.pop_back();
+          //while (numcachedpu < cs.m_puCache.m_cache.size())
+          //  cs.m_puCache.m_cache.pop_back();
+          //while (numcachedtu < cs.m_tuCache.m_cache.size())
+          //  cs.m_tuCache.m_cache.pop_back();
+          memcpy(cs.m_offsets, offsets, sizeof(cs.m_offsets));
+          cs.m_numCUs = (unsigned int )numcu;
+          cs.m_numPUs = (unsigned int)numpu;
+          cs.m_numTUs = (unsigned int)numtu;
+
+          
+          cs.fracBits = tfracBits;
+          cs.dist = tdist;
+          cs.lumaCost = tcost;
+          cs.lumaCost = tlumaCost;
+
+          cs.slice->setNumRefIdx(REF_PIC_LIST_0, refnumidx0) ;
+          cs.slice->setNumRefIdx(REF_PIC_LIST_1, refnumidx1) ;
+
+
+        }
+     }
+     cs.slice->m_apcRefPicList[REF_PIC_LIST_0][0] = tempreflist[REF_PIC_LIST_0][0];
+     cs.slice->m_aiRefPOCList[REF_PIC_LIST_0][0] = temprefpoc[REF_PIC_LIST_0][0];
+     cs.slice->m_apcRefPicList[REF_PIC_LIST_1][0] = tempreflist[REF_PIC_LIST_1][0];
+     cs.slice->m_aiRefPOCList[REF_PIC_LIST_1][0] = temprefpoc[REF_PIC_LIST_1][0];
+
+#endif
+        
+
+
     m_pcCuEncoder->compressCtu( cs, ctuArea, ctuRsAddr, prevQP, currQP );
 #endif
 
@@ -2669,5 +2843,10 @@ double EncSlice::xGetQPValueAccordingToLambda ( double lambda )
 #if getseqname
 string curr_seq_name;
 int conf_QP;
+#endif
+
+#if test1
+
+bool skipmerge = false;
 #endif
 //! \}

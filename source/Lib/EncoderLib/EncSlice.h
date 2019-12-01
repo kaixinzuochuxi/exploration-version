@@ -167,6 +167,8 @@ public:
   void    setEncCABACTableIdx (SliceType b)         { m_encCABACTableIdx = b; }
 private:
   double  xGetQPValueAccordingToLambda ( double lambda );
+
+
 };
 
 //! \}

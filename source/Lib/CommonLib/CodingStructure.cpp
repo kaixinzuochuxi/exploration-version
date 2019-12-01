@@ -371,7 +371,11 @@ const TransformUnit * CodingStructure::getTU( const Position &pos, const Channel
 
 CodingUnit& CodingStructure::addCU( const UnitArea &unit, const ChannelType chType )
 {
+//#if test1
+  //CodingUnit *cu = new CodingUnit();
+//#else
   CodingUnit *cu = m_cuCache.get();
+//#endif
 #if codingparameters
   if (cu->blocks.size()==0)
   int xxx = 0;
@@ -422,7 +426,9 @@ CodingUnit& CodingStructure::addCU( const UnitArea &unit, const ChannelType chTy
     const Area scaledSelf  = scale.scale( _selfBlk );
     const Area scaledBlk   = scale.scale(     _blk );
     unsigned *idxPtr       = m_cuIdx[i] + rsAddr( scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width );
+//#if !test1
     CHECK( *idxPtr, "Overwriting a pre-existing value, should be '0'!" );
+//#endif
     AreaBuf<uint32_t>( idxPtr, scaledSelf.width, scaledBlk.size() ).fill( idx );
   }
 
@@ -431,7 +437,11 @@ CodingUnit& CodingStructure::addCU( const UnitArea &unit, const ChannelType chTy
 
 PredictionUnit& CodingStructure::addPU( const UnitArea &unit, const ChannelType chType )
 {
+//#if test1
+  //PredictionUnit *pu = new PredictionUnit();
+//#else
   PredictionUnit *pu = m_puCache.get();
+//#endif
   
   pu->UnitArea::operator=( unit );
   pu->initData();
@@ -484,7 +494,9 @@ PredictionUnit& CodingStructure::addPU( const UnitArea &unit, const ChannelType 
     const Area scaledSelf  = scale.scale( _selfBlk );
     const Area scaledBlk   = scale.scale(     _blk );
     unsigned *idxPtr       = m_puIdx[i] + rsAddr( scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width );
+//#if !test1
     CHECK( *idxPtr, "Overwriting a pre-existing value, should be '0'!" );
+//#endif
     AreaBuf<uint32_t>( idxPtr, scaledSelf.width, scaledBlk.size() ).fill( idx );
   }
 
@@ -493,7 +505,11 @@ PredictionUnit& CodingStructure::addPU( const UnitArea &unit, const ChannelType 
 
 TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType chType )
 {
+//#if test1
+  //TransformUnit *tu = new TransformUnit();
+//#else
   TransformUnit *tu = m_tuCache.get();
+//#endif
 
   tu->UnitArea::operator=( unit );
   tu->initData();
@@ -581,9 +597,9 @@ TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType c
         const Area scaledBlk   = scale.scale(     _blk );
 #endif
         unsigned *idxPtr       = m_tuIdx[i] + rsAddr( scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width );
-
+//#if !test1
         CHECK( *idxPtr, "Overwriting a pre-existing value, should be '0'!" );
-        
+//#endif
         AreaBuf<uint32_t>( idxPtr, scaledSelf.width, scaledBlk.size() ).fill( idx );
       }
     }

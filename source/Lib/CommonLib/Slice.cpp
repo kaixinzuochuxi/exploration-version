@@ -234,6 +234,10 @@ void Slice::initSlice()
   m_cabacWinUpdateMode   = 0;
   m_enableTMVPFlag       = true;
   resetMotionLUTs();
+
+#if test1
+  slice_sigma = 0;
+#endif
 }
 
 void Slice::setDefaultClpRng( const SPS& sps )
