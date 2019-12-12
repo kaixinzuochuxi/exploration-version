@@ -497,10 +497,16 @@ void PredictionUnit::initData()
   //cost = MAX_DOUBLE;
   interbits = 0;
   intrabits = 0;
+  orisigma = 0;
+  refsigma0 = 0;
+  refsigma1 = 0;
+
 #if predfromori
   interdistori = UINT32_MAX;
   interbitsori = 0;
   distori = UINT32_MAX;
+  reforisigma0 = 0;
+  reforisigma1 = 0;
 #endif
 #endif
 }

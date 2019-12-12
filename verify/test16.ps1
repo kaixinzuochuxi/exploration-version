@@ -1,0 +1,10 @@
+
+start powershell "..\bin\test.exe  -c  D:/Projects/data/cfg_VTM4_0/encoder_ra16_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballPass.cfg -i D:/Projects/data/test_seq/HEVC/BasketballPass_416x240_50.yuv -f 80 -q 37 | tee ./test/BasketballPass_ra.txt"
+start powershell "..\bin\test.exe  -c  D:/Projects/data/cfg_VTM4_0/encoder_ldb16_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballPass.cfg -i D:/Projects/data/test_seq/HEVC/BasketballPass_416x240_50.yuv -f 80 -q 37 | tee ./test/BasketballPass_ldb.txt"
+#..\bin\test.exe  -c  D:/Projects/data/cfg_VTM4_0/encoder_randomaccess_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballPass.cfg -i D:/Projects/data/test_seq/HEVC/BasketballPass_416x240_50.yuv -f 80 -q 37 | tee ./test/BasketballPass_ra.txt
+#..\bin\test.exe  -c  D:/Projects/data/cfg_VTM4_0/encoder_lowdelay_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballPass.cfg -i D:/Projects/data/test_seq/HEVC/BasketballPass_416x240_50.yuv -f 80 -q 37 | tee ./test/BasketballPass_ra.txt
+
+start powershell "..\bin\ref.exe  -c  D:/Projects/data/cfg_VTM4_0/encoder_ra16_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballPass.cfg -i D:/Projects/data/test_seq/HEVC/BasketballPass_416x240_50.yuv -f 80 -q 37 | tee ./ref/BasketballPass_ra.txt"
+start powershell "..\bin\ref.exe  -c  D:/Projects/data/cfg_VTM4_0/encoder_ldb16_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballPass.cfg -i D:/Projects/data/test_seq/HEVC/BasketballPass_416x240_50.yuv -f 80 -q 37 | tee ./ref/BasketballPass_ldb.txt"
+#..\bin\ref.exe  -c  D:/Projects/data/cfg_VTM4_0/encoder_randomaccess_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballPass.cfg -i D:/Projects/data/test_seq/HEVC/BasketballPass_416x240_50.yuv -f 80 -q 37 | tee ./ref/BasketballPass_ra.txt
+#..\bin\ref.exe  -c  D:/Projects/data/cfg_VTM4_0/encoder_lowdelay_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballPass.cfg -i D:/Projects/data/test_seq/HEVC/BasketballPass_416x240_50.yuv -f 80 -q 37 | tee ./ref/BasketballPass_ra.txt#

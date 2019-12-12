@@ -168,6 +168,10 @@ public:
 private:
   double  xGetQPValueAccordingToLambda ( double lambda );
 
+#if test1
+  public:
+    void premeslice(Picture* pcPic, const bool bCompressEntireSlice, const bool bFastDeltaQP);
+#endif
 
 };
 

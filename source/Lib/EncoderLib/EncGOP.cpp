@@ -1506,7 +1506,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     //Set Frame/Field coding
     pcPic->fieldPic = isField;
 #endif
-#if test1
+#if test1 
     PicList::iterator        iterPic = rcListPic.begin();
     while (iterPic != rcListPic.end())
     {
@@ -2418,6 +2418,9 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       {
 
         m_pcSliceEncoder->precompressSlice( pcPic );
+#if test1
+        m_pcSliceEncoder->premeslice(pcPic, false, false);
+#endif
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
         
 

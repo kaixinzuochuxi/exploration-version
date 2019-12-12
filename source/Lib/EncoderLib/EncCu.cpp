@@ -486,7 +486,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #if build_cu_tree
 #if test1
   extern bool skipmerge;
-  if (!skipmerge)
+  //if (!skipmerge)
 #endif
   {
     char *s[] = {
@@ -526,12 +526,291 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC()
 
       );
-      // dist,bits
-      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu ",
-        pu->intradist, pu->interdist, pu->intrabits, pu->interbits);
+
+      ///// compute sigma
+      pu->orisigma = 0;
+      pu->refsigma0 = 0;
+      pu->refsigma1 = 0;
+      auto pbuf=pu->cs->picture->getTrueOrigBuf(pu->blocks[0]);
+      int x = pu->lx();
+      int y = pu->ly();
+
+      if (pu->cs->slice->getPOC() == 1)
+        int xxx = 1;
+      /////orisigma
+      auto avg = pbuf.computeAvg();
+      for (int ly = 0; ly < pu->blocks[0].height; ly++)
+        for (int lx = 0; lx < pu->blocks[0].width; lx++)
+          pu->orisigma += (pbuf.at(lx, ly) - avg)*(pbuf.at(lx, ly) - avg);
+      ///// ref0
+      double avgofref = 0;
+      if (pu->refIdx[0] != -1)
+      {
+        auto prefbuf0 = pu->cs->slice->getRefPic(REF_PIC_LIST_0, pu->refIdx[0])->getRecoBuf().Y();
+        
+        ///// non affine
+        if (pu->cu->affine == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 1/16 : 0.25;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+              int curx = x + lx + int(pu->mv[0].hor * mvscale);
+              int cury = y + ly + int(pu->mv[0].ver * mvscale);
+              avgofref += prefbuf0.at(curx, cury);
+              pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+              
+            }
+          pu->refsigma0-= avgofref* avgofref/ pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else if (pu->cu->affineType == 0)
+        {
+          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[0][1].hor- pu->mvAffi[0][0].hor)/ double(pu->blocks[0].width)*(x+lx)
+                + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[0][0].hor)              
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[0][0].ver)
+                * mvscale);
+              avgofref += prefbuf0.at(curx, cury);
+              pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->refsigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else
+        {
+          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[0][1].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][2].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[0][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][2].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[0][0].ver)
+                * mvscale);
+              avgofref += prefbuf0.at(curx, cury);
+              pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->refsigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+      }
+        
+      ///// ref1
+      avgofref = 0;
+      if (pu->refIdx[1] != -1)
+      {
+        auto prefbuf1 = pu->cs->slice->getRefPic(REF_PIC_LIST_1, pu->refIdx[1])->getRecoBuf().Y();
+        ///// non affine
+        if (pu->cu->affine == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 1 / 16 : 0.25;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+              int curx = x + lx + int(pu->mv[1].hor * mvscale);
+              int cury = y + ly + int(pu->mv[1].ver * mvscale);
+              avgofref += prefbuf1.at(curx, cury);
+              pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->refsigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else if (pu->cu->affineType == 0)
+        {
+          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[1][1].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[1][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[1][0].ver)
+                * mvscale);
+              avgofref += prefbuf1.at(curx, cury);
+              pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->refsigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else
+        {
+          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[1][1].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][2].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[1][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][2].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[1][0].ver)
+                * mvscale);
+              avgofref += prefbuf1.at(curx, cury);
+              pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->refsigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+      }
+
 #if predfromori
-      printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu ",
-        pu->interdistori, pu->interbitsori, pu->dist, pu->distori);
+      pu->reforisigma0 = 0;
+      pu->reforisigma1 = 0;
+
+      ///// ref0
+      avgofref = 0;
+      if (pu->refIdx[0] != -1)
+      {
+        auto prefbuf0 = pu->cs->slice->getRefPic(REF_PIC_LIST_0, pu->refIdx[0])->getTrueOrigBuf().Y();
+
+        ///// non affine
+        if (pu->cu->affine == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 1 / 16 : 0.25;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+              int curx = x + lx + int(pu->mv[0].hor * mvscale);
+              int cury = y + ly + int(pu->mv[0].ver * mvscale);
+              avgofref += prefbuf0.at(curx, cury);
+              pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else if (pu->cu->affineType == 0)
+        {
+          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[0][1].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[0][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[0][0].ver)
+                * mvscale);
+              avgofref += prefbuf0.at(curx, cury);
+              pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else
+        {
+          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[0][1].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][2].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[0][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][2].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[0][0].ver)
+                * mvscale);
+              avgofref += prefbuf0.at(curx, cury);
+              pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+      }
+
+      ///// ref1
+      avgofref = 0;
+      if (pu->refIdx[1] != -1)
+      {
+        auto prefbuf1 = pu->cs->slice->getRefPic(REF_PIC_LIST_1, pu->refIdx[1])->getTrueOrigBuf().Y();
+        ///// non affine
+        if (pu->cu->affine == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 1 / 16 : 0.25;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+              int curx = x + lx + int(pu->mv[1].hor * mvscale);
+              int cury = y + ly + int(pu->mv[1].ver * mvscale);
+              avgofref += prefbuf1.at(curx, cury);
+              pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else if (pu->cu->affineType == 0)
+        {
+          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[1][1].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[1][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[1][0].ver)
+                * mvscale);
+              avgofref += prefbuf1.at(curx, cury);
+              pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else
+        {
+          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[1][1].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][2].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[1][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][2].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[1][0].ver)
+                * mvscale);
+              avgofref += prefbuf1.at(curx, cury);
+              pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+      }
+
+#endif
+      // dist,bits
+      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu orisigma:%.2f refsigma0:%.2f refsigma1:%.2f",
+        pu->intradist, pu->interdist, pu->intrabits, pu->interbits,pu->orisigma,pu->refsigma0,pu->refsigma1);
+#if predfromori
+      printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu reforisigma0:%.2f reforisigma1:%.2f",
+        pu->interdistori, pu->interbitsori, pu->dist, pu->distori,pu->reforisigma0,pu->reforisigma1);
 #endif
       // parameter
       printf("\t QP:%d lambda:%f | ", pu->cu->qp, m_pcRdCost->getLambda());

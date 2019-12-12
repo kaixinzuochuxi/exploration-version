@@ -66,9 +66,10 @@
 
 #define AdaptiveGOP 0
 
-#define test1 1
+#define test1 0
 
-
+/////QPF
+#define QPfactor 1
 // QPA related
 #define useoriaqp 1
 #define is_dqp_not_actualqp 1 // 1 dqp, should add with baseqp; 0 acutal qp,should not add with base qp
@@ -111,7 +112,7 @@
 #if build_cu_tree 
 #define disablefast 0
 #define printchormacu 0
-#define printoriresi 1
+#define printoriresi 0
 #endif
 
 // weighted D
@@ -129,7 +130,7 @@
 #define getseqname 1
 #endif
 
-#define predfromori 0
+#define predfromori 1
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DEBUG log
 #define debug20190924 0
