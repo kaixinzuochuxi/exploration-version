@@ -1506,7 +1506,19 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     //Set Frame/Field coding
     pcPic->fieldPic = isField;
 #endif
+#if test1 
+    PicList::iterator        iterPic = rcListPic.begin();
+    while (iterPic != rcListPic.end())
+    {
+      if ((*iterPic)->getPOC() == pocCurr)
+      {
+        (*iterPic)->slice_sigma= pcSlice->slice_sigma;
+        break;
+      }
+      iterPic++;
+    }
 
+#endif
     int pocBits = pcSlice->getSPS()->getBitsForPOC();
     int pocMask = (1 << pocBits) - 1;
     pcSlice->setLastIDR(m_iLastIDR & ~pocMask);
@@ -2406,6 +2418,9 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       {
 
         m_pcSliceEncoder->precompressSlice( pcPic );
+#if test1
+        m_pcSliceEncoder->premeslice(pcPic, false, false);
+#endif
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
         
 
@@ -5917,7 +5932,7 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 				}
 			}
 		}
-#if !disablepsnr
+
 		if (encPic || decPic)
 		{
 			pcSlice = pcPic->slices[0];
@@ -6114,24 +6129,26 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 			printf("\n");
 
 #endif
+#if !disablepsnr
 			double PSNR_Y;
 			xCalculateAddPSNRs(isField, isTff, iGOPid, pcPic, accessUnit, rcListPic, encTime, snr_conversion, printFrameMSE, &PSNR_Y
 				, isEncodeLtRef
 			);
 
-			// Only produce the Green Metadata SEI message with the last picture.
+			 //Only produce the Green Metadata SEI message with the last picture.
 			if (m_pcCfg->getSEIGreenMetadataInfoSEIEnable() && pcSlice->getPOC() == (m_pcCfg->getFramesToBeEncoded() - 1))
 			{
 				SEIGreenMetadataInfo *seiGreenMetadataInfo = new SEIGreenMetadataInfo;
 				m_seiEncoder.initSEIGreenMetadataInfo(seiGreenMetadataInfo, (uint32_t)(PSNR_Y * 100 + 0.5));
 				trailingSeiMessages.push_back(seiGreenMetadataInfo);
 			}
+#endif
 #if !donotwritenal
 			xWriteTrailingSEIMessages(trailingSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS());
 #endif
-
+#if !disablepsnr
 			printHash(m_pcCfg->getDecodedPictureHashSEIType(), digestStr);
-
+#endif
 //			if (m_pcCfg->getUseRateCtrl())
 //			{
 //				double avgQP = m_pcRateCtrl->getRCPic()->calAverageQP();
@@ -6181,16 +6198,18 @@ void EncGOP::premegop(int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 #if !donotwritenal
 			xWriteLeadingSEIMessages(leadingSeiMessages, duInfoSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS(), duData);
 			xWriteDuSEIMessages(duInfoSeiMessages, accessUnit, pcSlice->getTLayer(), pcSlice->getSPS(), duData);
+
+      m_AUWriterIf->outputAU(accessUnit);
 #endif
 
-			//m_AUWriterIf->outputAU(accessUnit);
 
+#if !disablepsnr
 			msg(NOTICE, "\n");
-
+#endif
 			fflush(stdout);
 
 		}
-#endif
+
     /////
     //m_pcEncLib->getCABACEncoder()->getCABACEstimator(pcSlice->getSPS())->getCtx() = ctxStart;
     //m_pcEncLib->getCABACEncoder()->getCABACEstimator(pcSlice->getSPS())->resetBits();

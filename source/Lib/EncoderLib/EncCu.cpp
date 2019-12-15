@@ -55,6 +55,9 @@
 #include <mutex>
 extern std::recursive_mutex g_cache_mutex;
 #endif
+#if test1
+#include "EncSlice.h"
+#endif
 
 
 
@@ -480,7 +483,13 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
     , bestMotCandLUTs
   );
   
+  int a[5] = { 1 };
 #if build_cu_tree
+#if test1
+  extern bool skipmerge;
+  //if (!skipmerge)
+#endif
+  {
     char *s[] = {
       "MODE_INTER" ,     ///< inter-prediction mode
       "MODE_INTRA" ,     ///< intra-prediction mode
@@ -491,57 +500,370 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       NUMBER_OF_PREDICTION_MODES ,
   #endif
     };
-  //for (auto pu : bestCS->pus)
-  //{
-  //  printf("(%4d* %4d* %4d* %4d*) %s intraDir:%2d interDir:%3d skip:%d merge:%d mergeIdx:%3d affine:%d\tmhIntraFlag:%d\t (MV: %d %d\t%d %d) (ref: %d %d)\n",
-  //    pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,
-  //    s[pu->cu->predMode],
-  //    pu->intraDir[0],
-  //    pu->interDir,
-  //    pu->cu->skip,
-  //    pu->mergeFlag,
-  //    pu->mergeIdx,
-  //    pu->cu->affine,
-  //    pu->mhIntraFlag,
-  //    pu->mv[0].hor,
-  //    pu->mv[0].ver,
-  //    pu->mv[1].hor,
-  //    pu->mv[1].ver,
-  //    pu->refIdx[0],
-  //    pu->refIdx[1]
-  //  );
-  //}
+    //for (auto pu : bestCS->pus)
+    //{
+    //  printf("(%4d* %4d* %4d* %4d*) %s intraDir:%2d interDir:%3d skip:%d merge:%d mergeIdx:%3d affine:%d\tmhIntraFlag:%d\t (MV: %d %d\t%d %d) (ref: %d %d)\n",
+    //    pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,
+    //    s[pu->cu->predMode],
+    //    pu->intraDir[0],
+    //    pu->interDir,
+    //    pu->cu->skip,
+    //    pu->mergeFlag,
+    //    pu->mergeIdx,
+    //    pu->cu->affine,
+    //    pu->mhIntraFlag,
+    //    pu->mv[0].hor,
+    //    pu->mv[0].ver,
+    //    pu->mv[1].hor,
+    //    pu->mv[1].ver,
+    //    pu->refIdx[0],
+    //    pu->refIdx[1]
+    //  );
+    //}
     Distortion temp = 0;
     for (auto pu : bestCS->pus)
     {
-	  // location
+      // location
       printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC()
 
       );
-	  // dist,bits
-      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu ",
-        pu->intradist, pu->interdist, pu->intrabits, pu->interbits);
+
+      ///// compute sigma
+      pu->orisigma = 0;
+      pu->refsigma0 = 0;
+      pu->refsigma1 = 0;
+      auto pbuf=pu->cs->picture->getTrueOrigBuf(pu->blocks[0]);
+      int x = pu->lx();
+      int y = pu->ly();
+
+      if (pu->cs->slice->getPOC() == 1)
+        int xxx = 1;
+      /////orisigma
+      auto avg = pbuf.computeAvg();
+      for (int ly = 0; ly < pu->blocks[0].height; ly++)
+        for (int lx = 0; lx < pu->blocks[0].width; lx++)
+          pu->orisigma += (pbuf.at(lx, ly) - avg)*(pbuf.at(lx, ly) - avg);
+      ///// ref0
+      double avgofref = 0;
+      if (pu->refIdx[0] != -1)
+      {
+
+          auto prefbuf0 = pu->refIdx[0] == 16?
+          pu->cs->picture->getRecoBuf().Y():
+          pu->cs->slice->getRefPic(REF_PIC_LIST_0, pu->refIdx[0])->getRecoBuf().Y();
+        
+        ///// non affine
+        if (pu->cu->affine == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1?1:4;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+              int curx = max(0,min(x + lx + int(pu->mv[0].hor * mvscale),(int)cs.picture->lwidth()));
+              int cury = max(0,min(y + ly + int(pu->mv[0].ver * mvscale), (int)cs.picture->lheight()));
+              avgofref += prefbuf0.at(curx, cury);
+              pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+              
+            }
+          pu->refsigma0-= avgofref* avgofref/ pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else if (pu->cu->affineType == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[0][1].hor- pu->mvAffi[0][0].hor)/ double(pu->blocks[0].width)*(x+lx)
+                + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[0][0].hor)              
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[0][0].ver)
+                * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury= max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf0.at(curx, cury);
+              pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->refsigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[0][1].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][2].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[0][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][2].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[0][0].ver)
+                * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf0.at(curx, cury);
+              pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->refsigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+      }
+        
+      ///// ref1
+      avgofref = 0;
+      if (pu->refIdx[1] != -1)
+      {
+
+          auto prefbuf1 = pu->refIdx[1] == 16 ?
+          pu->cs->picture->getRecoBuf().Y() : 
+          pu->cs->slice->getRefPic(REF_PIC_LIST_1, pu->refIdx[1])->getRecoBuf().Y();
+        ///// non affine
+        if (pu->cu->affine == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 4;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+              int curx = x + lx + int(pu->mv[1].hor * mvscale);
+              int cury = y + ly + int(pu->mv[1].ver * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf1.at(curx, cury);
+              pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->refsigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else if (pu->cu->affineType == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[1][1].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[1][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[1][0].ver)
+                * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf1.at(curx, cury);
+              pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->refsigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[1][1].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][2].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[1][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][2].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[1][0].ver)
+                * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf1.at(curx, cury);
+              pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->refsigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+      }
+
 #if predfromori
-      printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu ",
-        pu->interdistori, pu->interbitsori, pu->dist,pu->distori);
+      pu->reforisigma0 = 0;
+      pu->reforisigma1 = 0;
+
+      ///// ref0
+      avgofref = 0;
+      if (pu->refIdx[0] != -1)
+      {
+
+          auto prefbuf0 = pu->refIdx[0] == 16 ?
+          pu->cs->picture->getTrueOrigBuf().Y() :
+          pu->cs->slice->getRefPic(REF_PIC_LIST_0, pu->refIdx[0])->getTrueOrigBuf().Y();
+
+        ///// non affine
+        if (pu->cu->affine == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 4;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+              int curx = x + lx + int(pu->mv[0].hor * mvscale);
+              int cury = y + ly + int(pu->mv[0].ver * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf0.at(curx, cury);
+              pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else if (pu->cu->affineType == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[0][1].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[0][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[0][0].ver)
+                * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf0.at(curx, cury);
+              pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[0][1].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][2].hor - pu->mvAffi[0][0].hor) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[0][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[0][1].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[0][2].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[0][0].ver)
+                * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf0.at(curx, cury);
+              pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
+
+            }
+          pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+      }
+
+      ///// ref1
+      avgofref = 0;
+      if (pu->refIdx[1] != -1)
+      {
+
+          auto prefbuf1 = pu->refIdx[1] == 16 ?
+          pu->cs->picture->getTrueOrigBuf().Y() : 
+          pu->cs->slice->getRefPic(REF_PIC_LIST_1, pu->refIdx[1])->getTrueOrigBuf().Y();
+        ///// non affine
+        if (pu->cu->affine == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 4;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+              int curx = x + lx + int(pu->mv[1].hor * mvscale);
+              int cury = y + ly + int(pu->mv[1].ver * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf1.at(curx, cury);
+              pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else if (pu->cu->affineType == 0)
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[1][1].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[1][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(y + ly)
+                + pu->mvAffi[1][0].ver)
+                * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf1.at(curx, cury);
+              pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+        else
+        {
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          for (int ly = 0; ly < pu->blocks[0].height; ly++)
+            for (int lx = 0; lx < pu->blocks[0].width; lx++)
+            {
+
+              int curx = x + lx + int(((pu->mvAffi[1][1].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][2].hor - pu->mvAffi[1][0].hor) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[1][0].hor)
+                * mvscale);
+              int cury = y + ly + int(((pu->mvAffi[1][1].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].width)*(x + lx)
+                + (pu->mvAffi[1][2].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].height)*(y + ly)
+                + pu->mvAffi[1][0].ver)
+                * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
+              avgofref += prefbuf1.at(curx, cury);
+              pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
+
+            }
+          pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height/pu->blocks[0].width;
+        }
+      }
+
 #endif
-	  // parameter
-      printf("\t QP:%d lambda:%f | ", pu->cu->qp,m_pcRdCost->getLambda());
-	  // mode
-	  printf("affine:%d*imv:%d*affinetype:%d*skip:%d*cbf:%d*mhintra:%d*intradir:%lu&%lu*multiRefIdx:%d  ",
-		  pu->cu->affine,
-		  pu->cu->imv,
-		  pu->cu->affineType,
-		  pu->cu->skip,
-		  pu->cu->rootCbf,
-		  pu->mhIntraFlag,
+      // dist,bits
+      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu orisigma:%.2f refsigma0:%.2f refsigma1:%.2f",
+        pu->intradist, pu->interdist, pu->intrabits, pu->interbits,pu->orisigma,pu->refsigma0,pu->refsigma1);
+#if predfromori
+      printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu reforisigma0:%.2f reforisigma1:%.2f",
+        pu->interdistori, pu->interbitsori, pu->dist, pu->distori,pu->reforisigma0,pu->reforisigma1);
+#endif
+      // parameter
+      printf("\t QP:%d lambda:%f | ", pu->cu->qp, m_pcRdCost->getLambda());
+      // mode
+      printf("affine:%d*imv:%d*affinetype:%d*skip:%d*cbf:%d*mhintra:%d*intradir:%lu&%lu*multiRefIdx:%d  ",
+        pu->cu->affine,
+        pu->cu->imv,
+        pu->cu->affineType,
+        pu->cu->skip,
+        pu->cu->rootCbf,
+        pu->mhIntraFlag,
 
 
-		  pu->intraDir[0],
-		  pu->intraDir[1],
-		  pu->multiRefIdx
-		  );
-	  printf(" MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
+        pu->intraDir[0],
+        pu->intraDir[1],
+        pu->multiRefIdx
+      );
+      printf(" MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
         pu->mv[0].hor,
         pu->mv[0].ver,
         pu->mv[1].hor,
@@ -572,7 +894,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       }
 
 #if printoriresi
-      
+
       bool resiwoq = 1;
       bool resiwq = 1;
       bool spresiwoq = 0;
@@ -681,100 +1003,102 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       }
       else
       {
-      printf(" | ");
-      if (pu->cu->firstTU == pu->cu->lastTU)
-      {
-        if (resiwoq)
-        {
-          for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
-          {
-            printf("%d ", pu->cu->firstTU->m_resiwoq[0][p]);
-
-          }
-          printf(" resiwoq! ");
-        }
-        if (resiwq)
-        {
-          for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
-          {
-
-            printf("%d ", pu->cu->firstTU->m_resiwq[0][p]);
-
-          }
-          printf(" resiwq! ");
-        }
-        if (spresiwoq)
-        {
-          for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
-          {
-
-            printf("%d ", pu->cu->firstTU->m_spresiwoq[0][p]);
-
-          }
-          printf(" spresiwoq! ");
-        }
-        if (spresiwq)
-        {
-          for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
-          {
-
-            printf("%d ", pu->cu->firstTU->m_spresiwq[0][p]);
-          }
-          printf(" spresiwq! ");
-        }
-      }
-      else {
-        for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
+        printf(" | ");
+        if (pu->cu->firstTU == pu->cu->lastTU)
         {
           if (resiwoq)
           {
-            for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+            for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
             {
-              printf("%d ", ttu.m_resiwoq[0][p]);
+              printf("%d ", pu->cu->firstTU->m_resiwoq[0][p]);
 
             }
             printf(" resiwoq! ");
           }
           if (resiwq)
           {
-            for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+            for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
             {
 
-              printf("%d ", ttu.m_resiwq[0][p]);
+              printf("%d ", pu->cu->firstTU->m_resiwq[0][p]);
 
             }
             printf(" resiwq! ");
           }
           if (spresiwoq)
           {
-            for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+            for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
             {
 
-              printf("%d ", ttu.m_spresiwoq[0][p]);
+              printf("%d ", pu->cu->firstTU->m_spresiwoq[0][p]);
 
             }
             printf(" spresiwoq! ");
           }
           if (spresiwq)
           {
-            for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+            for (int p = 0; p < pu->lumaSize().width*pu->lumaSize().height; p++)
             {
 
-              printf("%d ", ttu.m_spresiwq[0][p]);
+              printf("%d ", pu->cu->firstTU->m_spresiwq[0][p]);
             }
             printf(" spresiwq! ");
           }
         }
+        else {
+          for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
+          {
+            if (resiwoq)
+            {
+              for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+              {
+                printf("%d ", ttu.m_resiwoq[0][p]);
+
+              }
+              printf(" resiwoq! ");
+            }
+            if (resiwq)
+            {
+              for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+              {
+
+                printf("%d ", ttu.m_resiwq[0][p]);
+
+              }
+              printf(" resiwq! ");
+            }
+            if (spresiwoq)
+            {
+              for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+              {
+
+                printf("%d ", ttu.m_spresiwoq[0][p]);
+
+              }
+              printf(" spresiwoq! ");
+            }
+            if (spresiwq)
+            {
+              for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+              {
+
+                printf("%d ", ttu.m_spresiwq[0][p]);
+              }
+              printf(" spresiwq! ");
+            }
+          }
+        }
       }
-      }
-      
+
 #endif
       printf(" |\n");
 
     }
     printf("luma CU finished\n");
-     //printf("sum:%lld\tcs:%lld\n", temp,bestCS->dist);
-    //printf("%d", temp == bestCS->dist);
+    //printf("sum:%lld\tcs:%lld\n", temp,bestCS->dist);
+   //printf("%d", temp == bestCS->dist);
+  }
+
 #endif
 
 #if temppp
@@ -787,6 +1111,12 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   const bool copyUnsplitCTUSignals = bestCS->cus.size() == 1;
 #else
   const bool copyUnsplitCTUSignals = bestCS->cus.size() == 1 && KEEP_PRED_AND_RESI_SIGNALS;
+#endif
+#if test1
+  if (cs.slice->getPOC() == 1 && ctuRsAddr == 130)
+  {
+    int xxx = 1;
+  }
 #endif
   cs.useSubStructure( *bestCS, partitioner->chType, CS::getArea( *bestCS, area, partitioner->chType ), copyUnsplitCTUSignals, false, false, copyUnsplitCTUSignals );
   cs.slice->copyMotionLUTs(bestMotCandLUTs, cs.slice->getMotionLUTs());
@@ -1229,121 +1559,356 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
 #endif
 
 
-
-  do
+#if test1
+  extern bool skipmerge;
+  if (skipmerge)
   {
-    EncTestMode currTestMode = m_modeCtrl->currTestMode();
-
-    if (tempCS->pps->getUseDQP() && CS::isDualITree(*tempCS) && isChroma(partitioner.chType))
+    do
     {
-      const Position chromaCentral(tempCS->area.Cb().chromaPos().offset(tempCS->area.Cb().chromaSize().width >> 1, tempCS->area.Cb().chromaSize().height >> 1));
-      const Position lumaRefPos(chromaCentral.x << getComponentScaleX(COMPONENT_Cb, tempCS->area.chromaFormat), chromaCentral.y << getComponentScaleY(COMPONENT_Cb, tempCS->area.chromaFormat));
-      const CodingStructure* baseCS = bestCS->picture->cs;
-      const CodingUnit* colLumaCu = baseCS->getCU(lumaRefPos, CHANNEL_TYPE_LUMA);
+      EncTestMode currTestMode = m_modeCtrl->currTestMode();
 
-      if (colLumaCu)
+      if (tempCS->pps->getUseDQP() && CS::isDualITree(*tempCS) && isChroma(partitioner.chType))
       {
-        currTestMode.qp = colLumaCu->qp;
+        const Position chromaCentral(tempCS->area.Cb().chromaPos().offset(tempCS->area.Cb().chromaSize().width >> 1, tempCS->area.Cb().chromaSize().height >> 1));
+        const Position lumaRefPos(chromaCentral.x << getComponentScaleX(COMPONENT_Cb, tempCS->area.chromaFormat), chromaCentral.y << getComponentScaleY(COMPONENT_Cb, tempCS->area.chromaFormat));
+        const CodingStructure* baseCS = bestCS->picture->cs;
+        const CodingUnit* colLumaCu = baseCS->getCU(lumaRefPos, CHANNEL_TYPE_LUMA);
+
+        if (colLumaCu)
+        {
+          currTestMode.qp = colLumaCu->qp;
+        }
       }
-    }
 
 #if SHARP_LUMA_DELTA_QP
-    if( m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() && partitioner.currDepth <= pps.getMaxCuDQPDepth() )
-    {
-#if ENABLE_SPLIT_PARALLELISM
-      CHECK( tempCS->picture->scheduler.getSplitJobId() > 0, "Changing lambda is only allowed in the master thread!" );
-#endif
-      if (currTestMode.qp >= 0)
+      if (m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() && partitioner.currDepth <= pps.getMaxCuDQPDepth())
       {
-        //////////
-        updateLambda(&slice, currTestMode.qp);
+#if ENABLE_SPLIT_PARALLELISM
+        CHECK(tempCS->picture->scheduler.getSplitJobId() > 0, "Changing lambda is only allowed in the master thread!");
+#endif
+        if (currTestMode.qp >= 0)
+        {
+          //////////
+          updateLambda(&slice, currTestMode.qp);
+        }
       }
-    }
 #endif
 
-    if( currTestMode.type == ETM_INTER_ME )
-    {
-      if( ( currTestMode.opts & ETO_IMV ) != 0 )
+      if (currTestMode.type == ETM_INTER_ME)
       {
+        if ((currTestMode.opts & ETO_IMV) != 0)
+        {
 #if JVET_M0246_AFFINE_AMVR
-        tempCS->bestCS = bestCS;
-        xCheckRDCostInterIMV( tempCS, bestCS, partitioner, currTestMode );
-        tempCS->bestCS = nullptr;
+          tempCS->bestCS = bestCS;
+          xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode);
+          tempCS->bestCS = nullptr;
 #else
-        xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode);
+          xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode);
 #endif
+        }
+        else
+        {
+#if JVET_M0246_AFFINE_AMVR
+          tempCS->bestCS = bestCS;
+          xCheckRDCostInter(tempCS, bestCS, partitioner, currTestMode);
+          tempCS->bestCS = nullptr;
+#else
+          xCheckRDCostInter(tempCS, bestCS, partitioner, currTestMode);
+#endif
+        }
+
+      }
+#if JVET_M0253_HASH_ME
+      else if (currTestMode.type == ETM_HASH_INTER)
+      {
+        xCheckRDCostHashInter(tempCS, bestCS, partitioner, currTestMode);
+      }
+#endif
+      else if (currTestMode.type == ETM_AFFINE)
+      {
+        //xCheckRDCostAffineMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+      }
+#if REUSE_CU_RESULTS
+      else if (currTestMode.type == ETM_RECO_CACHED)
+      {
+        xReuseCachedResult(tempCS, bestCS, partitioner);
+      }
+#endif
+      else if (currTestMode.type == ETM_MERGE_SKIP)
+      {
+        //xCheckRDCostMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+        //CodingUnit* cu = bestCS->getCU(partitioner.chType);
+        //if (cu)
+          //cu->mmvdSkip = cu->skip == false ? false : cu->mmvdSkip;
+      }
+      else if (currTestMode.type == ETM_MERGE_TRIANGLE)
+      {
+        //xCheckRDCostMergeTriangle2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+      }
+      else if (currTestMode.type == ETM_INTRA)
+      {
+        //printf("x");
+        xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode);
+      }
+      else if (currTestMode.type == ETM_IPCM)
+      {
+        xCheckIntraPCM(tempCS, bestCS, partitioner, currTestMode);
+      }
+      else if (currTestMode.type == ETM_IBC)
+      {
+        xCheckRDCostIBCMode(tempCS, bestCS, partitioner, currTestMode);
+      }
+      else if (currTestMode.type == ETM_IBC_MERGE)
+      {
+        //xCheckRDCostIBCModeMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+      }
+      else if (isModeSplit(currTestMode))
+      {
+
+        xCheckModeSplit(tempCS, bestCS, partitioner, currTestMode
+          , tempMotCandLUTs
+          , bestMotCandLUTs
+          , partitioner.currArea()
+        );
       }
       else
       {
-#if JVET_M0246_AFFINE_AMVR
-        tempCS->bestCS = bestCS;
-        xCheckRDCostInter( tempCS, bestCS, partitioner, currTestMode );
-        tempCS->bestCS = nullptr;
-#else
-        xCheckRDCostInter( tempCS, bestCS, partitioner, currTestMode );
-#endif
+        THROW("Don't know how to handle mode: type = " << currTestMode.type << ", options = " << currTestMode.opts);
       }
+    } while (m_modeCtrl->nextMode(*tempCS, partitioner));
+  }
+  else
+{
+do
+{
+  EncTestMode currTestMode = m_modeCtrl->currTestMode();
 
-    }
-#if JVET_M0253_HASH_ME
-    else if (currTestMode.type == ETM_HASH_INTER)
-    {
-      xCheckRDCostHashInter( tempCS, bestCS, partitioner, currTestMode );
-    }
-#endif
-    else if( currTestMode.type == ETM_AFFINE )
-    {
-      xCheckRDCostAffineMerge2Nx2N( tempCS, bestCS, partitioner, currTestMode );
-    }
-#if REUSE_CU_RESULTS
-    else if( currTestMode.type == ETM_RECO_CACHED )
-    {
-      xReuseCachedResult( tempCS, bestCS, partitioner );
-    }
-#endif
-    else if( currTestMode.type == ETM_MERGE_SKIP )
-    {
-      xCheckRDCostMerge2Nx2N( tempCS, bestCS, partitioner, currTestMode );
-      CodingUnit* cu = bestCS->getCU(partitioner.chType);
-      if (cu)
-      cu->mmvdSkip = cu->skip == false ? false : cu->mmvdSkip;
-    }
-    else if( currTestMode.type == ETM_MERGE_TRIANGLE )
-    {
-      xCheckRDCostMergeTriangle2Nx2N( tempCS, bestCS, partitioner, currTestMode );
-    }
-    else if( currTestMode.type == ETM_INTRA )
-    {
-      //printf("x");
-      xCheckRDCostIntra( tempCS, bestCS, partitioner, currTestMode );
-    }
-    else if( currTestMode.type == ETM_IPCM )
-    {
-      xCheckIntraPCM( tempCS, bestCS, partitioner, currTestMode );
-    }
-    else if (currTestMode.type == ETM_IBC)
-    {
-      xCheckRDCostIBCMode(tempCS, bestCS, partitioner, currTestMode);
-    }
-    else if (currTestMode.type == ETM_IBC_MERGE)
-    {
-      xCheckRDCostIBCModeMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
-    }
-    else if( isModeSplit( currTestMode ) )
-    {
+  if (tempCS->pps->getUseDQP() && CS::isDualITree(*tempCS) && isChroma(partitioner.chType))
+  {
+    const Position chromaCentral(tempCS->area.Cb().chromaPos().offset(tempCS->area.Cb().chromaSize().width >> 1, tempCS->area.Cb().chromaSize().height >> 1));
+    const Position lumaRefPos(chromaCentral.x << getComponentScaleX(COMPONENT_Cb, tempCS->area.chromaFormat), chromaCentral.y << getComponentScaleY(COMPONENT_Cb, tempCS->area.chromaFormat));
+    const CodingStructure* baseCS = bestCS->picture->cs;
+    const CodingUnit* colLumaCu = baseCS->getCU(lumaRefPos, CHANNEL_TYPE_LUMA);
 
-      xCheckModeSplit( tempCS, bestCS, partitioner, currTestMode
-        , tempMotCandLUTs
-        , bestMotCandLUTs
-        , partitioner.currArea()
-      );
+    if (colLumaCu)
+    {
+      currTestMode.qp = colLumaCu->qp;
+    }
+  }
+
+#if SHARP_LUMA_DELTA_QP
+  if (m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() && partitioner.currDepth <= pps.getMaxCuDQPDepth())
+  {
+#if ENABLE_SPLIT_PARALLELISM
+    CHECK(tempCS->picture->scheduler.getSplitJobId() > 0, "Changing lambda is only allowed in the master thread!");
+#endif
+    if (currTestMode.qp >= 0)
+    {
+      //////////
+      updateLambda(&slice, currTestMode.qp);
+    }
+  }
+#endif
+
+  if (currTestMode.type == ETM_INTER_ME)
+  {
+    if ((currTestMode.opts & ETO_IMV) != 0)
+    {
+#if JVET_M0246_AFFINE_AMVR
+      tempCS->bestCS = bestCS;
+      xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode);
+      tempCS->bestCS = nullptr;
+#else
+      xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode);
+#endif
     }
     else
     {
-      THROW( "Don't know how to handle mode: type = " << currTestMode.type << ", options = " << currTestMode.opts );
+#if JVET_M0246_AFFINE_AMVR
+      tempCS->bestCS = bestCS;
+      xCheckRDCostInter(tempCS, bestCS, partitioner, currTestMode);
+      tempCS->bestCS = nullptr;
+#else
+      xCheckRDCostInter(tempCS, bestCS, partitioner, currTestMode);
+#endif
     }
-  } while( m_modeCtrl->nextMode( *tempCS, partitioner ) );
 
+  }
+#if JVET_M0253_HASH_ME
+  else if (currTestMode.type == ETM_HASH_INTER)
+  {
+    xCheckRDCostHashInter(tempCS, bestCS, partitioner, currTestMode);
+  }
+#endif
+  else if (currTestMode.type == ETM_AFFINE)
+  {
+    xCheckRDCostAffineMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+  }
+#if REUSE_CU_RESULTS
+  else if (currTestMode.type == ETM_RECO_CACHED)
+  {
+    xReuseCachedResult(tempCS, bestCS, partitioner);
+  }
+#endif
+  else if (currTestMode.type == ETM_MERGE_SKIP)
+  {
+    xCheckRDCostMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+    CodingUnit* cu = bestCS->getCU(partitioner.chType);
+    if (cu)
+      cu->mmvdSkip = cu->skip == false ? false : cu->mmvdSkip;
+  }
+  else if (currTestMode.type == ETM_MERGE_TRIANGLE)
+  {
+    xCheckRDCostMergeTriangle2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (currTestMode.type == ETM_INTRA)
+  {
+    //printf("x");
+    xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (currTestMode.type == ETM_IPCM)
+  {
+    xCheckIntraPCM(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (currTestMode.type == ETM_IBC)
+  {
+    xCheckRDCostIBCMode(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (currTestMode.type == ETM_IBC_MERGE)
+  {
+    xCheckRDCostIBCModeMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (isModeSplit(currTestMode))
+  {
+
+    xCheckModeSplit(tempCS, bestCS, partitioner, currTestMode
+      , tempMotCandLUTs
+      , bestMotCandLUTs
+      , partitioner.currArea()
+    );
+  }
+  else
+  {
+    THROW("Don't know how to handle mode: type = " << currTestMode.type << ", options = " << currTestMode.opts);
+  }
+} while (m_modeCtrl->nextMode(*tempCS, partitioner));
+}
+#else
+do
+{
+  EncTestMode currTestMode = m_modeCtrl->currTestMode();
+
+  if (tempCS->pps->getUseDQP() && CS::isDualITree(*tempCS) && isChroma(partitioner.chType))
+  {
+    const Position chromaCentral(tempCS->area.Cb().chromaPos().offset(tempCS->area.Cb().chromaSize().width >> 1, tempCS->area.Cb().chromaSize().height >> 1));
+    const Position lumaRefPos(chromaCentral.x << getComponentScaleX(COMPONENT_Cb, tempCS->area.chromaFormat), chromaCentral.y << getComponentScaleY(COMPONENT_Cb, tempCS->area.chromaFormat));
+    const CodingStructure* baseCS = bestCS->picture->cs;
+    const CodingUnit* colLumaCu = baseCS->getCU(lumaRefPos, CHANNEL_TYPE_LUMA);
+
+    if (colLumaCu)
+    {
+      currTestMode.qp = colLumaCu->qp;
+    }
+  }
+
+#if SHARP_LUMA_DELTA_QP
+  if (m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() && partitioner.currDepth <= pps.getMaxCuDQPDepth())
+  {
+#if ENABLE_SPLIT_PARALLELISM
+    CHECK(tempCS->picture->scheduler.getSplitJobId() > 0, "Changing lambda is only allowed in the master thread!");
+#endif
+    if (currTestMode.qp >= 0)
+    {
+      //////////
+      updateLambda(&slice, currTestMode.qp);
+    }
+  }
+#endif
+
+  if (currTestMode.type == ETM_INTER_ME)
+  {
+    if ((currTestMode.opts & ETO_IMV) != 0)
+    {
+#if JVET_M0246_AFFINE_AMVR
+      tempCS->bestCS = bestCS;
+      xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode);
+      tempCS->bestCS = nullptr;
+#else
+      xCheckRDCostInterIMV(tempCS, bestCS, partitioner, currTestMode);
+#endif
+    }
+    else
+    {
+#if JVET_M0246_AFFINE_AMVR
+      tempCS->bestCS = bestCS;
+      xCheckRDCostInter(tempCS, bestCS, partitioner, currTestMode);
+      tempCS->bestCS = nullptr;
+#else
+      xCheckRDCostInter(tempCS, bestCS, partitioner, currTestMode);
+#endif
+    }
+
+  }
+#if JVET_M0253_HASH_ME
+  else if (currTestMode.type == ETM_HASH_INTER)
+  {
+    xCheckRDCostHashInter(tempCS, bestCS, partitioner, currTestMode);
+  }
+#endif
+  else if (currTestMode.type == ETM_AFFINE)
+  {
+    xCheckRDCostAffineMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+  }
+#if REUSE_CU_RESULTS
+  else if (currTestMode.type == ETM_RECO_CACHED)
+  {
+    xReuseCachedResult(tempCS, bestCS, partitioner);
+  }
+#endif
+  else if (currTestMode.type == ETM_MERGE_SKIP)
+  {
+    xCheckRDCostMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+    CodingUnit* cu = bestCS->getCU(partitioner.chType);
+    if (cu)
+      cu->mmvdSkip = cu->skip == false ? false : cu->mmvdSkip;
+  }
+  else if (currTestMode.type == ETM_MERGE_TRIANGLE)
+  {
+    xCheckRDCostMergeTriangle2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (currTestMode.type == ETM_INTRA)
+  {
+    //printf("x");
+    xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (currTestMode.type == ETM_IPCM)
+  {
+    xCheckIntraPCM(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (currTestMode.type == ETM_IBC)
+  {
+    xCheckRDCostIBCMode(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (currTestMode.type == ETM_IBC_MERGE)
+  {
+    xCheckRDCostIBCModeMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+  }
+  else if (isModeSplit(currTestMode))
+  {
+
+    xCheckModeSplit(tempCS, bestCS, partitioner, currTestMode
+      , tempMotCandLUTs
+      , bestMotCandLUTs
+      , partitioner.currArea()
+    );
+  }
+  else
+  {
+    THROW("Don't know how to handle mode: type = " << currTestMode.type << ", options = " << currTestMode.opts);
+  }
+} while (m_modeCtrl->nextMode(*tempCS, partitioner));
+
+#endif
 #if JVET_M0170_MRG_SHARELIST
   if(startShareThisLevel == 1)
   {

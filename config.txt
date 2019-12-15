@@ -1,0 +1,7 @@
+basketballpass
+
+ -c  D:/Projects/data/cfg_VTM4_0/encoder_ldb16_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballPass.cfg -i D:/Projects/data/test_seq/HEVC/BasketballPass_416x240_50.yuv --PrintFrameMSE=1 -f 20 -q 37 >../result/test1.txt 
+ 
+ 
+slideeditting
+ -c  D:/Projects/data/cfg_VTM4_0/encoder_ldb16_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/SlideEditing.cfg -c D:/Projects/data/cfg_VTM4_0/per-class/classF.cfg -i D:/Projects/data/test_seq/HEVC/SlideEditing_1280x720_30.yuv --PrintFrameMSE=1 -f 20 -q 37 >../result/test1.txt 

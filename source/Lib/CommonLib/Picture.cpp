@@ -730,6 +730,10 @@ Picture::Picture()
   }
   m_spliceIdx = NULL;
   m_ctuNums = 0;
+
+#if test1
+  slice_sigma = 0;
+#endif
 }
 
 void Picture::create(const ChromaFormat &_chromaFormat, const Size &size, const unsigned _maxCUSize, const unsigned _margin, const bool _decoder)

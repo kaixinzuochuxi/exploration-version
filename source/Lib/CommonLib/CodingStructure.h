@@ -230,7 +230,8 @@ private:
   bool m_isTuEnc;
 
   private:
-
+#if test1
+  public:
   unsigned *m_cuIdx   [MAX_NUM_CHANNEL_TYPE];
   unsigned *m_puIdx   [MAX_NUM_CHANNEL_TYPE];
   unsigned *m_tuIdx   [MAX_NUM_CHANNEL_TYPE];
@@ -243,6 +244,21 @@ private:
   CUCache& m_cuCache;
   PUCache& m_puCache;
   TUCache& m_tuCache;
+  private:
+#else
+  unsigned *m_cuIdx[MAX_NUM_CHANNEL_TYPE];
+  unsigned *m_puIdx[MAX_NUM_CHANNEL_TYPE];
+  unsigned *m_tuIdx[MAX_NUM_CHANNEL_TYPE];
+  bool     *m_isDecomp[MAX_NUM_CHANNEL_TYPE];
+  unsigned m_numCUs;
+  unsigned m_numPUs;
+  unsigned m_numTUs;
+
+  CUCache& m_cuCache;
+  PUCache& m_puCache;
+  TUCache& m_tuCache;
+#endif
+
 
   std::vector<SAOBlkParam> m_sao;
 
@@ -267,7 +283,13 @@ private:
   Pel *m_spresiwoq[MAX_NUM_TBLOCKS];
   Pel *m_spresiwq[MAX_NUM_TBLOCKS];
 #endif
+#if test1
+  public:
   int     m_offsets[ MAX_NUM_COMPONENT ];
+  private:
+#else
+  int     m_offsets[MAX_NUM_COMPONENT];
+#endif
 
   MotionInfo *m_motionBuf;
 

@@ -333,6 +333,9 @@ public:
 #if predfromori
   void extendPicBorderori();
 #endif
+#if test1
+  Distortion slice_sigma;
+#endif
 };
 
 int calcAndPrintHashStatus(const CPelUnitBuf& pic, const class SEIDecodedPictureHash* pictureHashSEI, const BitDepths &bitDepths, const MsgLevel msgl);

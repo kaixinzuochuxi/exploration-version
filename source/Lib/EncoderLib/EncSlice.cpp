@@ -62,6 +62,10 @@ extern recursive_mutex g_cache_mutex;
 #if codingparameters
 #include "CodingStructure.h"
 #endif
+//#if test
+//#include "CommonLib/Buffer.h"
+//#endif
+
 //! \ingroup EncoderLib
 //! \{
 
@@ -744,6 +748,21 @@ void EncSlice::initEncSlice(Picture* pcPic, const int pocLast, const int pocCurr
     rpcSlice->setMaxBTSizeIChroma( rpcSlice->getSPS()->getMaxBTSizeIChroma() );
     rpcSlice->setMaxTTSizeIChroma( rpcSlice->getSPS()->getMaxTTSizeIChroma() );
   }
+
+#if test1
+  Pel avg = rpcSlice->getPic()->getTrueOrigBuf().Y().computeAvg();
+  int stride = rpcSlice->getPic()->getTrueOrigBuf().Y().stride;
+  rpcSlice->slice_sigma = 0;
+  for (int y = 0; y < rpcSlice->getPic()->getTrueOrigBuf().Y().height; y++)
+  {
+    for (int x = 0; x < rpcSlice->getPic()->getTrueOrigBuf().Y().width; x++)
+    {
+      rpcSlice->slice_sigma += (rpcSlice->getPic()->getTrueOrigBuf().Y().buf[y*stride + x]-avg)*(rpcSlice->getPic()->getTrueOrigBuf().Y().buf[y*stride + x]-avg);
+    }
+  }
+  int xxx = 0;
+
+#endif 
 }
 
 
@@ -800,6 +819,9 @@ double EncSlice::calculateLambda( const Slice*     slice,
   }
 #endif
 
+#if QPfactor
+  dQPFactor *= m_pcCfg->getGOPEntry(GOPid).m_QPFactor;;
+#endif
   double dLambda = dQPFactor*pow( 2.0, qp_temp/3.0 );
 
 #if X0038_LAMBDA_FROM_QP_CAPABILITY
@@ -1939,13 +1961,16 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
   extern int lastcuidx ;
   lastcuidx = 0;
 #endif
+
+
   // for every CTU in the slice segment (may terminate sooner if there is a byte limit on the slice-segment)
-  for( uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++ )
+  for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
   {
+
 #if JVET_M0055_DEBUG_CTU
- #if HEVC_TILES_WPP
-    const int32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap( ctuTsAddr );
- #else
+#if HEVC_TILES_WPP
+    const int32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
     const int32_t ctuRsAddr = ctuTsAddr;
 #endif
 #else
@@ -1959,38 +1984,38 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if HEVC_TILES_WPP
     // update CABAC state
     const uint32_t firstCtuRsAddrOfTile = tileMap.tiles[tileMap.getTileIdxMap(ctuRsAddr)].getFirstCtuRsAddr();
-    const uint32_t tileXPosInCtus       = firstCtuRsAddrOfTile % widthInCtus;
+    const uint32_t tileXPosInCtus = firstCtuRsAddrOfTile % widthInCtus;
 #endif
-    const uint32_t ctuXPosInCtus        = ctuRsAddr % widthInCtus;
-    const uint32_t ctuYPosInCtus        = ctuRsAddr / widthInCtus;
+    const uint32_t ctuXPosInCtus = ctuRsAddr % widthInCtus;
+    const uint32_t ctuYPosInCtus = ctuRsAddr / widthInCtus;
 
-    const Position pos (ctuXPosInCtus * pcv.maxCUWidth, ctuYPosInCtus * pcv.maxCUHeight);
-    const UnitArea ctuArea( cs.area.chromaFormat, Area( pos.x, pos.y, pcv.maxCUWidth, pcv.maxCUHeight ) );
-    DTRACE_UPDATE( g_trace_ctx, std::make_pair( "ctu", ctuRsAddr ) );
+    const Position pos(ctuXPosInCtus * pcv.maxCUWidth, ctuYPosInCtus * pcv.maxCUHeight);
+    const UnitArea ctuArea(cs.area.chromaFormat, Area(pos.x, pos.y, pcv.maxCUWidth, pcv.maxCUHeight));
+    DTRACE_UPDATE(g_trace_ctx, std::make_pair("ctu", ctuRsAddr));
 
 #if JVET_M0055_DEBUG_CTU
-    if( pCfg->getSwitchPOC() != pcPic->poc || -1 == pCfg->getDebugCTU() )
+    if (pCfg->getSwitchPOC() != pcPic->poc || -1 == pCfg->getDebugCTU())
 #endif
-    if ( pcSlice->getSliceType() != I_SLICE && ctuXPosInCtus == 0)
-    {
-      pcSlice->resetMotionLUTs();
-    }
+      if (pcSlice->getSliceType() != I_SLICE && ctuXPosInCtus == 0)
+      {
+        pcSlice->resetMotionLUTs();
+      }
 
 #if ENABLE_WPP_PARALLELISM
-    pcPic->scheduler.wait( ctuXPosInCtus, ctuYPosInCtus );
+    pcPic->scheduler.wait(ctuXPosInCtus, ctuYPosInCtus);
 #endif
 
 #if HEVC_TILES_WPP
     if (ctuRsAddr == firstCtuRsAddrOfTile)
     {
-      pCABACWriter->initCtxModels( *pcSlice );
+      pCABACWriter->initCtxModels(*pcSlice);
       prevQP[0] = prevQP[1] = pcSlice->getSliceQp();
     }
     else if (ctuXPosInCtus == tileXPosInCtus && pEncLib->getEntropyCodingSyncEnabledFlag())
     {
       // reset and then update contexts to the state at the end of the top-right CTU (if within current slice and tile).
-      pCABACWriter->initCtxModels( *pcSlice );
-      if( cs.getCURestricted( pos.offset(pcv.maxCUWidth, -1), pcSlice->getIndependentSliceIdx(), tileMap.getTileIdxMap( pos ), CH_L ) )
+      pCABACWriter->initCtxModels(*pcSlice);
+      if (cs.getCURestricted(pos.offset(pcv.maxCUWidth, -1), pcSlice->getIndependentSliceIdx(), tileMap.getTileIdxMap(pos), CH_L))
       {
         // Top-right is available, we use it.
         pCABACWriter->getCtx() = pEncLib->m_entropyCodingSyncContextState;
@@ -2000,35 +2025,35 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #endif
 
 #if ENABLE_WPP_PARALLELISM
-    if( ctuXPosInCtus == 0 && ctuYPosInCtus > 0 && widthInCtus > 1 && ( pEncLib->getNumWppThreads() > 1 || pEncLib->getEnsureWppBitEqual() ) )
+    if (ctuXPosInCtus == 0 && ctuYPosInCtus > 0 && widthInCtus > 1 && (pEncLib->getNumWppThreads() > 1 || pEncLib->getEnsureWppBitEqual()))
     {
-      pCABACWriter->getCtx() = pEncLib->m_entropyCodingSyncContextStateVec[ctuYPosInCtus-1];  // last line
+      pCABACWriter->getCtx() = pEncLib->m_entropyCodingSyncContextStateVec[ctuYPosInCtus - 1];  // last line
     }
 #else
 #endif
 
-    
+
 #if RDOQ_CHROMA_LAMBDA && ENABLE_QPA
-    double oldLambdaArray[MAX_NUM_COMPONENT] = {0.0};
+    double oldLambdaArray[MAX_NUM_COMPONENT] = { 0.0 };
     /////debug
     pTrQuant->getLambdas(oldLambdaArray);
     /////
 #endif
     const double oldLambda = pRdCost->getLambda();
-    if ( pCfg->getUseRateCtrl() )
+    if (pCfg->getUseRateCtrl())
     {
-      int estQP        = pcSlice->getSliceQp();
+      int estQP = pcSlice->getSliceQp();
       double estLambda = -1.0;
-      double bpp       = -1.0;
+      double bpp = -1.0;
 
-      if( ( pcPic->slices[0]->isIRAP() && pCfg->getForceIntraQP() ) || !pCfg->getLCULevelRC() )
+      if ((pcPic->slices[0]->isIRAP() && pCfg->getForceIntraQP()) || !pCfg->getLCULevelRC())
       {
         estQP = pcSlice->getSliceQp();
       }
       else
       {
         bpp = pRateCtrl->getRCPic()->getLCUTargetBpp(pcSlice->isIRAP());
-        if ( pcPic->slices[0]->isIRAP())
+        if (pcPic->slices[0]->isIRAP())
         {
           estLambda = pRateCtrl->getRCPic()->getLCUEstLambdaAndQP(bpp, pcSlice->getSliceQp(), &estQP);
 
@@ -2036,29 +2061,29 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
         }
         else
         {
-          estLambda = pRateCtrl->getRCPic()->getLCUEstLambda( bpp );
-          estQP     = pRateCtrl->getRCPic()->getLCUEstQP    ( estLambda, pcSlice->getSliceQp() );
+          estLambda = pRateCtrl->getRCPic()->getLCUEstLambda(bpp);
+          estQP = pRateCtrl->getRCPic()->getLCUEstQP(estLambda, pcSlice->getSliceQp());
         }
 
-        estQP     = Clip3( -pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, estQP );
-        
+        estQP = Clip3(-pcSlice->getSPS()->getQpBDOffset(CHANNEL_TYPE_LUMA), MAX_QP, estQP);
+
         pRdCost->setLambda(estLambda, pcSlice->getSPS()->getBitDepths());
         //pRdCost->saveUnadjustedLambda();
 #if RDOQ_CHROMA_LAMBDA
         // set lambda for RDOQ
         const double chromaLambda = estLambda / pRdCost->getChromaWeight();
         const double lambdaArray[MAX_NUM_COMPONENT] = { estLambda, chromaLambda, chromaLambda };
-        pTrQuant->setLambdas( lambdaArray );
+        pTrQuant->setLambdas(lambdaArray);
 
 #if intermediate
         cl.m_cp.setlambda(lambdaArray);
 #endif // intermediate
 #else
-        pTrQuant->setLambda( estLambda );
+        pTrQuant->setLambda(estLambda);
 #endif
       }
 
-      pRateCtrl->setRCQP( estQP );
+      pRateCtrl->setRCQP(estQP);
       //printf("%d\t", estQP);
 #if intermediate
       cl.m_cp.setqp(estQP);
@@ -2066,7 +2091,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       //cl.output_prefix();
       //cl.output_cp_qp();
       //cl.output_cp_lambda(COMPONENT_Y);
-      
+
 #endif // intermediate
 
     }
@@ -2075,18 +2100,18 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if useoriaqp
     else if (pCfg->getUsePerceptQPA() && pcSlice->getPPS()->getUseDQP())
     {
-      const int adaptedQP    = pcPic->m_iOffsetCtu[ctuRsAddr];
-      const double newLambda = oldLambda * pow (2.0, double (adaptedQP - iQPIndex) / 3.0);
+      const int adaptedQP = pcPic->m_iOffsetCtu[ctuRsAddr];
+      const double newLambda = oldLambda * pow(2.0, double(adaptedQP - iQPIndex) / 3.0);
       pcPic->m_uEnerHpCtu[ctuRsAddr] = newLambda;
 #if RDOQ_CHROMA_LAMBDA
-      pTrQuant->getLambdas (oldLambdaArray); // save the old lambdas
+      pTrQuant->getLambdas(oldLambdaArray); // save the old lambdas
       const double chromaLambda = newLambda / pRdCost->getChromaWeight();
-      const double lambdaArray[MAX_NUM_COMPONENT] = {newLambda, chromaLambda, chromaLambda};
-      pTrQuant->setLambdas (lambdaArray);
+      const double lambdaArray[MAX_NUM_COMPONENT] = { newLambda, chromaLambda, chromaLambda };
+      pTrQuant->setLambdas(lambdaArray);
 #else
-      pTrQuant->setLambda (newLambda);
+      pTrQuant->setLambda(newLambda);
 #endif
-      pRdCost->setLambda (newLambda, pcSlice->getSPS()->getBitDepths());
+      pRdCost->setLambda(newLambda, pcSlice->getSPS()->getBitDepths());
       currQP[0] = currQP[1] = adaptedQP;
 
     }
@@ -2125,7 +2150,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 
 
     bool updateGbiCodingOrder = cs.slice->getSliceType() == B_SLICE && ctuTsAddr == startCtuTsAddr;
-    if( updateGbiCodingOrder )
+    if (updateGbiCodingOrder)
     {
       resetGbiCodingOrder(false, cs);
       m_pcInterSearch->initWeightIdxBits();
@@ -2143,7 +2168,156 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if ENABLE_WPP_PARALLELISM
       pEncLib->getCuEncoder(dataId)->compressCtu(cs, ctuArea, ctuRsAddr, prevQP, currQP);
 #else
-   
+
+
+#if test1
+      /////
+      
+
+//     int temptest = cs.slice->getNumRefIdx(REF_PIC_LIST_0);
+//     int refnumidx0 = cs.slice->getNumRefIdx(REF_PIC_LIST_0);
+//     int refnumidx1 = cs.slice->getNumRefIdx(REF_PIC_LIST_1);
+//     Picture* tempreflist[NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+//     int temprefpoc[NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+//     memcpy(tempreflist, cs.slice->m_apcRefPicList,sizeof(tempreflist));
+//     memcpy(temprefpoc, cs.slice->m_aiRefPOCList, sizeof(temprefpoc));
+//     int offsets[3];
+//     memcpy(offsets, cs.m_offsets, sizeof(cs.m_offsets));
+//
+//     for (int iRefList = 0; iRefList < 2; iRefList++)
+//     {
+//       RefPicList  eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
+//#if JVET_M0483_IBC==0
+//        int refPicNumber = cs.sl#ice->getNumRefIdx(eRefPicList);
+//        if (cs.slice->getSPS()->getIBCMode() && eRefPicList == REF_PIC_LIST_0)
+//        {
+//          refPicNumber--;
+//        }
+//        for (int iRefIdxTemp = 0; iRefIdxTemp < refPicNumber; iRefIdxTemp++)
+//#else
+//       for (int iRefIdxTemp = 0; iRefIdxTemp < cs.slice->getNumRefIdx(eRefPicList); iRefIdxTemp++)
+//#endif
+//        {
+//          cs.slice->setNumRefIdx(REF_PIC_LIST_0,1) ;
+//          cs.slice->setNumRefIdx(REF_PIC_LIST_1,1) ;
+//          cs.slice->m_apcRefPicList[0][0] = tempreflist[eRefPicList][iRefIdxTemp];
+//          cs.slice->m_aiRefPOCList[0][0] = temprefpoc[eRefPicList][iRefIdxTemp];
+//          cs.slice->m_apcRefPicList[1][0] = tempreflist[eRefPicList][iRefIdxTemp];
+//          cs.slice->m_aiRefPOCList[1][0] = temprefpoc[eRefPicList][iRefIdxTemp];
+//          /////
+//          Ctx ctxstart = pCABACWriter->getCtx();
+//          auto numcu = cs.cus.size();
+//          auto numpu = cs.pus.size();
+//          auto numtu = cs.tus.size();
+//          auto numcachedcu = cs.m_cuCache.m_cache.size();
+//          auto numcachedpu = cs.m_puCache.m_cache.size();
+//          auto numcachedtu = cs.m_tuCache.m_cache.size();
+//          auto tfracBits = cs.fracBits;
+//          Distortion tdist = cs.dist;
+//          double tcost = cs.cost;
+//#if JVET_M0102_INTRA_SUBPARTITIONS
+//          auto tlumaCost = cs.lumaCost;
+//#endif
+//          if (cs.slice->getPOC() == 2 && ctuTsAddr == 174)
+//            int xxx = 1;
+//          extern bool skipmerge;
+//          skipmerge = 1;
+//          m_pcCuEncoder->compressCtu(cs, ctuArea, ctuRsAddr, prevQP, currQP);
+//          skipmerge = 0;
+//
+//#if K0149_BLOCK_STATISTICS
+//          getAndStoreBlockStatistics(cs, ctuArea);
+//#endif
+//
+//          pCABACWriter->resetBits();
+//          pCABACWriter->coding_tree_unit(cs, ctuArea, prevQP, ctuRsAddr, true);
+//          
+//          pCABACWriter->getCtx() = ctxstart;
+//          //reset cs dist,bits
+//          //cs.initStructData();
+//          uint32_t numCh = ::getNumberValidChannels(cs.area.chromaFormat);
+//          /////
+//
+//          while (numcu < cs.cus.size())
+//          {
+//            CodingUnit* cu = cs.cus.back();
+//            for (int i = 0; i < numCh; i++)
+//            {
+//              const CompArea &_selfBlk = cs.area.blocks[i];
+//              const CompArea     &_blk = cu->blocks[i];
+//              const UnitScale& scale = cs.unitScale[_blk.compID];
+//              const Area scaledSelf = scale.scale(_selfBlk);
+//              const Area scaledBlk = scale.scale(_blk);
+//              unsigned *idxPtr = cs.m_cuIdx[i] + rsAddr(scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width);
+//              AreaBuf<uint32_t>(idxPtr, scaledSelf.width, scaledBlk.size()).fill(0);
+//            }
+//            cs.cus.pop_back();
+//
+//          }
+//          while (numpu < cs.pus.size())
+//          {
+//            PredictionUnit* pu = cs.pus.back();         
+//            for (int i = 0; i < numCh; i++)
+//            {
+//              const CompArea &_selfBlk = cs.area.blocks[i];
+//              const CompArea     &_blk = pu->blocks[i];
+//              const UnitScale& scale = cs.unitScale[_blk.compID];
+//              const Area scaledSelf = scale.scale(_selfBlk);
+//              const Area scaledBlk = scale.scale(_blk);
+//              unsigned *idxPtr = cs.m_puIdx[i] + rsAddr(scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width);
+//              AreaBuf<uint32_t>(idxPtr, scaledSelf.width, scaledBlk.size()).fill(0);
+//            }
+//            cs.pus.pop_back();
+//
+//          }         
+//          while (numtu < cs.tus.size())
+//          {
+//            TransformUnit* tu = cs.tus.back();
+//            for (int i = 0; i < numCh; i++)
+//            {
+//              const CompArea &_selfBlk = cs.area.blocks[i];
+//              const CompArea     &_blk = tu->blocks[i];
+//              const UnitScale& scale = cs.unitScale[_blk.compID];
+//              const Area scaledSelf = scale.scale(_selfBlk);
+//              const Area scaledBlk = scale.scale(_blk);
+//              unsigned *idxPtr = cs.m_tuIdx[i] + rsAddr(scaledBlk.pos(), scaledSelf.pos(), scaledSelf.width);
+//              AreaBuf<uint32_t>(idxPtr, scaledSelf.width, scaledBlk.size()).fill(0);
+//            }
+//            
+//            cs.tus.pop_back();
+//          }
+//          //while (numcachedcu < cs.m_cuCache.m_cache.size())
+//          //  cs.m_cuCache.m_cache.pop_back();
+//          //while (numcachedpu < cs.m_puCache.m_cache.size())
+//          //  cs.m_puCache.m_cache.pop_back();
+//          //while (numcachedtu < cs.m_tuCache.m_cache.size())
+//          //  cs.m_tuCache.m_cache.pop_back();
+//          memcpy(cs.m_offsets, offsets, sizeof(cs.m_offsets));
+//          cs.m_numCUs = (unsigned int )numcu;
+//          cs.m_numPUs = (unsigned int)numpu;
+//          cs.m_numTUs = (unsigned int)numtu;
+//
+//          
+//          cs.fracBits = tfracBits;
+//          cs.dist = tdist;
+//          cs.lumaCost = tcost;
+//          cs.lumaCost = tlumaCost;
+//
+//          cs.slice->setNumRefIdx(REF_PIC_LIST_0, refnumidx0) ;
+//          cs.slice->setNumRefIdx(REF_PIC_LIST_1, refnumidx1) ;
+//
+//
+//        }
+//     }
+//     cs.slice->m_apcRefPicList[REF_PIC_LIST_0][0] = tempreflist[REF_PIC_LIST_0][0];
+//     cs.slice->m_aiRefPOCList[REF_PIC_LIST_0][0] = temprefpoc[REF_PIC_LIST_0][0];
+//     cs.slice->m_apcRefPicList[REF_PIC_LIST_1][0] = tempreflist[REF_PIC_LIST_1][0];
+//     cs.slice->m_aiRefPOCList[REF_PIC_LIST_1][0] = temprefpoc[REF_PIC_LIST_1][0];
+
+#endif
+        
+
+
     m_pcCuEncoder->compressCtu( cs, ctuArea, ctuRsAddr, prevQP, currQP );
 #endif
 
@@ -2670,4 +2844,660 @@ double EncSlice::xGetQPValueAccordingToLambda ( double lambda )
 string curr_seq_name;
 int conf_QP;
 #endif
+
+#if test1
+
+bool skipmerge = false;
+
+void EncSlice::premeslice(Picture* pcPic, const bool bCompressEntireSlice, const bool bFastDeltaQP)
+{
+  // if bCompressEntireSlice is true, then the entire slice (not slice segment) is compressed,
+  //   effectively disabling the slice-segment-mode.
+
+  Slice* const pcSlice = pcPic->slices[getSliceSegmentIdx()];
+#if HEVC_TILES_WPP
+  const TileMap&  tileMap = *pcPic->tileMap;
+#endif
+  uint32_t  startCtuTsAddr;
+  uint32_t  boundingCtuTsAddr;
+
+
+
+
+  extern bool skipmerge;
+  skipmerge = 1;
+
+  int temptest = pcPic->slices[0]->getNumRefIdx(REF_PIC_LIST_0);
+  int refnumidx0 = pcPic->slices[0]->getNumRefIdx(REF_PIC_LIST_0);
+  int refnumidx1 = pcPic->slices[0]->getNumRefIdx(REF_PIC_LIST_1);
+  Picture* tempreflist[NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+  int temprefpoc[NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+  memcpy(tempreflist, pcPic->slices[0]->m_apcRefPicList,sizeof(tempreflist));
+  memcpy(temprefpoc, pcPic->slices[0]->m_aiRefPOCList, sizeof(temprefpoc));
+
+  vector<int> refpoc;
+
+  for (int iRefList = 0; iRefList < 2; iRefList++)
+  {
+    RefPicList  eRefPicList = (iRefList ? REF_PIC_LIST_1 : REF_PIC_LIST_0);
+#if JVET_M0483_IBC==0
+    int refPicNumber = cs.sl#ice->getNumRefIdx(eRefPicList);
+    if (pcPic->slices[0]->getSPS()->getIBCMode() && eRefPicList == REF_PIC_LIST_0)
+    {
+      refPicNumber--;
+    }
+    for (int iRefIdxTemp = 0; iRefIdxTemp < refPicNumber; iRefIdxTemp++)
+#else
+    for (int iRefIdxTemp = 0; iRefIdxTemp < pcPic->slices[0]->getNumRefIdx(eRefPicList); iRefIdxTemp++)
+#endif
+    {
+      if (std::count(refpoc.begin(), refpoc.end(), temprefpoc[eRefPicList][iRefIdxTemp]) != 0)
+        continue;
+      refpoc.push_back(temprefpoc[eRefPicList][iRefIdxTemp]);
+      pcPic->slices[0]->setNumRefIdx(REF_PIC_LIST_0, 1);
+      pcPic->slices[0]->setNumRefIdx(REF_PIC_LIST_1, 1);
+      pcPic->slices[0]->m_apcRefPicList[0][0] = tempreflist[eRefPicList][iRefIdxTemp];
+      pcPic->slices[0]->m_aiRefPOCList[0][0] = temprefpoc[eRefPicList][iRefIdxTemp];
+      pcPic->slices[0]->m_apcRefPicList[1][0] = tempreflist[eRefPicList][iRefIdxTemp];
+      pcPic->slices[0]->m_aiRefPOCList[1][0] = temprefpoc[eRefPicList][iRefIdxTemp];
+      {
+#if HEVC_DEPENDENT_SLICES
+        pcSlice->setSliceSegmentBits(0);
+#endif
+        xDetermineStartAndBoundingCtuTsAddr(startCtuTsAddr, boundingCtuTsAddr, pcPic);
+        if (bCompressEntireSlice)
+        {
+          boundingCtuTsAddr = pcSlice->getSliceCurEndCtuTsAddr();
+#if HEVC_DEPENDENT_SLICES
+          pcSlice->setSliceSegmentCurEndCtuTsAddr(boundingCtuTsAddr);
+#endif
+        }
+
+        // initialize cost values - these are used by precompressSlice (they should be parameters).
+        m_uiPicTotalBits = 0;
+        m_uiPicDist = 0;
+
+        pcSlice->setSliceQpBase(pcSlice->getSliceQp());
+
+        m_CABACEstimator->initCtxModels(*pcSlice);
+
+#if ENABLE_SPLIT_PARALLELISM || ENABLE_WPP_PARALLELISM
+        for (int jId = 1; jId < m_pcLib->getNumCuEncStacks(); jId++)
+        {
+          CABACWriter* cw = m_pcLib->getCABACEncoder(jId)->getCABACEstimator(pcSlice->getSPS());
+          cw->initCtxModels(*pcSlice);
+        }
+
+#endif
+        m_pcCuEncoder->getModeCtrl()->setFastDeltaQp(bFastDeltaQP);
+
+
+        //------------------------------------------------------------------------------
+        //  Weighted Prediction parameters estimation.
+        //------------------------------------------------------------------------------
+        // calculate AC/DC values for current picture
+        if (pcSlice->getPPS()->getUseWP() || pcSlice->getPPS()->getWPBiPred())
+        {
+          xCalcACDCParamSlice(pcSlice);
+        }
+
+        const bool bWp_explicit = (pcSlice->getSliceType() == P_SLICE && pcSlice->getPPS()->getUseWP()) || (pcSlice->getSliceType() == B_SLICE && pcSlice->getPPS()->getWPBiPred());
+
+        if (bWp_explicit)
+        {
+          //------------------------------------------------------------------------------
+          //  Weighted Prediction implemented at Slice level. SliceMode=2 is not supported yet.
+          //------------------------------------------------------------------------------
+#if HEVC_DEPENDENT_SLICES
+          if (pcSlice->getSliceMode() == FIXED_NUMBER_OF_BYTES || pcSlice->getSliceSegmentMode() == FIXED_NUMBER_OF_BYTES)
+#else
+          if (pcSlice->getSliceMode() == FIXED_NUMBER_OF_BYTES)
+#endif
+          {
+            EXIT("Weighted Prediction is not yet supported with slice mode determined by max number of bins.");
+          }
+
+          xEstimateWPParamSlice(pcSlice, m_pcCfg->getWeightedPredictionMethod());
+          pcSlice->initWpScaling(pcSlice->getSPS());
+
+          // check WP on/off
+          xCheckWPEnable(pcSlice);
+        }
+
+
+#if HEVC_DEPENDENT_SLICES
+#if HEVC_TILES_WPP
+        // Adjust initial state if this is the start of a dependent slice.
+        {
+          const uint32_t      ctuRsAddr = tileMap.getCtuTsToRsAddrMap(startCtuTsAddr);
+          const uint32_t      currentTileIdx = tileMap.getTileIdxMap(ctuRsAddr);
+          const Tile&     currentTile = tileMap.tiles[currentTileIdx];
+          const uint32_t      firstCtuRsAddrOfTile = currentTile.getFirstCtuRsAddr();
+          if (pcSlice->getDependentSliceSegmentFlag() && ctuRsAddr != firstCtuRsAddrOfTile)
+          {
+            // This will only occur if dependent slice-segments (m_entropyCodingSyncContextState=true) are being used.
+            if (currentTile.getTileWidthInCtus() >= 2 || !m_pcCfg->getEntropyCodingSyncEnabledFlag())
+            {
+              m_CABACEstimator->getCtx() = m_lastSliceSegmentEndContextState;
+              m_CABACEstimator->start();
+            }
+          }
+        }
+#else
+        // KJS: not sure if this works (but both dep slices and tiles shall be removed in VTM, so this code should not be used)
+        if (pcSlice->getDependentSliceSegmentFlag() && ctuRsAddr != startCtuTsAddr)
+        {
+          if (pcPic->cs->pcv->widthInCtus >= 2 || !m_pcCfg->getEntropyCodingSyncEnabledFlag())
+          {
+            m_CABACEstimator->getCtx() = m_lastSliceSegmentEndContextState;
+            m_CABACEstimator->start();
+          }
+#endif
+#endif
+
+#if HEVC_DEPENDENT_SLICES
+          if (!pcSlice->getDependentSliceSegmentFlag())
+          {
+#endif
+            pcPic->m_prevQP[0] = pcPic->m_prevQP[1] = pcSlice->getSliceQp();
+#if HEVC_DEPENDENT_SLICES
+          }
+#endif
+
+          CHECK(pcPic->m_prevQP[0] == std::numeric_limits<int>::max(), "Invalid previous QP");
+
+          CodingStructure&  cs = *pcPic->cs;
+#if ENABLE_QPA || ENABLE_WPP_PARALLELISM
+          const PreCalcValues& pcv = *cs.pcv;
+          const uint32_t    widthInCtus = pcv.widthInCtus;
+#endif
+
+          cs.slice = pcSlice;
+
+#if JVET_M0055_DEBUG_CTU
+          if (startCtuTsAddr == 0 && (pcSlice->getPOC() != m_pcCfg->getSwitchPOC() || -1 == m_pcCfg->getDebugCTU()))
+#else
+          if (startCtuTsAddr == 0)
+#endif
+          {
+            cs.initStructData(pcSlice->getSliceQp(), pcSlice->getPPS()->getTransquantBypassEnabledFlag());
+          }
+
+#if ENABLE_QPA
+
+#if useoriaqp
+          double hpEnerMax = 1.0;
+          double hpEnerPic = 0.0;
+          int    iSrcOffset;
+
+          if (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && (boundingCtuTsAddr > startCtuTsAddr))
+          {
+            for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+            {
+#if HEVC_TILES_WPP
+              const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+              const uint32_t ctuRsAddr = ctuTsAddr;
+#endif
+              ///// fltArea= subArea x-1,y-1,w+2,h+2
+              ///// for subArea x=0, y=0, fltArea= x=0, y=0, w+1,h+1
+              const Position pos((ctuRsAddr % widthInCtus) * pcv.maxCUWidth, (ctuRsAddr / widthInCtus) * pcv.maxCUHeight);
+              const CompArea subArea = clipArea(CompArea(COMPONENT_Y, pcPic->chromaFormat, Area(pos.x, pos.y, pcv.maxCUWidth, pcv.maxCUHeight)), pcPic->Y());
+              const CompArea fltArea = clipArea(CompArea(COMPONENT_Y, pcPic->chromaFormat, Area(pos.x > 0 ? pos.x - 1 : 0, pos.y > 0 ? pos.y - 1 : 0, pcv.maxCUWidth + (pos.x > 0 ? 2 : 1), pcv.maxCUHeight + (pos.y > 0 ? 2 : 1))), pcPic->Y());
+              const SizeType iSrcStride = pcPic->getOrigBuf(subArea).stride;
+              const Pel*     pSrc = pcPic->getOrigBuf(subArea).buf;
+              const SizeType iSrcHeight = pcPic->getOrigBuf(subArea).height;
+              const SizeType iSrcWidth = pcPic->getOrigBuf(subArea).width;
+              const SizeType iFltHeight = pcPic->getOrigBuf(fltArea).height;
+              const SizeType iFltWidth = pcPic->getOrigBuf(fltArea).width;
+              double hpEner = 0.0;
+
+              DTRACE_UPDATE(g_trace_ctx, std::make_pair("ctu", ctuRsAddr));
+
+              // compute DC offset to be subtracted from luma values
+
+              ///// sum all pixel values for current ctu
+              iSrcOffset = 0;
+              for (SizeType h = 0; h < iSrcHeight; h++)
+              {
+                for (SizeType w = 0; w < iSrcWidth; w++)
+                {
+                  iSrcOffset += pSrc[w];
+                }
+                pSrc += iSrcStride;
+              }
+              CHECK(iSrcOffset < 0, "DC offset cannot be negative!");
+
+              int x = iSrcHeight * iSrcWidth;
+              iSrcOffset = (iSrcOffset + (x >> 1)) / x; // slow division
+
+              filterAndCalculateAverageEnergies(pcPic->getOrigBuf(fltArea).buf, iSrcStride,
+                hpEner, iFltHeight, iFltWidth,
+                pcSlice->getSPS()->getBitDepth(CHANNEL_TYPE_LUMA));
+
+              if (hpEner > hpEnerMax) hpEnerMax = hpEner;
+              hpEnerPic += hpEner;
+              pcPic->m_uEnerHpCtu[ctuRsAddr] = hpEner;
+              pcPic->m_iOffsetCtu[ctuRsAddr] = (Pel)iSrcOffset;
+            } // end iteration over all CTUs in current slice
+
+            const double hpEnerAvg = hpEnerPic / double(boundingCtuTsAddr - startCtuTsAddr);
+            ///// return whether modify frame-level QP: all CTU to a same QP or modify each CTU individually
+            if (applyQPAdaptation(pcPic, pcSlice, pcv, startCtuTsAddr, boundingCtuTsAddr, m_pcCfg->getLumaLevelToDeltaQPMapping().mode == LUMALVL_TO_DQP_NUM_MODES,
+              hpEnerAvg, hpEnerMax, (m_pcCfg->getBaseQP() >= 38) || (m_pcCfg->getSourceWidth() <= 512 && m_pcCfg->getSourceHeight() <= 320), m_adaptedLumaQP))
+            {
+              m_CABACEstimator->initCtxModels(*pcSlice);
+#if ENABLE_SPLIT_PARALLELISM || ENABLE_WPP_PARALLELISM
+              for (int jId = 1; jId < m_pcLib->getNumCuEncStacks(); jId++)
+              {
+                CABACWriter* cw = m_pcLib->getCABACEncoder(jId)->getCABACEstimator(pcSlice->getSPS());
+                cw->initCtxModels(*pcSlice);
+              }
+#endif
+#if HEVC_DEPENDENT_SLICES
+              if (!pcSlice->getDependentSliceSegmentFlag())
+              {
+#endif
+                pcPic->m_prevQP[0] = pcPic->m_prevQP[1] = pcSlice->getSliceQp();
+#if HEVC_DEPENDENT_SLICES
+              }
+#endif
+              if (startCtuTsAddr == 0)
+              {
+                cs.currQP[0] = cs.currQP[1] = pcSlice->getSliceQp(); // cf code above
+              }
+            }
+          }
+#endif
+
+#if alambda
+          if (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && (boundingCtuTsAddr > startCtuTsAddr))
+          {
+            int curpoc = pcPic->getPOC();
+            extern string curr_seq_name;
+            extern int conf_QP;
+            //printf("%s %d\t", curr_seq_name.c_str(), curpoc);
+            ///// parse input yuv name
+            //auto xxx = curr_seq_name.find_last_of("/");
+            auto last_slash = min(curr_seq_name.find_last_of("\\"), curr_seq_name.find_last_of("/"));
+            auto dot = curr_seq_name.find_last_of(".");
+            //curr_seq_name = curr_seq_name.substr(last_slash + 1, dot - last_slash - 1);
+            //printf("%s\t", curr_seq_name.substr(last_slash+1,dot- last_slash-1).c_str());
+            int QP = MAX_QP;
+            ///// determine current QP
+            if (!m_pcLib->getUseRateCtrl())
+              QP = conf_QP;
+            else {
+              ;
+            }
+            string file_dir;
+            bool iswindows = 1;
+            /*if (iswindows) {
+              file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+            }
+            else {
+              string date = string("20190729-1");
+              file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+            }*/
+            if (iswindows) {
+              file_dir = "../code/";
+            }
+            else {
+              string date = string("20190729-1");
+              file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+            }
+            //// string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+            //string date = string("20190729-1");
+            //////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
+            //string file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+
+            int picw = pcPic->lwidth();
+            int pich = pcPic->lheight();
+
+#if framelevelalambda
+            int currPOC = pcSlice->getPOC();
+            int baseQP = pcSlice->getSliceQpBase();
+            int frameDQP = 0;
+            double templambda = 0;
+            //ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt"));
+            ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(conf_QP) + string("/frame.txt"));
+            if (!fframe)
+            {
+              printf("open failed: %s--%s\n", strerror(errno), (file_dir + to_string(conf_QP) + string(".txt")).c_str());
+              //printf("open failed\n");
+            }
+            for (int tempi = 0; tempi <= currPOC; tempi++)
+            {
+              fframe >> templambda;
+            }
+            //frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+            if (templambda == 0) {
+              templambda = pcSlice->getLambdas()[0];
+            }
+            bool changeqp = 0;
+            if (changeqp)
+            {
+              const double* oldLambdas = pcSlice->getLambdas();
+              //const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
+              //const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
+              double tempQP = 3 * log2(templambda / oldLambdas[0]);
+              frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+
+              //pcSlice->setLambdas(newLambdas);
+              pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
+              pcSlice->setSliceQpBase(frameDQP + baseQP);
+              setUpLambda(pcSlice, templambda, frameDQP + baseQP);
+              for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+              {
+#if HEVC_TILES_WPP
+                const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+                const uint32_t ctuRsAddr = ctuTsAddr;
+#endif
+                pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
+              }
+#endif
+              if (m_pcRdCost->getLambda() <= oldLambdas[0])
+                m_pcRdCost->saveUnadjustedLambda();
+            }
+            else
+            {
+              const double* oldLambdas = pcSlice->getLambdas();
+              setUpLambda(pcSlice, templambda, frameDQP + baseQP);
+              m_pcRdCost->saveUnadjustedLambda();
+            }
+          }
+
+#endif
+#if usecutreeaqp
+          if (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && (boundingCtuTsAddr > startCtuTsAddr))
+          {
+            int currPOC = pcPic->getPOC();
+            extern string curr_seq_name;
+            extern int conf_QP;
+            //printf("%s %d\t", curr_seq_name.c_str(), curpoc);
+            ///// parse input yuv name
+            //auto xxx = curr_seq_name.find_last_of("/");
+            auto last_slash = min(curr_seq_name.find_last_of("\\"), curr_seq_name.find_last_of("/"));
+            auto dot = curr_seq_name.find_last_of(".");
+            //curr_seq_name = curr_seq_name.substr(last_slash + 1, dot - last_slash - 1);
+            //printf("%s\t", curr_seq_name.substr(last_slash+1,dot- last_slash-1).c_str());
+            int QP = MAX_QP;
+            ///// determine current QP
+            if (!m_pcLib->getUseRateCtrl())
+              QP = conf_QP;
+            else {
+              ;
+            }
+
+            string file_dir;
+            bool iswindows = 0;
+            if (iswindows) {
+              file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+            }
+            else {
+              string date = string("20190919-3");
+              file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+            }
+            // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+            //string date = string("20190729-1");
+            ////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
+            //string file_dir = string("/public/ychen455/date/") + date + string("/code")  + string("/HRRN80VS/");
+
+            int picw = pcPic->lwidth();
+            int pich = pcPic->lheight();
+
+
+
+
+#if framelevelQPA
+            //int currPOC = pcSlice->getPOC();
+            //int currPOC = this->m_pcLib->m_uiNumAllPicCoded+this->m_gopID;
+            //printf("%d\n",pcSlice->getPOC());
+            int baseQP = pcSlice->getSliceQpBase();
+            int frameDQP = 0;
+            double tempQP = 0;
+            ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt"));
+            if (!fframe)
+            {
+              printf("open failed: %s\t%s\n", strerror(errno), (file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt")).c_str());
+            }
+            for (int tempi = 0; tempi <= currPOC; tempi++)
+            {
+              fframe >> tempQP;
+            }
+            frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+#if !is_dqp_not_actualqp
+            frameDQP = frameDQP - baseQP;
+#endif
+            const double* oldLambdas = pcSlice->getLambdas();
+            const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
+            const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
+
+            pcSlice->setLambdas(newLambdas);
+            pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
+            pcSlice->setSliceQpBase(frameDQP + baseQP);
+            //setUpLambda(pcSlice, oldLambdas[0] * corrFactor, frameDQP + baseQP);
+            for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+            {
+#if HEVC_TILES_WPP
+              const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+              const uint32_t ctuRsAddr = ctuTsAddr;
+#endif
+              pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
+            }
+            if (m_pcRdCost->getLambda() <= oldLambdas[0])
+              m_pcRdCost->saveUnadjustedLambda();
+            setUpLambda(pcSlice, newLambdas[0], frameDQP + baseQP);
+#endif
+
+
+#if CTUlevelQPA
+            //int currPOC = this->m_pcLib->m_uiNumAllPicCoded + this->m_gopID;
+            int baseQP = pcSlice->getSliceQpBase();
+            int frameDQP = 0;
+            int ctuDQP = 0;
+            double tempQP = 0;
+            int CTUnum = boundingCtuTsAddr - startCtuTsAddr;
+            ifstream fctu(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/ctu.txt"));
+            if (!fctu)
+            {
+              printf("open /%s/%d/ failed: %s\n", curr_seq_name.substr(last_slash + 1, dot - last_slash - 1).c_str(), conf_QP, strerror(errno));
+            }
+            for (int tempi = 0; tempi < currPOC* CTUnum; tempi++)
+            {
+              fctu >> tempQP;
+            }
+
+            // frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+
+            //const double* oldLambdas = pcSlice->getLambdas();
+            //const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
+            //const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
+
+            //pcSlice->setLambdas(newLambdas);
+            //pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
+            //pcSlice->setSliceQpBase(baseQP);
+            //setUpLambda(pcSlice, oldLambdas[0] * corrFactor, frameDQP + baseQP);
+            for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+            {
+#if HEVC_TILES_WPP
+              const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+              const uint32_t ctuRsAddr = ctuTsAddr;
+#endif
+              fctu >> tempQP;
+              ctuDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+#if !is_dqp_not_actualqp
+              ctuDQP -= baseQP;
+#endif
+              pcPic->m_iOffsetCtu[ctuRsAddr] = (baseQP + ctuDQP) > MAX_QP ? MAX_QP : (baseQP + ctuDQP) < 1 ? 1 : (baseQP + ctuDQP);
+            }
+
+
+
+#endif
+#if mbtreeQPA
+            vector<vector<double>> cutreematrix(pich, vector<double>(picw));
+            vector<vector<double>> ctubits(pich, vector<double>(picw));
+
+
+            ifstream fd(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/D") + to_string(curpoc) + string(".txt"));
+            ifstream fr(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/R") + to_string(curpoc) + string(".txt"));
+            //f.open(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1)+string("/")+ to_string(QP)+ string("/") + to_string(curpoc) + string(".txt"));
+            //printf("%s\n",(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/") + to_string(curpoc) + string(".txt")).c_str());
+            if (!fd || !fr)
+            {
+              printf("open failed: %s\n", strerror(errno));
+            }
+
+            for (int hi = 0; hi < pich; hi++)
+            {
+              for (int wi = 0; wi < picw; wi++) {
+                fd >> cutreematrix[hi][wi];
+                fr >> ctubits[hi][wi];
+
+
+              }
+            }
+            //printf("%f\n", cutreematrix[0][0]);
+            fd.close();
+            fr.close();
+            for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+            {
+#if HEVC_TILES_WPP
+              const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+              const uint32_t ctuRsAddr = ctuTsAddr;
+#endif
+              ///// fltArea= subArea x-1,y-1,w+2,h+2
+              ///// for subArea x=0, y=0, fltArea= x=0, y=0, w+1,h+1
+              const Position pos((ctuRsAddr % widthInCtus) * pcv.maxCUWidth, (ctuRsAddr / widthInCtus) * pcv.maxCUHeight);
+              const CompArea subArea = clipArea(CompArea(COMPONENT_Y, pcPic->chromaFormat, Area(pos.x, pos.y, pcv.maxCUWidth, pcv.maxCUHeight)), pcPic->Y());
+
+              const SizeType iSrcStride = pcPic->getOrigBuf(subArea).stride;
+              const Pel*     pSrc = pcPic->getOrigBuf(subArea).buf;
+              const SizeType iSrcHeight = min(pcPic->getOrigBuf(subArea).height, pcPic->lheight() - pos.y - 1);
+              const SizeType iSrcWidth = min(pcPic->getOrigBuf(subArea).width, pcPic->lwidth() - pos.x - 1);
+
+
+              ///// sum all pixel values for current ctu
+              double temp_propagate_cost = 0;
+              double temp_bits = 0;
+              for (SizeType h = 0; h < iSrcHeight; h++)
+              {
+                for (SizeType w = 0; w < iSrcWidth; w++)
+                {
+                  temp_propagate_cost += cutreematrix[h][w];
+                  temp_bits += ctubits[h][w];
+                }
+              }
+              temp_propagate_cost = temp_propagate_cost / (iSrcHeight* iSrcWidth);
+              double strength = 1;
+
+              pcPic->m_iOffsetCtu[ctuRsAddr] = (Pel)(pcSlice->getSliceQpBase() - Clip3<int>(-3, 3, int(strength * log(temp_propagate_cost) / log(2) + 0.5)));
+              // printf("%d\t%f\n", pcPic->m_iOffsetCtu[ctuRsAddr], log(temp_propagate_cost) / log(2));
+
+
+            } // end iteration over all CTUs in current slice
+
+            {
+              m_CABACEstimator->initCtxModels(*pcSlice);
+#if ENABLE_SPLIT_PARALLELISM || ENABLE_WPP_PARALLELISM
+              for (int jId = 1; jId < m_pcLib->getNumCuEncStacks(); jId++)
+              {
+                CABACWriter* cw = m_pcLib->getCABACEncoder(jId)->getCABACEstimator(pcSlice->getSPS());
+                cw->initCtxModels(*pcSlice);
+              }
+#endif
+#if HEVC_DEPENDENT_SLICES
+              if (!pcSlice->getDependentSliceSegmentFlag())
+              {
+#endif
+                pcPic->m_prevQP[0] = pcPic->m_prevQP[1] = pcSlice->getSliceQp();
+#if HEVC_DEPENDENT_SLICES
+              }
+#endif
+              if (startCtuTsAddr == 0)
+              {
+                cs.currQP[0] = cs.currQP[1] = pcSlice->getSliceQp(); // cf code above
+              }
+            }
+
+
+
+
+#endif
+
+          }
+#endif
+
+#endif // ENABLE_QPA
+
+          cs.pcv = pcSlice->getPPS()->pcv;
+          cs.fracBits = 0;
+#if codingparameters
+          //extern coding_parameterscy framecp;
+          ////setUpLambda(pcSlice, (pcSlice->getLambdas())[0], pcSlice->getSliceQp());
+          //framecp.setlambdas(m_pcRdCost->getLambda(), m_pcRdCost->getLambda(), m_pcRdCost->getLambda());
+          //framecp.setlambdas(pcSlice->getSliceQp(),
+          //  pcSlice->getSliceQp() + pcSlice->getSliceChromaQpDelta(COMPONENT_Cb),
+          //  pcSlice->getSliceQp() + pcSlice->getSliceChromaQpDelta(COMPONENT_Cr));
+
+
+
+#endif
+
+#if ENABLE_WPP_PARALLELISM
+          bool bUseThreads = m_pcCfg->getNumWppThreads() > 1;
+          if (bUseThreads)
+          {
+            CHECK(startCtuTsAddr != 0 || boundingCtuTsAddr != pcPic->cs->pcv->sizeInCtus, "not intended");
+
+            pcPic->cs->allocateVectorsAtPicLevel();
+
+            omp_set_num_threads(m_pcCfg->getNumWppThreads() + m_pcCfg->getNumWppExtraLines());
+
+#pragma omp parallel for schedule(static,1) if(bUseThreads)
+            for (int ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr += widthInCtus)
+            {
+              // wpp thread start
+              pcPic->scheduler.setWppThreadId();
+#if ENABLE_SPLIT_PARALLELISM
+              pcPic->scheduler.setSplitThreadId(0);
+#endif
+              encodeCtus(pcPic, bCompressEntireSlice, bFastDeltaQP, ctuTsAddr, ctuTsAddr + widthInCtus, m_pcLib);
+              // wpp thread stop
+            }
+          }
+          else
+#endif
+#if K0149_BLOCK_STATISTICS
+            const SPS *sps = pcSlice->getSPS();
+          CHECK(sps == 0, "No SPS present");
+          writeBlockStatisticsHeader(sps);
+#endif
+          m_pcInterSearch->resetAffineMVList();
+          encodeCtus(pcPic, bCompressEntireSlice, bFastDeltaQP, startCtuTsAddr, boundingCtuTsAddr, m_pcLib);
+
+#if HEVC_DEPENDENT_SLICES
+          // store context state at the end of this slice-segment, in case the next slice is a dependent slice and continues using the CABAC contexts.
+          if (pcSlice->getPPS()->getDependentSliceSegmentsEnabledFlag())
+          {
+            m_lastSliceSegmentEndContextState = m_CABACEstimator->getCtx();//ctx end of dep.slice
+          }
+#endif
+      }
+    }
+  }
+  pcPic->slices[0]->m_apcRefPicList[REF_PIC_LIST_0][0] = tempreflist[REF_PIC_LIST_0][0];
+  pcPic->slices[0]->m_aiRefPOCList[REF_PIC_LIST_0][0] = temprefpoc[REF_PIC_LIST_0][0];
+  pcPic->slices[0]->m_apcRefPicList[REF_PIC_LIST_1][0] = tempreflist[REF_PIC_LIST_1][0];
+  pcPic->slices[0]->m_aiRefPOCList[REF_PIC_LIST_1][0] = temprefpoc[REF_PIC_LIST_1][0];
+  skipmerge = 0;
+  }
+
+#endif
+
 //! \}

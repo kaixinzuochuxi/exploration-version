@@ -159,7 +159,10 @@ void LoopFilter::loopFilterPic( CodingStructure& cs
     }
   }
 #endif
-
+  /////
+  if (cs.slice->getPOC() == 1)
+    int xxx = 1;
+  /////
   for( int y = 0; y < pcv.heightInCtus; y++ )
   {
     for( int x = 0; x < pcv.widthInCtus; x++ )

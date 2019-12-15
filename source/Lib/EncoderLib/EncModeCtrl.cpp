@@ -1334,6 +1334,10 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
 
   //////////////////////////////////////////////////////////////////////////
   // Add unit coding modes: Intra, InterME, InterMerge ...
+#if test1
+  extern bool skipmerge;
+  if (!skipmerge)
+#endif
 
   for( int qpLoop = maxQP; qpLoop >= minQP; qpLoop-- )
   {
@@ -1385,28 +1389,41 @@ void EncModeCtrlMTnoRQT::initCULevel( Partitioner &partitioner, const CodingStru
       // add inter modes
       if( m_pcEncCfg->getUseEarlySkipDetection() )
       {
-        if( cs.sps->getUseTriangle() && cs.slice->isInterB() )
+#if test1
+        extern bool skipmerge;
+        if (!skipmerge)
+#endif
         {
-          m_ComprCUCtxList.back().testModes.push_back( { ETM_MERGE_TRIANGLE, ETO_STANDARD, qp, lossless } );
-        }
-        m_ComprCUCtxList.back().testModes.push_back( { ETM_MERGE_SKIP,  ETO_STANDARD, qp, lossless } );
-        if ( cs.sps->getUseAffine() || cs.sps->getSBTMVPEnabledFlag() )
-        {
-          m_ComprCUCtxList.back().testModes.push_back( { ETM_AFFINE,    ETO_STANDARD, qp, lossless } );
+          if (cs.sps->getUseTriangle() && cs.slice->isInterB())
+          {
+            m_ComprCUCtxList.back().testModes.push_back({ ETM_MERGE_TRIANGLE, ETO_STANDARD, qp, lossless });
+          }
+          m_ComprCUCtxList.back().testModes.push_back({ ETM_MERGE_SKIP,  ETO_STANDARD, qp, lossless });
+          if (cs.sps->getUseAffine() || cs.sps->getSBTMVPEnabledFlag())
+          {
+            m_ComprCUCtxList.back().testModes.push_back({ ETM_AFFINE,    ETO_STANDARD, qp, lossless });
+          }
         }
         m_ComprCUCtxList.back().testModes.push_back( { ETM_INTER_ME,    ETO_STANDARD, qp, lossless } );
       }
       else
       {
-        m_ComprCUCtxList.back().testModes.push_back( { ETM_INTER_ME,    ETO_STANDARD, qp, lossless } );
-        if( cs.sps->getUseTriangle() && cs.slice->isInterB() )
+        m_ComprCUCtxList.back().testModes.push_back({ ETM_INTER_ME,    ETO_STANDARD, qp, lossless });
+#if test1
+        extern bool skipmerge;
+        if (!skipmerge)
+#endif
         {
-          m_ComprCUCtxList.back().testModes.push_back( { ETM_MERGE_TRIANGLE, ETO_STANDARD, qp, lossless } );
+        
+        if (cs.sps->getUseTriangle() && cs.slice->isInterB())
+        {
+          m_ComprCUCtxList.back().testModes.push_back({ ETM_MERGE_TRIANGLE, ETO_STANDARD, qp, lossless });
         }
-        m_ComprCUCtxList.back().testModes.push_back( { ETM_MERGE_SKIP,  ETO_STANDARD, qp, lossless } );
-        if ( cs.sps->getUseAffine() || cs.sps->getSBTMVPEnabledFlag() )
+        m_ComprCUCtxList.back().testModes.push_back({ ETM_MERGE_SKIP,  ETO_STANDARD, qp, lossless });
+        if (cs.sps->getUseAffine() || cs.sps->getSBTMVPEnabledFlag())
         {
-          m_ComprCUCtxList.back().testModes.push_back( { ETM_AFFINE,    ETO_STANDARD, qp, lossless } );
+          m_ComprCUCtxList.back().testModes.push_back({ ETM_AFFINE,    ETO_STANDARD, qp, lossless });
+        }
         }
       }
 #if JVET_M0253_HASH_ME

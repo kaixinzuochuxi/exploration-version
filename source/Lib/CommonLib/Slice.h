@@ -1600,7 +1600,14 @@ private:
   int                        m_deblockingFilterBetaOffsetDiv2;    //< beta offset for deblocking filter
   int                        m_deblockingFilterTcOffsetDiv2;      //< tc offset for deblocking filter
   int                        m_list1IdxToList0Idx[MAX_NUM_REF];
+#if test1
+public:
   int                        m_aiNumRefIdx   [NUM_REF_PIC_LIST_01];    //  for multiple reference of current slice
+private:
+
+#else
+  int                        m_aiNumRefIdx[NUM_REF_PIC_LIST_01];    //  for multiple reference of current slice
+#endif
   bool                       m_pendingRasInit;
 
   bool                       m_depQuantEnabledFlag;
@@ -1615,13 +1622,24 @@ private:
 #endif
 
   //  Data
+#if test1
+public:
+  int                        m_iSliceQpDelta;
+  int                        m_iSliceChromaQpDelta[MAX_NUM_COMPONENT];
+  Picture*                   m_apcRefPicList[NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+  int                        m_aiRefPOCList[NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+  bool                       m_bIsUsedAsLongTerm[NUM_REF_PIC_LIST_01][MAX_NUM_REF + 1];
+  int                        m_iDepth;
+private:
+#else
+
   int                        m_iSliceQpDelta;
   int                        m_iSliceChromaQpDelta[MAX_NUM_COMPONENT];
   Picture*                   m_apcRefPicList [NUM_REF_PIC_LIST_01][MAX_NUM_REF+1];
   int                        m_aiRefPOCList  [NUM_REF_PIC_LIST_01][MAX_NUM_REF+1];
   bool                       m_bIsUsedAsLongTerm[NUM_REF_PIC_LIST_01][MAX_NUM_REF+1];
   int                        m_iDepth;
-
+#endif
 
   // access channel
 #if HEVC_VPS
@@ -2020,6 +2038,11 @@ public:
 protected:
   Picture*              xGetRefPic        (PicList& rcListPic, int poc);
   Picture*              xGetLongTermRefPic(PicList& rcListPic, int poc, bool pocHasMsb);
+
+#if test1
+  public:
+    Distortion slice_sigma;
+#endif 
 };// END CLASS DEFINITION Slice
 
 
