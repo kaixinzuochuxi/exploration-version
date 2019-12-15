@@ -113,6 +113,7 @@
 #define disablefast 0
 #define printchormacu 0
 #define printoriresi 0
+#define predfromori 1
 #endif
 
 // weighted D
@@ -130,7 +131,7 @@
 #define getseqname 1
 #endif
 
-#define predfromori 1
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DEBUG log
 #define debug20190924 0

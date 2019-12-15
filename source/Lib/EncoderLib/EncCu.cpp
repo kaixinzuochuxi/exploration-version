@@ -483,6 +483,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
     , bestMotCandLUTs
   );
   
+  int a[5] = { 1 };
 #if build_cu_tree
 #if test1
   extern bool skipmerge;
@@ -546,17 +547,20 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       double avgofref = 0;
       if (pu->refIdx[0] != -1)
       {
-        auto prefbuf0 = pu->cs->slice->getRefPic(REF_PIC_LIST_0, pu->refIdx[0])->getRecoBuf().Y();
+
+          auto prefbuf0 = pu->refIdx[0] == 16?
+          pu->cs->picture->getRecoBuf().Y():
+          pu->cs->slice->getRefPic(REF_PIC_LIST_0, pu->refIdx[0])->getRecoBuf().Y();
         
         ///// non affine
         if (pu->cu->affine == 0)
         {
-          double mvscale = pu->cu->imv == 0 ? 1/16 : 0.25;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1?1:4;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
-              int curx = x + lx + int(pu->mv[0].hor * mvscale);
-              int cury = y + ly + int(pu->mv[0].ver * mvscale);
+              int curx = max(0,min(x + lx + int(pu->mv[0].hor * mvscale),(int)cs.picture->lwidth()));
+              int cury = max(0,min(y + ly + int(pu->mv[0].ver * mvscale), (int)cs.picture->lheight()));
               avgofref += prefbuf0.at(curx, cury);
               pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
               
@@ -565,7 +569,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
         else if (pu->cu->affineType == 0)
         {
-          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
@@ -578,6 +582,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(y + ly)
                 + pu->mvAffi[0][0].ver)
                 * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury= max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf0.at(curx, cury);
               pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
 
@@ -586,7 +592,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
         else
         {
-          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
@@ -599,6 +605,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 + (pu->mvAffi[0][2].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].height)*(y + ly)
                 + pu->mvAffi[0][0].ver)
                 * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf0.at(curx, cury);
               pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
 
@@ -611,16 +619,21 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       avgofref = 0;
       if (pu->refIdx[1] != -1)
       {
-        auto prefbuf1 = pu->cs->slice->getRefPic(REF_PIC_LIST_1, pu->refIdx[1])->getRecoBuf().Y();
+
+          auto prefbuf1 = pu->refIdx[1] == 16 ?
+          pu->cs->picture->getRecoBuf().Y() : 
+          pu->cs->slice->getRefPic(REF_PIC_LIST_1, pu->refIdx[1])->getRecoBuf().Y();
         ///// non affine
         if (pu->cu->affine == 0)
         {
-          double mvscale = pu->cu->imv == 0 ? 1 / 16 : 0.25;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 4;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
               int curx = x + lx + int(pu->mv[1].hor * mvscale);
               int cury = y + ly + int(pu->mv[1].ver * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf1.at(curx, cury);
               pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
 
@@ -629,7 +642,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
         else if (pu->cu->affineType == 0)
         {
-          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
@@ -642,6 +655,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(y + ly)
                 + pu->mvAffi[1][0].ver)
                 * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf1.at(curx, cury);
               pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
 
@@ -650,7 +665,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
         else
         {
-          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
@@ -663,6 +678,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 + (pu->mvAffi[1][2].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].height)*(y + ly)
                 + pu->mvAffi[1][0].ver)
                 * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf1.at(curx, cury);
               pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
 
@@ -679,17 +696,22 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       avgofref = 0;
       if (pu->refIdx[0] != -1)
       {
-        auto prefbuf0 = pu->cs->slice->getRefPic(REF_PIC_LIST_0, pu->refIdx[0])->getTrueOrigBuf().Y();
+
+          auto prefbuf0 = pu->refIdx[0] == 16 ?
+          pu->cs->picture->getTrueOrigBuf().Y() :
+          pu->cs->slice->getRefPic(REF_PIC_LIST_0, pu->refIdx[0])->getTrueOrigBuf().Y();
 
         ///// non affine
         if (pu->cu->affine == 0)
         {
-          double mvscale = pu->cu->imv == 0 ? 1 / 16 : 0.25;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 4;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
               int curx = x + lx + int(pu->mv[0].hor * mvscale);
               int cury = y + ly + int(pu->mv[0].ver * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf0.at(curx, cury);
               pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
 
@@ -698,7 +720,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
         else if (pu->cu->affineType == 0)
         {
-          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
@@ -711,6 +733,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 + (pu->mvAffi[0][1].ver - pu->mvAffi[0][0].hor) / double(pu->blocks[0].width)*(y + ly)
                 + pu->mvAffi[0][0].ver)
                 * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf0.at(curx, cury);
               pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
 
@@ -719,7 +743,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
         else
         {
-          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
@@ -732,6 +756,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 + (pu->mvAffi[0][2].ver - pu->mvAffi[0][0].ver) / double(pu->blocks[0].height)*(y + ly)
                 + pu->mvAffi[0][0].ver)
                 * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf0.at(curx, cury);
               pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
 
@@ -744,16 +770,21 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       avgofref = 0;
       if (pu->refIdx[1] != -1)
       {
-        auto prefbuf1 = pu->cs->slice->getRefPic(REF_PIC_LIST_1, pu->refIdx[1])->getTrueOrigBuf().Y();
+
+          auto prefbuf1 = pu->refIdx[1] == 16 ?
+          pu->cs->picture->getTrueOrigBuf().Y() : 
+          pu->cs->slice->getRefPic(REF_PIC_LIST_1, pu->refIdx[1])->getTrueOrigBuf().Y();
         ///// non affine
         if (pu->cu->affine == 0)
         {
-          double mvscale = pu->cu->imv == 0 ? 1 / 16 : 0.25;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 4;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
               int curx = x + lx + int(pu->mv[1].hor * mvscale);
               int cury = y + ly + int(pu->mv[1].ver * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf1.at(curx, cury);
               pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
 
@@ -762,7 +793,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
         else if (pu->cu->affineType == 0)
         {
-          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
@@ -775,6 +806,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 + (pu->mvAffi[1][1].ver - pu->mvAffi[1][0].hor) / double(pu->blocks[0].width)*(y + ly)
                 + pu->mvAffi[1][0].ver)
                 * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf1.at(curx, cury);
               pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
 
@@ -783,7 +816,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
         else
         {
-          double mvscale = pu->cu->imv == 1 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
+          double mvscale = pu->cu->imv == 0 ? 0.25 : pu->cu->imv == 1 ? 1 : 1 / 16;
           for (int ly = 0; ly < pu->blocks[0].height; ly++)
             for (int lx = 0; lx < pu->blocks[0].width; lx++)
             {
@@ -796,6 +829,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 + (pu->mvAffi[1][2].ver - pu->mvAffi[1][0].ver) / double(pu->blocks[0].height)*(y + ly)
                 + pu->mvAffi[1][0].ver)
                 * mvscale);
+              curx = max(0, min(curx, (int)cs.picture->lwidth()));
+              cury = max(0, min(cury, (int)cs.picture->lheight()));
               avgofref += prefbuf1.at(curx, cury);
               pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
 
