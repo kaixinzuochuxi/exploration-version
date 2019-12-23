@@ -1363,7 +1363,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
   }
 
 #if ENABLE_QPA
-
+  bool iswindows = 0;
 #if useoriaqp
   double hpEnerMax     = 1.0;
   double hpEnerPic     = 0.0;
@@ -1470,22 +1470,23 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       ;
     }
     string file_dir;
-    bool iswindows = 1;
+    
     /*if (iswindows) {
-      file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+      file_dir = "D:/Projects/jobs/dqp/python/tempd/";
     }
     else {
       string date = string("20190729-1");
       file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
     }*/
     if (iswindows) {
-      file_dir = "../code/";
+      file_dir = "D:/Projects/jobs/dqp/python/tempd/";
     }
     else {
-      string date = string("20190729-1");
-      file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+      /*string date = string("20190919-3");
+      file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");*/
+      file_dir = string("../code/tempd/");
     }
-    //// string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+    //// string file_dir = "D:/Projects/jobs/dqp/python/tempd/";
     //string date = string("20190729-1");
     //////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
     //string file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
@@ -1499,10 +1500,10 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     int frameDQP = 0;
     double templambda = 0;
     //ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/frame.txt"));
-    ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(conf_QP) + string("/frame.txt"));
+    ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(conf_QP) + string("/framelambda.txt"));
     if (!fframe)
     {
-      printf("open failed: %s--%s\n", strerror(errno), (file_dir + to_string(conf_QP) + string(".txt")).c_str());
+      printf("open failed: %s--%s\n", strerror(errno), (file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(conf_QP) + string(".txt")).c_str());
       //printf("open failed\n");
     }
     for (int tempi = 0; tempi <= currPOC; tempi++)
@@ -1510,9 +1511,17 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       fframe >> templambda;
     }
     //frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+
+#if is_dqp_not_actualqp    
+    if (templambda == 0) {
+      templambda = 1;
+    }
+    templambda = templambda * pcSlice->getLambdas()[0];
+#else
     if (templambda == 0) {
       templambda = pcSlice->getLambdas()[0];
     }
+#endif
     bool changeqp = 0;
     if (changeqp)
     {
@@ -1535,18 +1544,76 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 #endif
         pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
       }
-#endif
+
       if (m_pcRdCost->getLambda() <= oldLambdas[0])
         m_pcRdCost->saveUnadjustedLambda();
-     }
-    else 
+    }
+    else
     {
       const double* oldLambdas = pcSlice->getLambdas();
       setUpLambda(pcSlice, templambda, frameDQP + baseQP);
       m_pcRdCost->saveUnadjustedLambda();
     }
+  }
+
+#endif
+
+#if CTUlevelalambda
+  int baseQP = pcSlice->getSliceQpBase();
+  int frameDQP = 0;
+  int ctuDQP = 0;
+  double templambda = 0;
+  int CTUnum = boundingCtuTsAddr - startCtuTsAddr;
+  ifstream fctu(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/ctulambda.txt"));
+  if (!fctu)
+  {
+    printf("open /%s/%d/ failed: %s\n", (file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1)).c_str(), conf_QP, strerror(errno));
+  }
+  for (int tempi = 0; tempi < curpoc* CTUnum; tempi++)
+  {
+    fctu >> templambda;
+  }
+
+  // frameDQP = int(tempQP / abs(tempQP)) *  int(abs(tempQP) + 0.5);
+
+  //const double* oldLambdas = pcSlice->getLambdas();
+  //const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
+  //const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
+
+  //pcSlice->setLambdas(newLambdas);
+  //pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
+  //pcSlice->setSliceQpBase(baseQP);
+  //setUpLambda(pcSlice, oldLambdas[0] * corrFactor, frameDQP + baseQP);
+  pcPic->m_dalambda.clear();
+  for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+  {
+#if HEVC_TILES_WPP
+    const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+#else
+    const uint32_t ctuRsAddr = ctuTsAddr;
+#endif
+    fctu >> templambda;
+
+
+#if is_dqp_not_actualqp
+    if (templambda == 0)
+    {
+      templambda = 1;
     }
-  
+    pcPic->m_dalambda.push_back(templambda*pcSlice->getLambdas()[0]);
+#else
+    if (templambda == 0)
+    {
+      templambda = pcSlice->getLambdas()[0];
+    }
+    pcPic->m_dalambda.push_back(templambda);
+#endif
+    //pcPic->m_iOffsetCtu[ctuRsAddr] = (baseQP + ctuDQP) > MAX_QP ? MAX_QP : (baseQP + ctuDQP) < 1 ? 1 : (baseQP + ctuDQP);
+  }
+
+
+#endif
+  }
 #endif
 #if usecutreeaqp
   if (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && (boundingCtuTsAddr > startCtuTsAddr))
@@ -1570,15 +1637,16 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     }
 
     string file_dir;
-    bool iswindows = 0;
+    
     if (iswindows) {
-      file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+      file_dir = "D:/Projects/jobs/dqp/python/tempd/";
     }
     else {
-      string date = string("20190919-3");
-      file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
+      /*string date = string("20190919-3");
+      file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");*/
+      file_dir = string("../code/tempd/");
     }
-    // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+    // string file_dir = "D:/Projects/jobs/dqp/python/tempd/";
     //string date = string("20190729-1");
     ////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
     //string file_dir = string("/public/ychen455/date/") + date + string("/code")  + string("/HRRN80VS/");
@@ -1642,7 +1710,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     ifstream fctu(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(QP) + string("/ctu.txt"));
     if (!fctu)
     {
-      printf("open /%s/%d/ failed: %s\n", curr_seq_name.substr(last_slash + 1, dot - last_slash - 1).c_str(), conf_QP, strerror(errno));
+      printf("open /%s/%d/ failed: %s\n", (file_dir+curr_seq_name.substr(last_slash + 1, dot - last_slash - 1)).c_str(), conf_QP, strerror(errno));
     }
     for (int tempi = 0; tempi < currPOC* CTUnum; tempi++)
     {
@@ -1770,8 +1838,9 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 #endif
     
   }
-#endif
+
   
+#endif
 #endif // ENABLE_QPA
 
   cs.pcv      = pcSlice->getPPS()->pcv;
@@ -2137,6 +2206,26 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     }
 #endif
 
+#if alambda && CTUlevelalambda
+    else if (pCfg->getUsePerceptQPA() && pcSlice->getPPS()->getUseDQP())
+    {
+      const int adaptedQP = pcPic->m_iOffsetCtu[ctuRsAddr];
+      const double newLambda = pcPic->m_dalambda[ctuRsAddr];
+      pcPic->m_uEnerHpCtu[ctuRsAddr] = newLambda;
+#if RDOQ_CHROMA_LAMBDA
+      pTrQuant->getLambdas(oldLambdaArray); // save the old lambdas
+      const double chromaLambda = newLambda / pRdCost->getChromaWeight();
+      const double lambdaArray[MAX_NUM_COMPONENT] = { newLambda, chromaLambda, chromaLambda };
+      pTrQuant->setLambdas(lambdaArray);
+#else
+      pTrQuant->setLambda(newLambda);
+#endif
+      pRdCost->setLambda(newLambda, pcSlice->getSPS()->getBitDepths());
+      pRdCost->saveUnadjustedLambda();
+      currQP[0] = currQP[1] = adaptedQP;
+
+    }
+#endif
 #endif
 
 #if codingparameters
@@ -2456,6 +2545,9 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       pTrQuant->setLambda (oldLambda);
 #endif
       pRdCost->setLambda (oldLambda, pcSlice->getSPS()->getBitDepths());
+#if alambda && CTUlevelalambda
+      pRdCost->saveUnadjustedLambda();
+#endif
     }
 #endif
 #if intermediate
@@ -3131,9 +3223,9 @@ void EncSlice::premeslice(Picture* pcPic, const bool bCompressEntireSlice, const
               ;
             }
             string file_dir;
-            bool iswindows = 1;
+            
             /*if (iswindows) {
-              file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+              file_dir = "D:/Projects/jobs/dqp/python/tempd/";
             }
             else {
               string date = string("20190729-1");
@@ -3146,7 +3238,7 @@ void EncSlice::premeslice(Picture* pcPic, const bool bCompressEntireSlice, const
               string date = string("20190729-1");
               file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
             }
-            //// string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+            //// string file_dir = "D:/Projects/jobs/dqp/python/tempd/";
             //string date = string("20190729-1");
             //////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
             //string file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
@@ -3231,15 +3323,15 @@ void EncSlice::premeslice(Picture* pcPic, const bool bCompressEntireSlice, const
             }
 
             string file_dir;
-            bool iswindows = 0;
+            
             if (iswindows) {
-              file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+              file_dir = "D:/Projects/jobs/dqp/python/tempd/";
             }
             else {
               string date = string("20190919-3");
               file_dir = string("/public/ychen455/date/") + date + string("/code") + string("/HRRN80VS/");
             }
-            // string file_dir = "D:/Projects/jobs/Temporal dependency-MB tree/python/HRRN80VS/";
+            // string file_dir = "D:/Projects/jobs/dqp/python/tempd/";
             //string date = string("20190729-1");
             ////string file_dir = string("/public/ychen455/date/")+ date +string("/code")+date+string("/HRRN80VS/");
             //string file_dir = string("/public/ychen455/date/") + date + string("/code")  + string("/HRRN80VS/");

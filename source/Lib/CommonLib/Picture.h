@@ -314,6 +314,9 @@ public:
 #if ENABLE_QPA
   std::vector<double>     m_uEnerHpCtu;                         ///< CTU-wise L2 or squared L1 norm of high-passed luma input
   std::vector<Pel>        m_iOffsetCtu;                         ///< CTU-wise DC offset (later QP index offset) of luma input
+#if alambda && CTUlevelalambda
+  std::vector<double> m_dalambda;
+#endif
 #endif
 
   std::vector<SAOBlkParam> m_sao[2];
