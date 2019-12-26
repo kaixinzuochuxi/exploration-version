@@ -6982,12 +6982,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
 
     csFull->fracBits += m_CABACEstimator->getEstFracBits();
     csFull->dist     += uiSingleDist;
-#if build_cu_tree
-    // only have one cu and pu
-    //printf("%d", csFull->pus.size()== (unsigned _int64)1);
-    //cu.firstPU->interdist += uiSingleDistComp[COMPONENT_Y];
-    //csFull->pus[0]->interdist = uiSingleDist;
-#endif
+
 #if WCG_EXT
     if( m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() )
     {
@@ -7095,21 +7090,13 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       if( bCheckFull && anyCbfSet && csSplit->cost < csFull->cost )
       {
         cs.useSubStructure( *csSplit, partitioner.chType, currArea, false, false, false, true );
-#if build_cu_tree
-        //if (csSplit->m_isTuEnc) {
-        //  cs->pus[0].intradist = csSplit->pus[0]->intradist;
-        //  cs->pus[0].interdist = csSplit->pus[0]->interdist;
-        //}
-        //printf("%llu",cs.pus.size());
-#endif
+
         cs.cost = csSplit->cost;
 #if !JVET_M0464_UNI_MTS
         isSplit = true;
 #endif
       }
-#if build_cu_tree
-      //cu.firstPU->interdist = csSplit->dist;
-#endif
+
     }
 
 #if !JVET_M0464_UNI_MTS
@@ -7281,10 +7268,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
     pu.dist = distortion;
     // pu.cost = cs.cost;
     pu.interbits = cs.fracBits;
-//#if predfromori
-//    cu.firstPU->interdistori = oridistortion;
-//    cu.firstPU->interbitsori = oridistortion;
-//#endif
+
 #endif
     return;
   }
@@ -8317,12 +8301,7 @@ void InterSearch::symmvdCheckBestMvp(
 
       csFull->fracBits += m_CABACEstimator->getEstFracBits();
       csFull->dist += uiSingleDist;
-#if build_cu_tree
-      // only have one cu and pu
-      //printf("%d", csFull->pus.size()== (unsigned _int64)1);
-      //cu.firstPU->interdist += uiSingleDistComp[COMPONENT_Y];
-      //csFull->pus[0]->interdist = uiSingleDist;
-#endif
+
 #if WCG_EXT
       if (m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled())
       {
@@ -8435,21 +8414,13 @@ void InterSearch::symmvdCheckBestMvp(
         if (bCheckFull && anyCbfSet && csSplit->cost < csFull->cost)
         {
           cs.useSubStructure(*csSplit, partitioner.chType, currArea, false, false, false, true);
-#if build_cu_tree
-          //if (csSplit->m_isTuEnc) {
-          //  cs->pus[0].intradist = csSplit->pus[0]->intradist;
-          //  cs->pus[0].interdist = csSplit->pus[0]->interdist;
-          //}
-          //printf("%llu",cs.pus.size());
-#endif
+
           cs.cost = csSplit->cost;
 #if !JVET_M0464_UNI_MTS
           isSplit = true;
 #endif
         }
-#if build_cu_tree
-        //cu.firstPU->interdist = csSplit->dist;
-#endif
+
       }
 
 #if !JVET_M0464_UNI_MTS
@@ -8743,9 +8714,7 @@ void InterSearch::symmvdCheckBestMvp(
       cs.cost = cscost;
       cs.lumaCost = cslumacost;
 #if build_cu_tree
-      //pu.interdist = distortion;
-      //// pu.cost = cs.cost;
-      //pu.interbits = cs.fracBits;
+      
 #if predfromori
       cs.pus[0]->interdistori = oridistortion;
       cs.pus[0]->interbitsori = m_CABACEstimator->getEstFracBits();
@@ -8998,14 +8967,13 @@ void InterSearch::symmvdCheckBestMvp(
     //cs.getBuf(cu, PIC_RECOFROMORI).bufs[2].copyFrom(cs.picture->m_bufs[PIC_TRUE_ORIGINAL].bufs[2]);
    
 #if build_cu_tree
-    //cu.firstPU->interdist = finalDistortion;
-    //cu.firstPU->interbits = finalFracBits;
+
 #if predfromori
     cs.pus[0]->interdistori = finalDistortionori;
     cs.pus[0]->interbitsori = finalFracBitsori;
     cs.pus[0]->distori = distori;
 #endif
-    //cu.firstPU->cost = cs.cost;
+    
 #endif
 
 #if predfromori

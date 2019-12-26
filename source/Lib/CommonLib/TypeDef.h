@@ -81,9 +81,9 @@
 #define donotwritenal 1
 #define disablepsnr 1
 #else 
-#define usecutreeaqp 1
+#define usecutreeaqp 0
 #define mbtreeQPA 0
-#define alambda 0
+#define alambda 1
 #endif
 
 #if usecutreeaqp
@@ -104,14 +104,18 @@
 #if alambda 
 #define getseqname 1
 #define dqp_apply_to_low_resolution 1
-#define framelevelalambda 0
-#define CTUlevelalambda 1
+#define framelevelalambda 1
+#define CTUlevelalambda 0
+#define disable_RA_cusize_limit 1
+#define disable_QPA_with_auto_chormaQPflag 1
+#define dqp_apply_to_low_resolution 1
 #endif
 
 // build cu tree, print CU level information
-#define build_cu_tree 1
+#define build_cu_tree 0
 /////
 #if build_cu_tree 
+#define printall 0
 #define disablefast 0
 #define printchormacu 0
 #define printoriresi 1

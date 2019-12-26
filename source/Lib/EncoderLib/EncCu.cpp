@@ -489,6 +489,9 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   extern bool skipmerge;
   //if (!skipmerge)
 #endif
+#if !printall
+  if(cs.slice->getPOC()==2)
+#endif
   {
     char *s[] = {
       "MODE_INTER" ,     ///< inter-prediction mode
@@ -1122,106 +1125,112 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   cs.useSubStructure( *bestCS, partitioner->chType, CS::getArea( *bestCS, area, partitioner->chType ), copyUnsplitCTUSignals, false, false, copyUnsplitCTUSignals );
   cs.slice->copyMotionLUTs(bestMotCandLUTs, cs.slice->getMotionLUTs());
 
-  if( !cs.pcv->ISingleTree && cs.slice->isIRAP() && cs.pcv->chrFormat != CHROMA_400 )
+  if (!cs.pcv->ISingleTree && cs.slice->isIRAP() && cs.pcv->chrFormat != CHROMA_400)
   {
     m_CABACEstimator->getCtx() = m_CurrCtx->start;
 
-    partitioner->initCtu( area, CH_C, *cs.slice );
+    partitioner->initCtu(area, CH_C, *cs.slice);
 
-    cs.initSubStructure( *tempCS, partitioner->chType, partitioner->currArea(), false );
-    cs.initSubStructure( *bestCS, partitioner->chType, partitioner->currArea(), false );
+    cs.initSubStructure(*tempCS, partitioner->chType, partitioner->currArea(), false);
+    cs.initSubStructure(*bestCS, partitioner->chType, partitioner->currArea(), false);
     tempCS->currQP[CH_C] = bestCS->currQP[CH_C] =
-    tempCS->baseQP       = bestCS->baseQP       = currQP[CH_C];
+      tempCS->baseQP = bestCS->baseQP = currQP[CH_C];
     tempCS->prevQP[CH_C] = bestCS->prevQP[CH_C] = prevQP[CH_C];
 
-    xCompressCU( tempCS, bestCS, *partitioner
+    xCompressCU(tempCS, bestCS, *partitioner
       , tempMotCandLUTs
       , bestMotCandLUTs
     );
-  
+
 #if build_cu_tree && printchormacu
-    char *s[] = {
-      "MODE_INTER" ,     ///< inter-prediction mode
-      "MODE_INTRA" ,     ///< intra-prediction mode
-  #if JVET_M0483_IBC
-      "MODE_IBC",     ///< ibc-prediction mode
-      "NUMBER_OF_PREDICTION_MODES" ,
-  #else
-      NUMBER_OF_PREDICTION_MODES ,
-  #endif
-    };
-    //for (auto pu : bestCS->pus)
-    //{
-    //  printf("(%4d* %4d* %4d* %4d*) %s intraDir:%2d interDir:%3d skip:%d merge:%d mergeIdx:%3d affine:%d\tmhIntraFlag:%d\t (MV: %d %d\t%d %d) (ref: %d %d)\n",
-    //    pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,
-    //    s[pu->cu->predMode],
-    //    pu->intraDir[0],
-    //    pu->interDir,
-    //    pu->cu->skip,
-    //    pu->mergeFlag,
-    //    pu->mergeIdx,
-    //    pu->cu->affine,
-    //    pu->mhIntraFlag,
-    //    pu->mv[0].hor,
-    //    pu->mv[0].ver,
-    //    pu->mv[1].hor,
-    //    pu->mv[1].ver,
-    //    pu->refIdx[0],
-    //    pu->refIdx[1]
-    //  );
-    //}
-    Distortion temp = 0;
-    for (auto pu : bestCS->pus)
-    {
-      printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC()
 
-      );
-      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu ",
-        pu->intradist, pu->interdist, pu->intrabits, pu->interbits);
-#if predfromori
-      printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu ",
-         pu->interdistori, pu->interbitsori, pu->dist,pu->distori);
+#if !printall
+    if (cs.slice->getPOC() == 2)
 #endif
-      printf("\t QP : %d | ", pu->cu->qp);
-      printf("affine:%d*imv:%d*affinetype:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
-        pu->cu->affine,
-        pu->cu->imv,
-        pu->cu->affineType,
-
-        pu->mv[0].hor,
-        pu->mv[0].ver,
-        pu->mv[1].hor,
-        pu->mv[1].ver,
-        pu->mvAffi[0][0].hor,
-        pu->mvAffi[0][0].ver,
-        pu->mvAffi[0][1].hor,
-        pu->mvAffi[0][1].ver,
-        pu->mvAffi[0][2].hor,
-        pu->mvAffi[0][2].ver,
-        pu->mvAffi[1][0].hor,
-        pu->mvAffi[1][0].ver,
-        pu->mvAffi[1][1].hor,
-        pu->mvAffi[1][1].ver,
-        pu->mvAffi[1][2].hor,
-        pu->mvAffi[1][2].ver
-
-      );
-      printf("interDir:%d ref:%d*%d ", pu->interDir, pu->refIdx[0], pu->refIdx[1]);
-      for (int iRefList = 0; iRefList < 2; iRefList++)
+    {
+      char *s[] = {
+        "MODE_INTER" ,     ///< inter-prediction mode
+        "MODE_INTRA" ,     ///< intra-prediction mode
+    #if JVET_M0483_IBC
+        "MODE_IBC",     ///< ibc-prediction mode
+        "NUMBER_OF_PREDICTION_MODES" ,
+    #else
+        NUMBER_OF_PREDICTION_MODES ,
+    #endif
+      };
+      //for (auto pu : bestCS->pus)
+      //{
+      //  printf("(%4d* %4d* %4d* %4d*) %s intraDir:%2d interDir:%3d skip:%d merge:%d mergeIdx:%3d affine:%d\tmhIntraFlag:%d\t (MV: %d %d\t%d %d) (ref: %d %d)\n",
+      //    pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height,
+      //    s[pu->cu->predMode],
+      //    pu->intraDir[0],
+      //    pu->interDir,
+      //    pu->cu->skip,
+      //    pu->mergeFlag,
+      //    pu->mergeIdx,
+      //    pu->cu->affine,
+      //    pu->mhIntraFlag,
+      //    pu->mv[0].hor,
+      //    pu->mv[0].ver,
+      //    pu->mv[1].hor,
+      //    pu->mv[1].ver,
+      //    pu->refIdx[0],
+      //    pu->refIdx[1]
+      //  );
+      //}
+      Distortion temp = 0;
+      for (auto pu : bestCS->pus)
       {
-        printf("L%d:", iRefList);
-        for (int iRefIndex = 0; iRefIndex < bestCS->slice->getNumRefIdx(RefPicList(iRefList)); iRefIndex++)
-        {
-          printf("%d-", bestCS->slice->getRefPOC(RefPicList(iRefList), iRefIndex) - bestCS->slice->getLastIDR());
-        }
-        //printf( " ");
-      }
+        printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC()
 
-      printf(" |\n");
-    }
-    printf("chorma cu finished\n");
-    //printf("sum:%lld\tcs:%lld\n", temp,bestCS->dist);
-   //printf("%d", temp == bestCS->dist);
+        );
+        printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu ",
+          pu->intradist, pu->interdist, pu->intrabits, pu->interbits);
+#if predfromori
+        printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu ",
+          pu->interdistori, pu->interbitsori, pu->dist, pu->distori);
+#endif
+        printf("\t QP : %d | ", pu->cu->qp);
+        printf("affine:%d*imv:%d*affinetype:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
+          pu->cu->affine,
+          pu->cu->imv,
+          pu->cu->affineType,
+
+          pu->mv[0].hor,
+          pu->mv[0].ver,
+          pu->mv[1].hor,
+          pu->mv[1].ver,
+          pu->mvAffi[0][0].hor,
+          pu->mvAffi[0][0].ver,
+          pu->mvAffi[0][1].hor,
+          pu->mvAffi[0][1].ver,
+          pu->mvAffi[0][2].hor,
+          pu->mvAffi[0][2].ver,
+          pu->mvAffi[1][0].hor,
+          pu->mvAffi[1][0].ver,
+          pu->mvAffi[1][1].hor,
+          pu->mvAffi[1][1].ver,
+          pu->mvAffi[1][2].hor,
+          pu->mvAffi[1][2].ver
+
+        );
+        printf("interDir:%d ref:%d*%d ", pu->interDir, pu->refIdx[0], pu->refIdx[1]);
+        for (int iRefList = 0; iRefList < 2; iRefList++)
+        {
+          printf("L%d:", iRefList);
+          for (int iRefIndex = 0; iRefIndex < bestCS->slice->getNumRefIdx(RefPicList(iRefList)); iRefIndex++)
+          {
+            printf("%d-", bestCS->slice->getRefPOC(RefPicList(iRefList), iRefIndex) - bestCS->slice->getLastIDR());
+          }
+          //printf( " ");
+        }
+
+        printf(" |\n");
+      }
+      printf("chorma cu finished\n");
+      //printf("sum:%lld\tcs:%lld\n", temp,bestCS->dist);
+     //printf("%d", temp == bestCS->dist);
+  }
 #endif
     
 #if JVET_M0427_INLOOP_RESHAPER
@@ -2380,12 +2389,7 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
       bestSubCS->sharedBndSize.width = (m_shareState == SHARING) ? m_shareBndSizeW : tempSubCS->area.lwidth();
       bestSubCS->sharedBndSize.height = (m_shareState == SHARING) ? m_shareBndSizeH : tempSubCS->area.lheight();
 #endif
-#if build_cu_tree
-      if (subCUArea.lx() == 32 && subCUArea.ly() == 0 && subCUArea.lwidth() == 8 && subCUArea.lheight() == 16)
-      {
-        int xxx = 0;
-      }
-#endif
+
       xCompressCU( tempSubCS, bestSubCS, partitioner
         , tempSubMotCandLUTs
         , bestSubMotCandLUTs
@@ -6187,76 +6191,10 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
     xEncodeDontSplit( *tempCS,         partitioner );
     xCheckDQP       ( *tempCS,         partitioner );
 
-#if build_cu_tree
-    ///// preserve the bestCS mode information that dont have
-    //if (tempCS->cost < bestCS->cost) {
-    //  if (tempCS->cus[0]->predMode== MODE_INTRA && bestCS->cus[0]->predMode == MODE_INTRA) {
-    //    //printf("%llu\n", csBest->pus.size());
-    //    tempCS->pus[0]->interdist = bestCS->pus[0]->interdist;
-    //  }
-    //  if (tempCS->cus[0]->predMode == MODE_INTRA && bestCS->cus[0]->predMode == MODE_INTER) {
-    //    //printf("%llu\n", csBest->pus.size());
-    //    tempCS->pus[0]->interdist = bestCS->pus[0]->interdist;
-    //  }
-    //  if (tempCS->cus[0]->predMode == MODE_INTER && bestCS->cus[0]->predMode == MODE_INTRA) {
-    //    //printf("%llu\n", csBest->pus.size());
-    //    tempCS->pus[0]->intradist = bestCS->pus[0]->intradist;
-    //  }
-    //  if (tempCS->cus[0]->predMode == MODE_INTER && bestCS->cus[0]->predMode == MODE_INTER) {
-    //    //printf("%llu\n", csBest->pus.size());
-    //    tempCS->pus[0]->intradist = bestCS->pus[0]->intradist;
-    //  }
 
-    //}
-    //else {
-    //  ///// update secondary optimized information
-    //  extern double temp_cost;
-    //  extern Distortion temp_intra;
-    //  extern Distortion temp_inter;
-
-
-    //  if (tempCS->cus[0]->predMode == MODE_INTRA && bestCS->cus[0]->predMode == MODE_INTER) {
-    //    
-    //    if (tempCS->cost < temp_cost) {
-    //      temp_cost = tempCS->cost;
-    //      temp_intra = tempCS->pus[0]->intradist;
-    //      bestCS->pus[0]->intradist = temp_intra;
-    //    }
-    //  }
-    //  if (tempCS->cus[0]->predMode == MODE_INTER && bestCS->cus[0]->predMode == MODE_INTRA) {
-    //    
-    //    if (tempCS->cost < temp_cost) {
-    //      temp_cost = tempCS->cost;
-    //      temp_inter = tempCS->pus[0]->interdist;
-    //      bestCS->pus[0]->interdist = temp_inter;
-    //    }
-    //  }
-      
-        //bestCS->pus[0]->intradist = std::min(tempCS->pus[0]->intradist, bestCS->pus[0]->intradist);
-        //printf("%llu\n", csBest->pus[0]->intradist);
-      
-    //}
-#endif
-#if build_cu_tree
-      //cu.firstPU->interdist = tempCS->pus[0]->interdist;
-      //cu.firstPU->intradist = tempCS->pus[0]->intradist;
-#endif
     xCheckBestMode  (  tempCS, bestCS, partitioner, cachedMode );
 
-#if build_cu_tree
-    //if (cu.predMode == MODE_INTER)
-    //{
-    //  cu.firstPU->interdist = bestCS->pus[0]->interdist;
-    //  cu.firstPU->intradist = bestCS->pus[0]->intradist;
-    //}
-    //else if (cu.predMode == MODE_INTRA)
-    //{
-    //  cu.firstPU->interdist = bestCS->pus[0]->interdist;
-    //  cu.firstPU->intradist = bestCS->pus[0]->intradist;
-    //}
-    ///
-    //printf("%d",cu.predMode);
-#endif
+
   }
   else
   {
@@ -6269,12 +6207,7 @@ void EncCu::xReuseCachedResult( CodingStructure *&tempCS, CodingStructure *&best
 
 
 
-#if build_cu_tree
 
-//double temp_cost = MAX_DOUBLE;
-//Distortion temp_intra = UINT32_MAX;
-//Distortion temp_inter = UINT32_MAX;
-#endif
 #endif
 
 

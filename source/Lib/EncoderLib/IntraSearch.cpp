@@ -923,41 +923,13 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
       DTRACE( g_trace_ctx, D_INTRA_COST, "IntraCost T %f (%d) \n", csTemp->cost, uiOrgMode );
       //printf("IntraCost T %f (%d) \n", csTemp->cost, uiOrgMode);
 
-#if build_cu_tree
-      //pu.intradist = csTemp->dist;
-      ////csTemp->pus[0]->cost = csTemp->cost;
-      //if (csTemp->cost < csBest->cost) {
-      //  if (csBest->pus.size() > 0) {
-      //    //printf("%llu\n", csBest->pus.size());
-      //    pu.interdist = csBest->pus[0]->interdist;
-      //  }
 
-      //}
-      //else if (csBest->pus.size() > 0) {
-      //  if (csBest->cus[0]->predMode == MODE_INTER) {
-      //    extern double temp_cost;
-      //    extern Distortion temp_intra;
-      //    extern Distortion temp_inter;
-      //    if (csTemp->cost < temp_cost) {
-      //      temp_cost = csTemp->cost;
-      //      temp_intra = pu.intradist;
-      //      csBest->pus[0]->intradist = temp_intra;
-      //    }
-      //    //bestCS->pus[0]->intradist = std::min(tempCS->pus[0]->intradist, bestCS->pus[0]->intradist);
-      //    //printf("%llu\n", csBest->pus[0]->intradist);
-      //  }
-      //}
-#endif
 
       // check r-d cost
       if( csTemp->cost < csBest->cost )
       {
         ///// *cstemp only have one pu and one cu, current cu also has only one pu
-#if build_cu_tree
-        //cu.lastPU->intradist = csTemp->pus.back()->intradist;
 
-        //printf("%d", cu.lastPU == cu.firstPU);
-#endif
         std::swap( csTemp, csBest );
 
         uiBestPUMode  = uiOrgMode;
@@ -2367,10 +2339,7 @@ void IntraSearch::xRecurIntraCodingLumaQT( CodingStructure &cs, Partitioner &par
     {
       ctxBest = m_CABACEstimator->getCtx();
     }
-#if build_cu_tree
-    //if (cu.firstPU == cu.lastPU)
-    //cs.getCU(currArea.lumaPos(), partitioner.chType)->lastPU->intradist += uiSingleDistLuma;
-#endif
+
     csFull->cost     += dSingleCost;
     csFull->dist     += uiSingleDistLuma;
     csFull->fracBits += singleFracBits;

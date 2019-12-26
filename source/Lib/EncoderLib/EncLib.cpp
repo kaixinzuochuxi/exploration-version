@@ -1334,7 +1334,7 @@ void EncLib::xInitPPS(PPS &pps, const SPS &sps)
 #if ENABLE_QPA
   if (getUsePerceptQPA() && !bUseDQP)
   {
-#if framelevelQPA && !CTUlevelQPA
+#if (framelevelQPA && !CTUlevelQPA) || alambda
     ;
 #else
     CHECK( m_iMaxCuDQPDepth != 0, "max. delta-QP depth must be zero!" );

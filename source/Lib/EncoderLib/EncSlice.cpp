@@ -1363,7 +1363,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
   }
 
 #if ENABLE_QPA
-  bool iswindows = 0;
+  bool iswindows = 1;
 #if useoriaqp
   double hpEnerMax     = 1.0;
   double hpEnerPic     = 0.0;
@@ -1554,7 +1554,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       setUpLambda(pcSlice, templambda, frameDQP + baseQP);
       m_pcRdCost->saveUnadjustedLambda();
     }
-  }
+  
 
 #endif
 
