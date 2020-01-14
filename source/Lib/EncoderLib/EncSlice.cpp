@@ -1503,7 +1503,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
     ifstream fframe(file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(conf_QP) + string("/framelambda.txt"));
     if (!fframe)
     {
-      printf("open failed: %s--%s\n", strerror(errno), (file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(conf_QP) + string(".txt")).c_str());
+      printf("open failed: %s--%s\n", strerror(errno), (file_dir + curr_seq_name.substr(last_slash + 1, dot - last_slash - 1) + string("/") + to_string(conf_QP) + string("/framelambda.txt")).c_str());
       //printf("open failed\n");
     }
     for (int tempi = 0; tempi <= currPOC; tempi++)
@@ -1522,9 +1522,8 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       templambda = pcSlice->getLambdas()[0];
     }
 #endif
-    bool changeqp = 0;
-    if (changeqp)
-    {
+
+#if changeQPfromlambda
       const double* oldLambdas = pcSlice->getLambdas();
       //const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
       //const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
@@ -1535,7 +1534,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
       pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
       pcSlice->setSliceQpBase(frameDQP + baseQP);
       setUpLambda(pcSlice, templambda, frameDQP + baseQP);
-      for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+      /*for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
       {
 #if HEVC_TILES_WPP
         const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
@@ -1544,17 +1543,18 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 #endif
         pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
       }
-
-      if (m_pcRdCost->getLambda() <= oldLambdas[0])
-        m_pcRdCost->saveUnadjustedLambda();
-    }
-    else
-    {
+*/
+      
+       m_pcRdCost->saveUnadjustedLambda();
+    
+#else
+    
+    
       const double* oldLambdas = pcSlice->getLambdas();
       setUpLambda(pcSlice, templambda, frameDQP + baseQP);
       m_pcRdCost->saveUnadjustedLambda();
-    }
-  
+    
+#endif
 
 #endif
 
@@ -1677,26 +1677,34 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
 #if !is_dqp_not_actualqp
     frameDQP = frameDQP - baseQP;
 #endif
+
+
+    pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
+    pcSlice->setSliceQpBase(frameDQP + baseQP);
+    //setUpLambda(pcSlice, oldLambdas[0] * corrFactor, frameDQP + baseQP);
+//    for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
+//    {
+//#if HEVC_TILES_WPP
+//      const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
+//#else
+//      const uint32_t ctuRsAddr = ctuTsAddr;
+//#endif
+//      pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
+//    }
+
+#if changelambdafromQP
     const double* oldLambdas = pcSlice->getLambdas();
     const double  corrFactor = pow(2.0, double(frameDQP) / 3.0);
     const double  newLambdas[MAX_NUM_COMPONENT] = { oldLambdas[0] * corrFactor, oldLambdas[1] * corrFactor, oldLambdas[2] * corrFactor };
 
     pcSlice->setLambdas(newLambdas);
-    pcSlice->setSliceQp(frameDQP + baseQP); // update the slice/base QPs
-    pcSlice->setSliceQpBase(frameDQP + baseQP);
-    //setUpLambda(pcSlice, oldLambdas[0] * corrFactor, frameDQP + baseQP);
-    for (uint32_t ctuTsAddr = startCtuTsAddr; ctuTsAddr < boundingCtuTsAddr; ctuTsAddr++)
-    {
-#if HEVC_TILES_WPP
-      const uint32_t ctuRsAddr = tileMap.getCtuTsToRsAddrMap(ctuTsAddr);
-#else
-      const uint32_t ctuRsAddr = ctuTsAddr;
+    m_pcRdCost->saveUnadjustedLambda();
+    setUpLambda(pcSlice, newLambdas[0], frameDQP + baseQP);
 #endif
-      pcPic->m_iOffsetCtu[ctuRsAddr] = frameDQP + baseQP;
-    }
-    if(m_pcRdCost->getLambda()<= oldLambdas[0])
-      m_pcRdCost->saveUnadjustedLambda();
-    setUpLambda(pcSlice, newLambdas[0],frameDQP + baseQP);
+    
+      
+
+
 #endif
 
 
@@ -2194,13 +2202,15 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       pcPic->m_uEnerHpCtu[ctuRsAddr] = newLambda;
 #if RDOQ_CHROMA_LAMBDA
       pTrQuant->getLambdas(oldLambdaArray); // save the old lambdas
-      const double chromaLambda = newLambda / pRdCost->getChromaWeight();
+      //const double chromaLambda = newLambda / pRdCost->getChromaWeight();
+      const double chromaLambda = oldLambdaArray[1];
       const double lambdaArray[MAX_NUM_COMPONENT] = { newLambda, chromaLambda, chromaLambda };
       pTrQuant->setLambdas(lambdaArray);
 #else
       pTrQuant->setLambda(newLambda);
 #endif
       pRdCost->setLambda(newLambda, pcSlice->getSPS()->getBitDepths());
+      pRdCost->saveUnadjustedLambda();
       currQP[0] = currQP[1] = adaptedQP;
 
     }
@@ -2545,7 +2555,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
       pTrQuant->setLambda (oldLambda);
 #endif
       pRdCost->setLambda (oldLambda, pcSlice->getSPS()->getBitDepths());
-#if alambda && CTUlevelalambda
+#if (alambda && CTUlevelalambda) || (usecutreeaqp && CTUlevelQPA)
       pRdCost->saveUnadjustedLambda();
 #endif
     }
@@ -2573,14 +2583,14 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 #if codingparameters 
     extern coding_parameterscy ctucp;
     
-   /* printf("codingparameters:ctulevel | ");
+    printf("codingparameters:ctulevel | ");
     printf("lambda: %f,%f,%f | ", ctucp.lambda[0], ctucp.lambda[1], ctucp.lambda[2]);
     printf("QP: %d,%d,%d | ", ctucp.QP[0], ctucp.QP[1], ctucp.QP[2]);
     printf("D: %lld,%lld,%lld | ", ctucp.D[0], ctucp.D[1], ctucp.D[2]);
     printf("R: %lld,%lld,%lld,%lld | ", ctucp.R_resi[0], ctucp.R_resi[1], ctucp.R_resi[2], ctucp.R_mode );
     printf("\n");
-    */
-    printf(" [%lld,%lld,%lld,%lld],\n", ctucp.R_resi[0], ctucp.R_resi[1], ctucp.R_resi[2], ctucp.R_mode);
+    
+    //printf(" [%lld,%lld,%lld,%lld],\n", ctucp.R_resi[0], ctucp.R_resi[1], ctucp.R_resi[2], ctucp.R_mode);
     //printf("[ %lld,%lld,%lld ],\n ", ctucp.D[0], ctucp.D[1], ctucp.D[2]);
 #endif
   }

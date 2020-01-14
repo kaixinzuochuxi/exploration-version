@@ -406,7 +406,8 @@ void CABACWriter::coding_tree(const CodingStructure& cs, Partitioner& partitione
   //const CodingUnit &cu        = *cs.getCU( currArea.blocks[partitioner.chType], partitioner.chType );
 #if codingparameters
 
-  CodingUnit &cu = (CodingUnit) *cs.getCU(currArea.blocks[partitioner.chType], partitioner.chType);
+  //CodingUnit &cu = (CodingUnit) *cs.getCU(currArea.blocks[partitioner.chType], partitioner.chType);
+  CodingUnit cu = *cs.getCU(currArea.blocks[partitioner.chType], partitioner.chType);
   
 #else
   const CodingUnit &cu = *cs.getCU(currArea.blocks[partitioner.chType], partitioner.chType);

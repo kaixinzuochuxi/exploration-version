@@ -62,7 +62,7 @@
 #define printresi 0
 
 #define intermediate 0
-#define codingparameters 0
+#define codingparameters 1
 
 #define AdaptiveGOP 0
 
@@ -71,7 +71,7 @@
 /////QPF
 #define QPfactor 1
 // QPA related
-#define useoriaqp 1
+#define useoriaqp 0
 #define is_dqp_not_actualqp 1 // 1 dqp, should add with baseqp; 0 acutal qp,should not add with base qp
 /////
 #if useoriaqp
@@ -81,18 +81,22 @@
 #define donotwritenal 1
 #define disablepsnr 1
 #else 
+#define getseqname 1
+#define dqp_apply_to_low_resolution 1
+#define disable_RA_cusize_limit 1 // 0: default, limit cu size to 64; 1: donot limit
+#define disable_QPA_with_auto_chormaQPflag 1 //0: default, when open QPA chormaQPflagwill be opened; 1 QPA without chormaQPflagwill
+
+
 #define usecutreeaqp 0
 #define mbtreeQPA 0
 #define alambda 1
 #endif
 
 #if usecutreeaqp
-#define getseqname 1
-#define dqp_apply_to_low_resolution 1
+
 #define CTUlevelQPA 0
 #define framelevelQPA 1
-#define disable_RA_cusize_limit 1 // 0: default, limit cu size to 64; 1: donot limit
-#define disable_QPA_with_auto_chormaQPflag 1 //0: default, when open QPA chormaQPflagwill be opened; 1 QPA without chormaQPflagwill
+#define changelambdafromQP 1
 #if framelevelQPA
 
 #endif
@@ -102,23 +106,20 @@
 
 
 #if alambda 
-#define getseqname 1
-#define dqp_apply_to_low_resolution 1
-#define framelevelalambda 1
+
 #define CTUlevelalambda 0
-#define disable_RA_cusize_limit 1
-#define disable_QPA_with_auto_chormaQPflag 1
-#define dqp_apply_to_low_resolution 1
+#define framelevelalambda 1
+#define changeQPfromlambda 1
 #endif
 
 // build cu tree, print CU level information
 #define build_cu_tree 0
 /////
 #if build_cu_tree 
-#define printall 0
+#define printall 1
 #define disablefast 0
 #define printchormacu 0
-#define printoriresi 1
+#define printoriresi 0
 #define predfromori 1
 #endif
 

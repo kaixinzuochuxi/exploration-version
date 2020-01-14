@@ -1,0 +1,25 @@
+
+VVCSoftware: VTM Encoder Version 4.0 [Windows][VS 1900][64 bit] [SIMD=AVX2] 
+
+TOOL CFG: IBD:1 HAD:1 RDQ:1 RDQTS:1 RDpenalty:0 LQP:0 SQP:0 ASR:0 MinSearchWindow:8 RestrictMESampling:0 FEN:1 ECU:0 FDM:1 CFM:0 ESD:0 TransformSkip:1 TransformSkipFast:1 TransformSkipLog2MaxSize:5 Slice: M=0 CIP:0 SAO:0 ALF:0 PCM:0 TransQuantBypassEnabled:0 WPP:0 WPB:0 PME:2  WaveFrontSynchro:0 WaveFrontSubstreams:1TMVPMode:1  DQ:1  SignBitHidingFlag:0 RecalQP:0 
+NEXT TOOL CFG: Affine:1 AffineType:1 SubPuMvp:1+0 DualITree:1 IMV:1 BIO:0 LMChroma:1 CclmCollocatedChroma:0 MTS: 1(intra) 0(inter) SBT:1 CompositeLTReference:0 GBi:0 GBiFast:0 LADF:0 MHIntra:1 Triangle:0 AllowDisFracMMVD:1 AffineAmvr:0 AffineAmvrEncOpt:0 DMVR:0 IBC:0 HashME:0 WrapAround:0 Reshape:1 (Sigal:SDR ) 
+FAST TOOL CFG: LCTUFast:1 FastMrg:1 PBIntraFast:1 IMV4PelFast:1 MTSMaxCand: 3(intra) 4(inter) AMaxBT:1 E0023FastEnc:1 ContentBasedFastQtbt:0 NumSplitThreads:1 NumWppThreads:1+0 EnsureWppBitEqual:0 
+
+
+ started @ Thu Jan  9 13:17:29 2020
+codingparameters:ctulevel | lambda: 97.389916,117.162507,117.162507 | QP: 22,22,22 | D: 938643,106495,140652 | R: 430705929,11120095,21641488,143116828 | 
+codingparameters:ctulevel | lambda: 97.389916,117.162507,117.162507 | QP: 22,22,22 | D: 943186,79104,68306 | R: 283643196,7997151,11441529,88429672 | 
+codingparameters:ctulevel | lambda: 97.389916,117.162507,117.162507 | QP: 22,22,22 | D: 1015238,153978,136612 | R: 511570281,18930023,19680864,133896155 | 
+codingparameters:ctulevel | lambda: 97.389916,117.162507,117.162507 | QP: 22,22,22 | D: 195864,41489,28712 | R: 61820097,2142602,3226379,38865980 | 
+codingparameters:ctulevel | lambda: 97.389916,117.162507,117.162507 | QP: 22,22,22 | D: 751848,146159,178862 | R: 376023481,22393162,33903594,134738653 | 
+codingparameters:ctulevel | lambda: 97.389916,117.162507,117.162507 | QP: 22,22,22 | D: 560004,78799,54780 | R: 170874769,2985389,2582121,43388460 | 
+codingparameters:ctulevel | lambda: 97.389916,117.162507,117.162507 | QP: 22,22,22 | D: 745926,141904,109928 | R: 371077660,21659692,14645190,136512372 | 
+codingparameters:ctulevel | lambda: 97.389916,117.162507,117.162507 | QP: 22,22,22 | D: 176166,33597,23822 | R: 84535371,3274565,1602923,33814215 | 
+codingparameters:framelevel | lambda: 97.389916,117.162507,117.162507 | QP: 22,23,23 | D: 5326875,781525,741674 | R: 2290250784,90502679,108724088,773209567 | 
+POC    0 TId: 0 ( I-SLICE, QP 22 )      99776 bits [Y 43.5117 dB    U 45.2150 dB    V 45.4423 dB] [MS-SSIM Y 0.996895    U 0.995579    V 0.996519] [Y MSE 46.3482  U MSE 31.3111  V MSE 29.7145] [ET    36 ] [L0 ] [L1 ]
+
+	Total Frames |   Bitrate     Y-PSNR    U-PSNR    V-PSNR    YUV-PSNR     Y-MS-SSIM     U-MS-SSIM     V-MS-SSIM     
+	        1    a    4988.8000   43.5117   45.2150   45.4423   44.0368    0.996895     0.995579     0.996519 
+
+ finished @ Thu Jan  9 13:18:06 2020
+ Total Time:       36.796 sec. [user]       36.797 sec. [elapsed]

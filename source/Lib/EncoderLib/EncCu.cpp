@@ -490,7 +490,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   //if (!skipmerge)
 #endif
 #if !printall
-  if(cs.slice->getPOC()==2)
+  if(cs.slice->getPOC()>0)
 #endif
   {
     char *s[] = {
@@ -2691,8 +2691,8 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
         reco2.copyFrom(tempCS->getRecoBuf(cu.blocks[0]));
         org2.copyFrom(tempCS->getOrgBuf(cu.blocks[0]));
 #if JVET_M0427_INLOOP_RESHAPER
-        reco2.rspSignal(this->m_pcSliceEncoder->m_pcLib->getReshaper()->getInvLUT());
-        org2.rspSignal(this->m_pcSliceEncoder->m_pcLib->getReshaper()->getInvLUT());
+        //reco2.rspSignal(this->m_pcSliceEncoder->m_pcLib->getReshaper()->getInvLUT());
+        //org2.rspSignal(this->m_pcSliceEncoder->m_pcLib->getReshaper()->getInvLUT());
 #endif
         CPelBuf reco1 = reco2;
         CPelBuf org1 = org2;

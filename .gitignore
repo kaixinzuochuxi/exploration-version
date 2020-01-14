@@ -18,3 +18,5 @@ deploy
 /resultqpara/
 /resultqpaldb/
 /resultcutree/
+/verify/test/
+/verify/ref/
