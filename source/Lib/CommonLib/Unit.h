@@ -675,12 +675,16 @@ struct InterPredictionData
   double orisigma;
   double refsigma0;
   double refsigma1;
+  double refdist0;
+  double refdist1;
 #if predfromori
   Distortion interdistori;
   Distortion distori;
   uint64_t interbitsori;
   double reforisigma0;
   double reforisigma1;
+  double reforidist0;
+  double reforidist1;
 #endif
   //double cost;
 #endif

@@ -71,7 +71,7 @@
 /////QPF
 #define QPfactor 1
 // QPA related
-#define useoriaqp 0
+#define useoriaqp 1
 #define is_dqp_not_actualqp 1 // 1 dqp, should add with baseqp; 0 acutal qp,should not add with base qp
 /////
 #if useoriaqp
@@ -87,7 +87,7 @@
 #define disable_QPA_with_auto_chormaQPflag 1 //0: default, when open QPA chormaQPflagwill be opened; 1 QPA without chormaQPflagwill
 
 
-#define usecutreeaqp 0
+#define usecutreeaqp 1
 #define mbtreeQPA 0
 #define alambda 1
 #endif
@@ -96,7 +96,7 @@
 
 #define CTUlevelQPA 0
 #define framelevelQPA 1
-#define changelambdafromQP 1
+#define changelambdafromQP 0
 #if framelevelQPA
 
 #endif
@@ -109,14 +109,14 @@
 
 #define CTUlevelalambda 0
 #define framelevelalambda 1
-#define changeQPfromlambda 1
+#define changeQPfromlambda 0
 #endif
 
 // build cu tree, print CU level information
-#define build_cu_tree 0
+#define build_cu_tree 1
 /////
 #if build_cu_tree 
-#define printall 1
+#define printall 0
 #define disablefast 0
 #define printchormacu 0
 #define printoriresi 0

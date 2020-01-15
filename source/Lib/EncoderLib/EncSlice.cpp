@@ -1363,7 +1363,7 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
   }
 
 #if ENABLE_QPA
-  bool iswindows = 1;
+  bool iswindows = 0;
 #if useoriaqp
   double hpEnerMax     = 1.0;
   double hpEnerPic     = 0.0;
