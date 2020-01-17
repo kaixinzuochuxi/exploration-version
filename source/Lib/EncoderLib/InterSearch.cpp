@@ -7156,6 +7156,9 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
     // add an empty TU
     cs.addTU(CS::isDualITree(cs) ? cu : cs.area, partitioner.chType);
     Distortion distortion = 0;
+#if build_cu_tree
+    Distortion dist = 0;
+#endif // build_cu_tree
 
 
     ////COMPUTE DISTORTION
@@ -7187,9 +7190,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
           tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
 #if !disableWD
           distortion += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
-#if codingparameters
-          cu.cucp.D[comp]= m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);
-#endif // codingparameters
+
 
 #else
           distortion += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
@@ -7197,15 +7198,19 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
           cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif // codingparameters
 #endif
+#if build_cu_tree
+          Distortion dist = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);;
+#endif // build_cu_tree
+#if codingparameters
+          cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);
+#endif // codingparameters
         } 
         else
 #endif
         {
 #if !disableWD
           distortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
-#if codingparameters
-          cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);
-#endif // codingparameters
+
 
 #else
           distortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
@@ -7214,6 +7219,13 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #endif // codingparameters
 
 #endif
+#if build_cu_tree
+          if (compID == COMPONENT_Y)
+          Distortion dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#endif // build_cu_tree
+#if codingparameters
+          cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);
+#endif // codingparameters
         }
       }
       else
@@ -7223,6 +7235,10 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #if codingparameters
         cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE);
 #endif // codingparameters
+#if build_cu_tree
+        if (compID == COMPONENT_Y)
+          Distortion dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+#endif // build_cu_tree
       }
     }
 
@@ -7469,7 +7485,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #if build_cu_tree
         tmpRecLuma.copyFrom(reco);
         tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
-        dist += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
+        dist = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
 
 #if codingparameters
@@ -7485,7 +7501,8 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
         finalDistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
 #if build_cu_tree
-        dist += m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
+        if (compID == COMPONENT_Y)
+        dist = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
 #if codingparameters
         cu.cucp.D[compID] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);
@@ -7501,7 +7518,8 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
       cu.cucp.D[compID] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE);
 #endif
 #if build_cu_tree
-      dist += m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+      if (compID == COMPONENT_Y)
+      dist = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
 #endif
     }
   }
@@ -8604,6 +8622,7 @@ void InterSearch::symmvdCheckBestMvp(
       }
       
       Distortion oridistortion = 0;
+      Distortion yori = 0;
       ////COMPUTE DISTORTION
       for (int comp = 0; comp < numValidComponents; comp++)
       {
@@ -8633,7 +8652,8 @@ void InterSearch::symmvdCheckBestMvp(
             tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
 #if !disableWD
             oridistortion += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
-//#if codingparameters 
+            
+            //#if codingparameters 
 //            //cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
 //#endif // codingparameters
 
@@ -8643,25 +8663,32 @@ void InterSearch::symmvdCheckBestMvp(
 //            cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 //#endif // codingparameters
 #endif
+            yori = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
           }
           else
+          {
 #endif
 #if !disableWD
             oridistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
-//#if codingparameters 
+            //#if codingparameters 
 //          //cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
 //#endif // codingparameters
 #else
             oridistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-//#if codingparameters && !predfromori
-//          cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-//#endif // codingparameters
+            //#if codingparameters && !predfromori
+            //          cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+            //#endif // codingparameters
 #endif
+            if (compID == COMPONENT_Y)
+              yori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+          }
         }
         else
 #endif
           oridistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
-//#if codingparameters 
+        if (compID == COMPONENT_Y)
+          yori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+        //#if codingparameters 
 //        //cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
 //#endif // codingparameters
       }
@@ -8718,7 +8745,7 @@ void InterSearch::symmvdCheckBestMvp(
 #if predfromori
       cs.pus[0]->interdistori = oridistortion;
       cs.pus[0]->interbitsori = m_CABACEstimator->getEstFracBits();
-      cs.pus[0]->distori = oridistortion;
+      cs.pus[0]->distori = yori;
 #endif
 #endif
 #if predfromori
@@ -8929,27 +8956,28 @@ void InterSearch::symmvdCheckBestMvp(
           finalDistortionori += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
           tmpRecLuma.copyFrom(pred);
-          tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
-#if !disableWD
-          distori += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
-#else
-          distori += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-#endif
+          //tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
+          distori = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+          
         }
         else
+        {
 #endif
 #if !disableWD
           finalDistortionori += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
 #else
           finalDistortionori += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
-        distori += m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
+          if (compID == COMPONENT_Y)
+            distori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+        }
       }
       else
 #endif
       {
         finalDistortionori += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
-        distori += m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+        if (compID == COMPONENT_Y)
+          distori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
       }
     }
 

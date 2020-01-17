@@ -1391,7 +1391,8 @@ const CPelBuf     CodingStructure::getOrgBuf(const ComponentID &compID)const { r
        PelUnitBuf CodingStructure::getOrgBuf()                               { return picture->getBuf(area, PIC_ORIGINAL); }
 const CPelUnitBuf CodingStructure::getOrgBuf()                         const { return picture->getBuf(area, PIC_ORIGINAL); }
 
-PelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &type )
+#if 1
+ PelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &type )
 {
   if (!blk.valid())
   {
@@ -1438,7 +1439,7 @@ PelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &type )
   return buf->getBuf( cFinal );
 }
 
-const CPelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &type ) const
+ const CPelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &type ) const
 {
   if (!blk.valid())
   {
@@ -1487,7 +1488,7 @@ const CPelBuf CodingStructure::getBuf( const CompArea &blk, const PictureType &t
   return buf->getBuf( cFinal );
 }
 
-PelUnitBuf CodingStructure::getBuf( const UnitArea &unit, const PictureType &type )
+ PelUnitBuf CodingStructure::getBuf( const UnitArea &unit, const PictureType &type )
 {
   // no parent fetching for buffers
   if( area.chromaFormat == CHROMA_400 )
@@ -1500,7 +1501,7 @@ PelUnitBuf CodingStructure::getBuf( const UnitArea &unit, const PictureType &typ
   }
 }
 
-const CPelUnitBuf CodingStructure::getBuf( const UnitArea &unit, const PictureType &type ) const
+ const CPelUnitBuf CodingStructure::getBuf( const UnitArea &unit, const PictureType &type ) const
 {
   // no parent fetching for buffers
   if( area.chromaFormat == CHROMA_400 )
@@ -1512,6 +1513,8 @@ const CPelUnitBuf CodingStructure::getBuf( const UnitArea &unit, const PictureTy
     return CPelUnitBuf( area.chromaFormat, getBuf( unit.Y(), type ), getBuf( unit.Cb(), type ), getBuf( unit.Cr(), type ) );
   }
 }
+#endif
+
 
 const CodingUnit* CodingStructure::getCURestricted( const Position &pos, const CodingUnit& curCu, const ChannelType _chType ) const
 {

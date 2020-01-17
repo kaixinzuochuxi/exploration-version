@@ -116,7 +116,7 @@
 #define build_cu_tree 1
 /////
 #if build_cu_tree 
-#define printall 0
+#define printall 1
 #define disablefast 0
 #define printchormacu 0
 #define printoriresi 0

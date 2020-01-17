@@ -369,12 +369,18 @@ public:
 private:
 #if predfromori
 public:
-#endif // predfromori
+          PelBuf       getBuf(const CompArea &blk, const PictureType &type);
+   const CPelBuf       getBuf(const CompArea &blk, const PictureType &type) const;
+          PelUnitBuf   getBuf(const UnitArea &unit, const PictureType &type);
+   const CPelUnitBuf   getBuf(const UnitArea &unit, const PictureType &type) const;
+
+#else // predfromori
 
   inline        PelBuf       getBuf(const CompArea &blk,  const PictureType &type);
   inline const CPelBuf       getBuf(const CompArea &blk,  const PictureType &type) const;
   inline        PelUnitBuf   getBuf(const UnitArea &unit, const PictureType &type);
   inline const CPelUnitBuf   getBuf(const UnitArea &unit, const PictureType &type) const;
+#endif
 };
 
 

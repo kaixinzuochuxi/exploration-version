@@ -569,7 +569,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 int cury = max(0, min(y + ly + int(pu->mv[0].ver * mvscale), (int)cs.picture->lheight()));
                 avgofref += prefbuf0.at(curx, cury);
                 pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
-                pu->refdist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf0.at(curx, cury) - pbuf.at(curx, cury));
+                pu->refdist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx-x, cury-y))*(prefbuf0.at(curx, cury) - pbuf.at(curx-x, cury-y));
 
               }
             pu->refsigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
@@ -593,7 +593,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf0.at(curx, cury);
                 pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
-                pu->refdist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf0.at(curx, cury) - pbuf.at(curx, cury));
+                pu->refdist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx-x, cury-y))*(prefbuf0.at(curx, cury) - pbuf.at(curx - x, cury - y));
 
               }
             pu->refsigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
@@ -617,7 +617,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf0.at(curx, cury);
                 pu->refsigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
-                pu->refdist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf0.at(curx, cury) - pbuf.at(curx, cury));
+                pu->refdist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf0.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->refsigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -644,7 +644,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf1.at(curx, cury);
                 pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
-                pu->refdist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf1.at(curx, cury) - pbuf.at(curx, cury));
+                pu->refdist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->refsigma1 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -667,7 +667,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf1.at(curx, cury);
                 pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
-                pu->refdist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf1.at(curx, cury) - pbuf.at(curx, cury));
+                pu->refdist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->refsigma1 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -690,7 +690,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf1.at(curx, cury);
                 pu->refsigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
-                pu->refdist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf1.at(curx, cury) - pbuf.at(curx, cury));
+                pu->refdist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->refsigma1 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -723,7 +723,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf0.at(curx, cury);
                 pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
-                pu->reforidist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf0.at(curx, cury) - pbuf.at(curx, cury));
+                pu->reforidist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf0.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -746,7 +746,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf0.at(curx, cury);
                 pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
-                pu->reforidist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf0.at(curx, cury) - pbuf.at(curx, cury));
+                pu->reforidist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf0.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -769,7 +769,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf0.at(curx, cury);
                 pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
-                pu->reforidist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf0.at(curx, cury) - pbuf.at(curx, cury));
+                pu->reforidist0 += (prefbuf0.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf0.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -796,7 +796,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf1.at(curx, cury);
                 pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
-                pu->reforidist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf1.at(curx, cury) - pbuf.at(curx, cury));
+                pu->reforidist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -819,7 +819,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf1.at(curx, cury);
                 pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
-                pu->reforidist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf1.at(curx, cury) - pbuf.at(curx, cury));
+                pu->reforidist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -842,7 +842,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf1.at(curx, cury);
                 pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
-                pu->reforidist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx, cury))*(prefbuf1.at(curx, cury) - pbuf.at(curx, cury));
+                pu->reforidist1 += (prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y))*(prefbuf1.at(curx, cury) - pbuf.at(curx - x, cury - y));
               }
             pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -2647,7 +2647,7 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
       }
 
       /////
-      m_pcEncCfg->setUsePbIntraFast(0);
+      //m_pcEncCfg->setUsePbIntraFast(0);
 #endif
       m_pcIntraSearch->estIntraPredLumaQT( cu, partitioner, bestCostSoFar );
 
