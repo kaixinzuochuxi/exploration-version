@@ -2599,7 +2599,9 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 
 //  m_uiPicTotalBits += actualBits;
 //  m_uiPicDist       = cs.dist;
-
+#if test1
+  printf("%llu\t%llu\n", m_uiPicTotalBits, m_uiPicDist);
+#endif
 }
 
 void EncSlice::encodeSlice   ( Picture* pcPic, OutputBitstream* pcSubstreams, uint32_t &numBinsCoded )

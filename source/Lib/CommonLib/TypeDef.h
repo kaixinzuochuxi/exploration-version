@@ -62,35 +62,28 @@
 #define printresi 0
 
 #define intermediate 0
-#define codingparameters 1
+#define codingparameters 0
 
 #define AdaptiveGOP 0
 
 #define test1 0
-
-/////QPF
-#define QPfactor 1
-// QPA related
-#define useoriaqp 1
-#define is_dqp_not_actualqp 1 // 1 dqp, should add with baseqp; 0 acutal qp,should not add with base qp
-/////
-#if useoriaqp
-#define usecutreeaqp 0
-#define alambda 0
 #define he2017adaptive 0
 #define donotwritenal 1
 #define disablepsnr 1
-#else 
-#define getseqname 1
-#define dqp_apply_to_low_resolution 1
-#define disable_RA_cusize_limit 1 // 0: default, limit cu size to 64; 1: donot limit
-#define disable_QPA_with_auto_chormaQPflag 1 //0: default, when open QPA chormaQPflagwill be opened; 1 QPA without chormaQPflagwill
+///// QPF
+#define QPfactor 1
 
 
-#define usecutreeaqp 1
+// QPA related
+#define QPAmethod 1
+#define QPAconfig 1
+
+#ifdef QPAmethod
+
+#define useoriaqp 1
+#define usecutreeaqp 0
+#define alambda 0
 #define mbtreeQPA 0
-#define alambda 1
-#endif
 
 #if usecutreeaqp
 
@@ -103,14 +96,25 @@
 
 #endif
 
-
-
 #if alambda 
 
 #define CTUlevelalambda 0
 #define framelevelalambda 1
 #define changeQPfromlambda 0
 #endif
+#endif // QPAmethod
+
+#ifdef QPAconfig
+#define is_dqp_not_actualqp 1 // 1 dqp, should add with baseqp; 0 acutal qp,should not add with base qp
+#define getseqname 1
+#define dqp_apply_to_low_resolution 1
+#define disable_RA_cusize_limit 1 // 0: default, limit cu size to 64; 1: donot limit
+#define disable_QPA_with_auto_chormaQPflag 1 //0: default, when open QPA chormaQPflagwill be opened; 1 QPA without chormaQPflagwill
+
+#endif
+
+
+
 
 // build cu tree, print CU level information
 #define build_cu_tree 1
@@ -128,7 +132,7 @@
 
 #define temppp 0
 ///// multipass
-#define frameleveldqr 0
+#define frameleveldqr 1
 
 ///// test hierachical
 #define usehierarchical 1

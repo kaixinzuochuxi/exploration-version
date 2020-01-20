@@ -2419,7 +2419,32 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 
         m_pcSliceEncoder->precompressSlice( pcPic );
 #if test1
-        m_pcSliceEncoder->premeslice(pcPic, false, false);
+        extern bool skipmerge;
+        //skipmerge = 1;
+        //m_pcSliceEncoder->premeslice(pcPic, false, false);
+        //SPS &sps0 = *(this->m_pcEncLib->.allocatePS(0));
+
+        m_pcSliceEncoder->compressSlice(pcPic, false, false);
+        m_pcSliceEncoder->getCUEncoder()->destroy();
+        m_pcSliceEncoder->getCUEncoder()->create(this->m_pcCfg);
+        pcPic->cs->initStructData();
+
+        m_pcSliceEncoder->compressSlice(pcPic, false, false);
+        m_pcSliceEncoder->getCUEncoder()->destroy();
+        m_pcSliceEncoder->getCUEncoder()->create(this->m_pcCfg);
+        pcPic->cs->initStructData();
+
+        m_pcSliceEncoder->compressSlice(pcPic, false, false);
+        m_pcSliceEncoder->getCUEncoder()->destroy();
+        m_pcSliceEncoder->getCUEncoder()->create(this->m_pcCfg);
+        pcPic->cs->initStructData();
+       /* m_pcSliceEncoder->compressSlice(pcPic, false, false);
+        pcPic->cs->initStructData();
+        m_pcSliceEncoder->compressSlice(pcPic, false, false);
+        pcPic->cs->initStructData();
+        m_pcSliceEncoder->compressSlice(pcPic, false, false);
+        pcPic->cs->initStructData();
+        skipmerge = 0;*/
 #endif
         m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
         
