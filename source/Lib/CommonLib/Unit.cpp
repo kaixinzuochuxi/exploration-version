@@ -493,7 +493,7 @@ void PredictionUnit::initData()
 #if build_cu_tree
   intradist = UINT32_MAX;
   interdist = UINT32_MAX;
-  dist = UINT32_MAX;
+  D_currecwoilf_curori_refrec = UINT32_MAX;
   //cost = MAX_DOUBLE;
   interbits = 0;
   intrabits = 0;
@@ -504,7 +504,7 @@ void PredictionUnit::initData()
 #if predfromori
   interdistori = UINT32_MAX;
   interbitsori = 0;
-  distori = UINT32_MAX;
+  D_currecwoilf_curori_refori = UINT32_MAX;
   reforisigma0 = 0;
   reforisigma1 = 0;
 #endif
@@ -575,13 +575,13 @@ PredictionUnit& PredictionUnit::operator=(const InterPredictionData& predData)
 #if build_cu_tree
   //intradist = predData.intradist;
   interdist = predData.interdist;
-  dist = predData.dist;
+  D_currecwoilf_curori_refrec = predData.D_currecwoilf_curori_refrec;
   // cost = predData.cost;
   interbits = predData.interbits;
 #if predfromori
   interdistori = predData.interdistori;
   interbitsori = predData.interbitsori;
-  distori = predData.distori;
+  D_currecwoilf_curori_refori = predData.D_currecwoilf_curori_refori;
 #endif
 #endif
   return *this;
@@ -640,14 +640,14 @@ PredictionUnit& PredictionUnit::operator=( const PredictionUnit& other )
 #if build_cu_tree
   intradist = other.intradist;
   interdist = other.interdist;
-  dist = other.dist;
+  D_currecwoilf_curori_refrec = other.D_currecwoilf_curori_refrec;
   //cost = other.cost;
   interbits = other.interbits;
   intrabits = other.intrabits;
 #if predfromori
   interdistori = other.interdistori;
   interbitsori = other.interbitsori;
-  distori = other.distori;
+  D_currecwoilf_curori_refori = other.D_currecwoilf_curori_refori;
 #endif
 
 #endif

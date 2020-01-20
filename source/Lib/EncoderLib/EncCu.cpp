@@ -917,8 +917,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu orisigma:%.2f refsigma0:%.2f refsigma1:%.2f D_refrec_curori_0:%.2f D_refrec_curori_1:%.2f ",
         pu->intradist, pu->interdist, pu->intrabits, pu->interbits,pu->orisigma,pu->refsigma0,pu->refsigma1, pu->D_refrec_curori_0, pu->D_refrec_curori_1);
 #if predfromori
-      printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu reforisigma0:%.2f reforisigma1:%.2f D_refori_curori_0:%.2f D_refori_curori_1:%.2f ",
-        pu->interdistori, pu->interbitsori, pu->dist, pu->distori,pu->reforisigma0,pu->reforisigma1, pu->D_refori_curori_0, pu->D_refori_curori_1);
+      printf(" interdistori:%llu  interbitsori:%llu D_currecwoilf_curori_refrec:%llu D_currecwoilf_curori_refori:%llu reforisigma0:%.2f reforisigma1:%.2f D_refori_curori_0:%.2f D_refori_curori_1:%.2f ",
+        pu->interdistori, pu->interbitsori, pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori,pu->reforisigma0,pu->reforisigma1, pu->D_refori_curori_0, pu->D_refori_curori_1);
 
       
 #endif
@@ -1170,8 +1170,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
     }
     printf("luma CU finished\n");
-    //printf("sum:%lld\tcs:%lld\n", temp,bestCS->dist);
-   //printf("%d", temp == bestCS->dist);
+
   }
 
 #endif
@@ -2897,11 +2896,11 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
       if (tempCS->cost < bestCS->cost) {
         cu.firstPU->interdist = bestCS->pus[0]->interdist;
         cu.firstPU->interbits = bestCS->pus[0]->interbits;
-        cu.firstPU->dist = bestCS->pus[0]->dist;
+        cu.firstPU->D_currecwoilf_curori_refrec = bestCS->pus[0]->D_currecwoilf_curori_refrec;
 #if predfromori
         cu.firstPU->interdistori = bestCS->pus[0]->interdistori;
         cu.firstPU->interbitsori = bestCS->pus[0]->interbitsori;
-        cu.firstPU->distori = bestCS->pus[0]->distori;
+        cu.firstPU->D_currecwoilf_curori_refori = bestCS->pus[0]->D_currecwoilf_curori_refori;
 #endif
       }
       else {

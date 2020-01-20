@@ -7281,7 +7281,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
 #if build_cu_tree
     pu.interdist = distortion;
-    pu.dist = distortion;
+    pu.D_currecwoilf_curori_refrec = distortion;
     // pu.cost = cs.cost;
     pu.interbits = cs.fracBits;
 
@@ -7533,7 +7533,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #if build_cu_tree
   cu.firstPU->interdist = finalDistortion;
   cu.firstPU->interbits = finalFracBits;
-  cu.firstPU->dist = dist;
+  cu.firstPU->D_currecwoilf_curori_refrec = dist;
 //#if predfromori
 //  cu.firstPU->interdistori = finalDistortionori;
 //  cu.firstPU->interbitsori = finalFracBitsori;
@@ -8745,7 +8745,7 @@ void InterSearch::symmvdCheckBestMvp(
 #if predfromori
       cs.pus[0]->interdistori = oridistortion;
       cs.pus[0]->interbitsori = m_CABACEstimator->getEstFracBits();
-      cs.pus[0]->distori = yori;
+      cs.pus[0]->D_currecwoilf_curori_refori = yori;
 #endif
 #endif
 #if predfromori
@@ -8999,7 +8999,7 @@ void InterSearch::symmvdCheckBestMvp(
 #if predfromori
     cs.pus[0]->interdistori = finalDistortionori;
     cs.pus[0]->interbitsori = finalFracBitsori;
-    cs.pus[0]->distori = distori;
+    cs.pus[0]->D_currecwoilf_curori_refori = distori;
 #endif
     
 #endif

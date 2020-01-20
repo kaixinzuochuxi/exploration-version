@@ -671,20 +671,20 @@ struct InterPredictionData
   //Distortion intradist;
   Distortion interdist;
   uint64_t interbits;
-  Distortion dist;
+  Distortion D_currecwoilf_curori_refrec;
   double orisigma;
   double refsigma0;
   double refsigma1;
-  double refdist0;
-  double refdist1;
+  double D_refrec_curori_0;
+  double D_refrec_curori_1;
 #if predfromori
   Distortion interdistori;
-  Distortion distori;
+  Distortion D_currecwoilf_curori_refori;
   uint64_t interbitsori;
   double reforisigma0;
   double reforisigma1;
-  double D_refori_curori0;
-  double D_refori_curori1;
+  double D_refori_curori_0;
+  double D_refori_curori_1;
 #endif
   //double cost;
 #endif
