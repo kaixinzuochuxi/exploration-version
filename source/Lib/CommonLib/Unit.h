@@ -683,8 +683,8 @@ struct InterPredictionData
   uint64_t interbitsori;
   double reforisigma0;
   double reforisigma1;
-  double D_refori_curori_0;
-  double D_refori_curori_1;
+  double SSEY_refori_curori_0;
+  double SSEY_refori_curori_1;
 #endif
   //double cost;
 #endif

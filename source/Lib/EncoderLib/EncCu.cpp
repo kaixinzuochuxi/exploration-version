@@ -542,6 +542,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         pu->D_refrec_curori_1 = 0;
 
         auto pbuf = pu->cs->picture->getTrueOrigBuf(pu->blocks[0]);
+        //double distortionpred = 0;
+        //auto pbufpred = pu->cs->picture->getPredBuf(pu->blocks[0]);
         int x = pu->lx();
         int y = pu->ly();
 
@@ -551,8 +553,10 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         auto avg = pbuf.computeAvg();
         for (int ly = 0; ly < pu->blocks[0].height; ly++)
           for (int lx = 0; lx < pu->blocks[0].width; lx++)
+          {
             pu->orisigma += (pbuf.at(lx, ly) - avg)*(pbuf.at(lx, ly) - avg);
-            //pu->orisigma += (pbuf.at(lx, ly) - avg);
+            //distortionpred += (pbuf.at(lx, ly) - pbufpred.at(lx, ly))*(pbuf.at(lx, ly) - pbufpred.at(lx, ly));
+          }
         ///// ref0
         double avgofref = 0;
         if (pu->refIdx[0] != -1)
@@ -738,11 +742,13 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
             pbuf.rspSignal(m_pcReshape->getInvLUT());
         }
 
+        
+
 #if predfromori
         pu->reforisigma0 = 0;
         pu->reforisigma1 = 0;
-        pu->D_refori_curori_0 = 0;
-        pu->D_refori_curori_1 = 0;
+        pu->SSEY_refori_curori_0 = 0;
+        pu->SSEY_refori_curori_1 = 0;
         ///// ref0
         avgofref = 0;
         if (pu->refIdx[0] != -1)
@@ -770,7 +776,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf0.at(curx, cury);
                 pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
-                pu->D_refori_curori_0 += (prefbuf0.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf0.at(curx, cury) - pbuf.at(lx, ly));
+                pu->SSEY_refori_curori_0 += (prefbuf0.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf0.at(curx, cury) - pbuf.at(lx, ly));
               }
             pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -794,7 +800,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf0.at(curx, cury);
                 pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
-                pu->D_refori_curori_0 += (prefbuf0.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf0.at(curx, cury) - pbuf.at(lx, ly));
+                pu->SSEY_refori_curori_0 += (prefbuf0.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf0.at(curx, cury) - pbuf.at(lx, ly));
               }
             pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -818,7 +824,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf0.at(curx, cury);
                 pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
-                pu->D_refori_curori_0 += (prefbuf0.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf0.at(curx, cury) - pbuf.at(lx, ly));
+                pu->SSEY_refori_curori_0 += (prefbuf0.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf0.at(curx, cury) - pbuf.at(lx, ly));
               }
             pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -854,7 +860,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf1.at(curx, cury);
                 pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
-                pu->D_refori_curori_1 += (prefbuf1.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf1.at(curx, cury) - pbuf.at(lx, ly));
+                pu->SSEY_refori_curori_1 += (prefbuf1.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf1.at(curx, cury) - pbuf.at(lx, ly));
               }
             pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -878,7 +884,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf1.at(curx, cury);
                 pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
-                pu->D_refori_curori_1 += (prefbuf1.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf1.at(curx, cury) - pbuf.at(lx, ly));
+                pu->SSEY_refori_curori_1 += (prefbuf1.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf1.at(curx, cury) - pbuf.at(lx, ly));
               }
             pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -902,7 +908,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 cury = max(0, min(cury, (int)cs.picture->lheight()));
                 avgofref += prefbuf1.at(curx, cury);
                 pu->reforisigma1 += prefbuf1.at(curx, cury)*prefbuf1.at(curx, cury);
-                pu->D_refori_curori_1 += (prefbuf1.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf1.at(curx, cury) - pbuf.at(lx, ly));
+                pu->SSEY_refori_curori_1 += (prefbuf1.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf1.at(curx, cury) - pbuf.at(lx, ly));
               }
             pu->reforisigma1 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -918,7 +924,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         pu->intradist, pu->interdist, pu->intrabits, pu->interbits,pu->orisigma,pu->refsigma0,pu->refsigma1, pu->D_refrec_curori_0, pu->D_refrec_curori_1);
 #if predfromori
       printf(" interdistori:%llu  interbitsori:%llu D_currecwoilf_curori_refrec:%llu D_currecwoilf_curori_refori:%llu reforisigma0:%.2f reforisigma1:%.2f D_refori_curori_0:%.2f D_refori_curori_1:%.2f ",
-        pu->interdistori, pu->interbitsori, pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori,pu->reforisigma0,pu->reforisigma1, pu->D_refori_curori_0, pu->D_refori_curori_1);
+        pu->interdistori, pu->interbitsori, pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori,pu->reforisigma0,pu->reforisigma1, pu->SSEY_refori_curori_0, pu->SSEY_refori_curori_1);
 
       
 #endif

@@ -66,7 +66,7 @@
 
 #define AdaptiveGOP 0
 
-#define test1 0
+#define test1 1
 #define he2017adaptive 0
 #define donotwritenal 1
 #define disablepsnr 1
@@ -80,10 +80,13 @@
 
 #ifdef QPAmethod
 
+#define windows 1
 #define useoriaqp 1
 #define usecutreeaqp 0
 #define alambda 0
 #define mbtreeQPA 0
+
+
 
 #if usecutreeaqp
 
@@ -117,10 +120,10 @@
 
 
 // build cu tree, print CU level information
-#define build_cu_tree 1
+#define build_cu_tree 0
 /////
 #if build_cu_tree 
-#define printall 1
+#define printall 0
 #define disablefast 0
 #define printchormacu 0
 #define printoriresi 0

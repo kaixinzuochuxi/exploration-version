@@ -1363,7 +1363,14 @@ void EncSlice::compressSlice( Picture* pcPic, const bool bCompressEntireSlice, c
   }
 
 #if ENABLE_QPA
-  bool iswindows = 0;
+
+  bool iswindows =0;
+
+#if windows
+  iswindows = 1;
+#else
+  iswindows = 0;
+#endif
 #if useoriaqp
   double hpEnerMax     = 1.0;
   double hpEnerPic     = 0.0;
@@ -2600,7 +2607,15 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
 //  m_uiPicTotalBits += actualBits;
 //  m_uiPicDist       = cs.dist;
 #if test1
-  printf("%llu\t%llu\n", m_uiPicTotalBits, m_uiPicDist);
+  extern bool skipmerge;
+  if (skipmerge)
+  {
+    printf("%llu\t%llu\n", m_uiPicTotalBits, m_uiPicDist);
+    m_pcCuEncoder->destroy();
+    m_pcCuEncoder->create(m_pcCfg);
+    m_pcCuEncoder->init(m_pcLib, *pcPic->cs->sps);
+    //m_pcCuEncoder = m_pcLib->getCuEncoder();
+  }
 #endif
 }
 
