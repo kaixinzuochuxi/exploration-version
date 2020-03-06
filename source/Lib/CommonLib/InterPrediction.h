@@ -210,6 +210,12 @@ public:
 #endif
 #if JVET_M0147_DMVR
   void xPrefetchPad(PredictionUnit& pu, PelUnitBuf &pcPad, RefPicList refId);
+#if predfromori
+  void xPrefetchPadori(PredictionUnit & pu, PelUnitBuf & pcPad, RefPicList refId);
+  void xProcessDMVRori(PredictionUnit & pu, PelUnitBuf & pcYuvDst, const ClpRngs & clpRngs, const bool bioApplied);
+  void xinitMCori(PredictionUnit & pu, const ClpRngs & clpRngs);
+  void xFinalPaddedMCForDMVRori(PredictionUnit & pu, PelUnitBuf & pcYuvSrc0, PelUnitBuf & pcYuvSrc1, PelUnitBuf & pcPad0, PelUnitBuf & pcPad1, const bool bioApplied, const Mv mergeMV[NUM_REF_PIC_LIST_01]);
+#endif
   void xFinalPaddedMCForDMVR(PredictionUnit& pu, PelUnitBuf &pcYuvSrc0, PelUnitBuf &pcYuvSrc1, PelUnitBuf &pcPad0, PelUnitBuf &pcPad1, const bool bioApplied
     , const Mv startMV[NUM_REF_PIC_LIST_01]
   );

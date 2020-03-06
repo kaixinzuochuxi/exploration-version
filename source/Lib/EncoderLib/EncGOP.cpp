@@ -1475,7 +1475,12 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       {
         usePPS = 1;
       }
+#if test1
+      PPS *pPPS = m_pcEncLib->getPPS(usePPS);
+#else 
       const PPS *pPPS = m_pcEncLib->getPPS(usePPS);
+#endif
+      
       // replace the pps with a more appropriated one
       pcPic->cs->pps = pPPS;
     }

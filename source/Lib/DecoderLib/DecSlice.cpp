@@ -78,8 +78,12 @@ void DecSlice::decompressSlice( Slice* slice, InputBitstream* bitstream )
 {
   //-- For time output for each slice
   slice->startProcessingTimer();
-
-  const SPS*     sps          = slice->getSPS();
+#if test1
+  SPS*     sps = slice->getSPS();
+#else 
+  const SPS*     sps = slice->getSPS();
+#endif
+  
   Picture*       pic          = slice->getPic();
 #if HEVC_TILES_WPP
   const TileMap& tileMap      = *pic->tileMap;

@@ -226,7 +226,12 @@ public:
 
   bool                   PPSNeedsWriting(int ppsId);
   bool                   SPSNeedsWriting(int spsId);
-  const PPS* getPPS( int Id ) { return m_ppsMap.getPS( Id); }
+#if test1
+  PPS* getPPS(int Id) { return m_ppsMap.getPS(Id); }
+#else 
+  const PPS* getPPS(int Id) { return m_ppsMap.getPS(Id); }
+#endif
+  
 
 #if ENABLE_SPLIT_PARALLELISM || ENABLE_WPP_PARALLELISM
   void                   setNumCuEncStacks( int n )             { m_numCuEncStacks = n; }

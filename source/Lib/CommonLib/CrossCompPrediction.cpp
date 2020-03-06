@@ -80,7 +80,44 @@ int8_t CrossComponentPrediction::xCalcCrossComponentPredictionAlpha( TransformUn
 
   return alpha;
 }
+#if build_cu_tree && predfromori
+int8_t CrossComponentPrediction::xCalcCrossComponentPredictionAlphaori(TransformUnit &tu, const ComponentID &compID, bool useRecoResidual)
+{
+  const CPelBuf pResiL = useRecoResidual ? tu.cs->getResiBuf(tu.Y()) : tu.cs->getOrgResiBuf(tu.Y());
+  //const CPelBuf pResiC = tu.cs->getResiBuf(tu.blocks[compID]);
+  const CPelBuf pResiC = tu.cs->getBuf(tu,PIC_RESIFROMORI).bufs[compID];
 
+  const int diffBitDepth = tu.cs->sps->getDifferentialLumaChromaBitDepth();
+
+  int8_t alpha = 0;
+  int SSxy = 0;
+  int SSxx = 0;
+
+  for (uint32_t uiY = 0; uiY < pResiL.height; uiY++)
+  {
+    for (uint32_t uiX = 0; uiX < pResiL.width; uiX++)
+    {
+      const Pel scaledResiL = rightShift(pResiL.at(uiX, uiY), diffBitDepth);
+      SSxy += (scaledResiL * pResiC.at(uiX, uiY));
+      SSxx += (scaledResiL * scaledResiL);
+    }
+  }
+
+  if (SSxx != 0)
+  {
+    double dAlpha = SSxy / double(SSxx);
+    alpha = int8_t(Clip3<int>(-16, 16, (int)(dAlpha * 16)));
+
+    static const int8_t alphaQuant[17] = { 0, 1, 1, 2, 2, 2, 4, 4, 4, 4, 4, 4, 8, 8, 8, 8, 8 };
+
+    alpha = (alpha < 0) ? -alphaQuant[int(-alpha)] : alphaQuant[int(alpha)];
+  }
+
+  tu.compAlpha[compID] = alpha;
+
+  return alpha;
+}
+#endif
 
 void CrossComponentPrediction::crossComponentPrediction(        TransformUnit &tu,
                                                           const ComponentID   &compID,

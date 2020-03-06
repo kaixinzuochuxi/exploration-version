@@ -517,8 +517,14 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* cPicYuvTru
   {
     Picture* picCurr = NULL;
     xGetNewPicBuffer(rcListPicYuvRecOut, picCurr, 2);
+#if test1
+    PPS *pps = m_ppsMap.getPS(2);
+    SPS *sps = m_spsMap.getPS(pps->getSPSId());
+#else 
     const PPS *pps = m_ppsMap.getPS(2);
     const SPS *sps = m_spsMap.getPS(pps->getSPSId());
+#endif
+    
 
     
     picCurr->M_BUFS(0, PIC_ORIGINAL).copyFrom(m_cGOPEncoder.getPicBg()->getRecoBuf());
@@ -569,8 +575,14 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* cPicYuvTru
 #endif
 
     {
-      const PPS *pPPS=(ppsID<0) ? m_ppsMap.getFirstPS() : m_ppsMap.getPS(ppsID);
-      const SPS *pSPS=m_spsMap.getPS(pPPS->getSPSId());
+#if test1
+      PPS *pPPS = (ppsID < 0) ? m_ppsMap.getFirstPS() : m_ppsMap.getPS(ppsID);
+      SPS *pSPS = m_spsMap.getPS(pPPS->getSPSId());
+#else 
+      const PPS *pPPS = (ppsID < 0) ? m_ppsMap.getFirstPS() : m_ppsMap.getPS(ppsID);
+      const SPS *pSPS = m_spsMap.getPS(pPPS->getSPSId());
+#endif
+      
 
       pcPicCurr->M_BUFS( 0, PIC_ORIGINAL ).swap( *pcPicYuvOrg );
 #if JVET_M0427_INLOOP_RESHAPER
@@ -728,8 +740,14 @@ void EncLib::encode( bool flush, PelStorage* pcPicYuvOrg, PelStorage* pcPicYuvTr
 
       {
         int ppsID=-1; // Use default PPS ID
-        const PPS *pPPS=(ppsID<0) ? m_ppsMap.getFirstPS() : m_ppsMap.getPS(ppsID);
-        const SPS *pSPS=m_spsMap.getPS(pPPS->getSPSId());
+#if test1
+        PPS *pPPS = (ppsID < 0) ? m_ppsMap.getFirstPS() : m_ppsMap.getPS(ppsID);
+        SPS *pSPS = m_spsMap.getPS(pPPS->getSPSId());
+#else 
+        const PPS *pPPS = (ppsID < 0) ? m_ppsMap.getFirstPS() : m_ppsMap.getPS(ppsID);
+        const SPS *pSPS = m_spsMap.getPS(pPPS->getSPSId());
+#endif
+        
 
         pcField->finalInit( *pSPS, *pPPS );
       }
@@ -1980,7 +1998,11 @@ int EncCfg::getQPForPicture(const uint32_t gopIndex, const Slice *pSlice) const
         qp +=gopEntry.m_QPOffset;
         // adjust QP according to QPOffsetModel for the GOP entry.
         double dqpOffset=qp*gopEntry.m_QPOffsetModelScale+gopEntry.m_QPOffsetModelOffset+0.5;
+#if !disable_hierarchical_qp_clip
         int qpOffset = (int)floor(Clip3<double>(0.0, 3.0, dqpOffset));
+#else
+        int qpOffset = (int)dqpOffset;
+#endif
         qp += qpOffset ;
       }
     }

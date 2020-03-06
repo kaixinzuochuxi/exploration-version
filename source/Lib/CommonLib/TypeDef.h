@@ -66,7 +66,7 @@
 
 #define AdaptiveGOP 0
 
-#define test1 1
+#define test1 0
 #define he2017adaptive 0
 #define donotwritenal 1
 #define disablepsnr 1
@@ -81,9 +81,9 @@
 #ifdef QPAmethod
 
 #define windows 1
-#define useoriaqp 1
-#define usecutreeaqp 0
-#define alambda 0
+#define useoriaqp 0
+#define usecutreeaqp 1
+#define alambda 1
 #define mbtreeQPA 0
 
 
@@ -120,14 +120,18 @@
 
 
 // build cu tree, print CU level information
-#define build_cu_tree 0
+#define build_cu_tree 1
 /////
 #if build_cu_tree 
-#define printall 0
+#define printall 1
 #define disablefast 0
 #define printchormacu 0
 #define printoriresi 0
 #define predfromori 1
+#if predfromori
+#define keepbestoricost 0
+#define printresiori 0
+#endif
 #endif
 
 // weighted D
@@ -144,7 +148,7 @@
 #define disable_hierarchical_qp 1
 #define getseqname 1
 #endif
-
+#define disable_hierarchical_qp_clip 0
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DEBUG log

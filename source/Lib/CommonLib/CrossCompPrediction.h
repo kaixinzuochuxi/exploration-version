@@ -55,7 +55,9 @@ class CrossComponentPrediction
 protected:
 
   int8_t xCalcCrossComponentPredictionAlpha( TransformUnit &tu, const ComponentID &compID, bool useRecoResidual );
-
+#if build_cu_tree && predfromori
+  int8_t xCalcCrossComponentPredictionAlphaori(TransformUnit & tu, const ComponentID & compID, bool useRecoResidual);
+#endif
 public:
 
   static void crossComponentPrediction(       TransformUnit &tu,

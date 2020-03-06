@@ -109,12 +109,22 @@ public:
   Size        sharedBndSize;
 #endif
   bool        isLossless;
+#if test1
+  SPS *sps;
+  PPS *pps;
+#else
   const SPS *sps;
   const PPS *pps;
+#endif
 #if HEVC_VPS
   const VPS *vps;
 #endif
+
+#if test1
+  PreCalcValues* pcv;
+#else
   const PreCalcValues* pcv;
+#endif
 
   CodingStructure(CUCache&, PUCache&, TUCache&);
   void create( const UnitArea &_unit, const bool isTopLayer );
@@ -189,6 +199,11 @@ public:
   static_vector<double, NUM_ENC_FEATURES> features;
 
   double      cost;
+#if keepbestoricost
+  double costori;
+  uint64_t      fracBitsori;
+  Distortion  distori;
+#endif
 #if JVET_M0102_INTRA_SUBPARTITIONS
   double      lumaCost;
 #endif

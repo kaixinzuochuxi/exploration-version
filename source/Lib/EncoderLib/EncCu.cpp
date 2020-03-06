@@ -495,7 +495,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
   if(cs.slice->getPOC()>0)
 #endif
   {
-    char *s[] = {
+    //char *s[] = {
+      vector<string>s={
       "MODE_INTER" ,     ///< inter-prediction mode
       "MODE_INTRA" ,     ///< intra-prediction mode
   #if JVET_M0483_IBC
@@ -532,7 +533,13 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC()
 
       );
+#if build_cu_tree
+      if (tempCS->area.lx() == 48 && tempCS->area.ly() == 16 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC() == 16)
+      {
+        int xxx = 0;
+      }
 
+#endif
       ///// compute sigma
       {
         pu->orisigma = 0;
@@ -777,6 +784,9 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 avgofref += prefbuf0.at(curx, cury);
                 pu->reforisigma0 += prefbuf0.at(curx, cury)*prefbuf0.at(curx, cury);
                 pu->SSEY_refori_curori_0 += (prefbuf0.at(curx, cury) - pbuf.at(lx, ly))*(prefbuf0.at(curx, cury) - pbuf.at(lx, ly));
+
+
+
               }
             pu->reforisigma0 -= avgofref * avgofref / pu->blocks[0].height / pu->blocks[0].width;
           }
@@ -920,10 +930,10 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #endif
       }
       // dist,bits
-      printf("intradist:%llu interdist:%llu intrabits:%llu interbits:%llu orisigma:%.2f refsigma0:%.2f refsigma1:%.2f D_refrec_curori_0:%.2f D_refrec_curori_1:%.2f ",
+      printf("intradist:%ju interdist:%ju intrabits:%ju interbits:%ju orisigma:%.2f refsigma0:%.2f refsigma1:%.2f D_refrec_curori_0:%.2f D_refrec_curori_1:%.2f ",
         pu->intradist, pu->interdist, pu->intrabits, pu->interbits,pu->orisigma,pu->refsigma0,pu->refsigma1, pu->D_refrec_curori_0, pu->D_refrec_curori_1);
 #if predfromori
-      printf(" interdistori:%llu  interbitsori:%llu D_currecwoilf_curori_refrec:%llu D_currecwoilf_curori_refori:%llu reforisigma0:%.2f reforisigma1:%.2f D_refori_curori_0:%.2f D_refori_curori_1:%.2f ",
+      printf(" interdistori:%ju  interbitsori:%ju D_currecwoilf_curori_refrec:%ju D_currecwoilf_curori_refori:%ju reforisigma0:%.2f reforisigma1:%.2f D_refori_curori_0:%.2f D_refori_curori_1:%.2f ",
         pu->interdistori, pu->interbitsori, pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori,pu->reforisigma0,pu->reforisigma1, pu->SSEY_refori_curori_0, pu->SSEY_refori_curori_1);
 
       
@@ -931,14 +941,16 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       // parameter
       printf("\t QP:%d lambda:%f | ", pu->cu->qp, m_pcRdCost->getLambda());
       // mode
-      printf("affine:%d*imv:%d*affinetype:%d*skip:%d*cbf:%d*mhintra:%d*intradir:%lu&%lu*multiRefIdx:%d  ",
+      printf("affine:%d*imv:%d*affinetype:%d*skip:%d*cbf:%d*mhintra:%d*triangle:%d*mergeFlag:%d*mergeidx:%d*intradir:%u&%u*multiRefIdx:%d  ",
         pu->cu->affine,
         pu->cu->imv,
         pu->cu->affineType,
         pu->cu->skip,
         pu->cu->rootCbf,
         pu->mhIntraFlag,
-
+        pu->cu->triangle,
+        pu->mergeFlag,
+        pu->mergeIdx,
 
         pu->intraDir[0],
         pu->intraDir[1],
@@ -1525,7 +1537,12 @@ bool EncCu::xCheckBestMode( CodingStructure *&tempCS, CodingStructure *&bestCS, 
           xFillPCMBuffer( cu );
         }
       }
-
+#if predfromori
+      if (bestCS)
+      {
+        
+      }
+#endif
       std::swap( tempCS, bestCS );
       // store temp best CI for next CU coding
       m_CurrCtx->best = m_CABACEstimator->getCtx();
@@ -1644,6 +1661,13 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
   m_pcInterSearch->resetSavedAffineMotion();
 #endif
 
+#if build_cu_tree
+  if (tempCS->area.lx() == 64 && tempCS->area.ly() == 0 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==8)
+  {
+    int xxx = 0;
+  }
+
+#endif
 
 #if test1
   extern bool skipmerge;
@@ -2426,7 +2450,9 @@ void EncCu::xCheckModeSplit(CodingStructure *&tempCS, CodingStructure *&bestCS, 
   m_CurrCtx++;
 
   tempCS->getRecoBuf().fill( 0 );
-
+#if predfromori
+  tempCS->m_recofromori.fill(0);
+#endif
 #if JVET_M0427_INLOOP_RESHAPER
   tempCS->getPredBuf().fill(0);
 #endif
@@ -4000,7 +4026,13 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 
 #if JVET_M0464_UNI_MTS
 
+#if build_cu_tree
+      if (tempCS->area.lx() == 48 && tempCS->area.ly() == 16 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC() == 16)
+      {
+        int xxx = 0;
+      }
 
+#endif
       xEncodeInterResidual( tempCS, bestCS, partitioner, encTestMode, uiNoResidualPass, NULL, uiNoResidualPass == 0 ? &candHasNoResidual[uiMrgHADIdx] : NULL );
 #else
       xEncodeInterResidual(tempCS, bestCS, partitioner, encTestMode, uiNoResidualPass
@@ -4051,6 +4083,13 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
 
 void EncCu::xCheckRDCostMergeTriangle2Nx2N( CodingStructure *&tempCS, CodingStructure *&bestCS, Partitioner &partitioner, const EncTestMode& encTestMode )
 {
+
+  if (tempCS->area.lx() == 384 && tempCS->area.ly() == 0 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16)
+  {
+    int xxx = 0;
+  }
+
+
   const Slice &slice = *tempCS->slice;
   const SPS &sps = *tempCS->sps;
 
@@ -4550,6 +4589,7 @@ void EncCu::xCheckRDCostAffineMerge2Nx2N( CodingStructure *&tempCS, CodingStruct
         m_pcInterSearch->motionCompensation( pu, acMergeBuffer[uiMergeCand] );
 #if predfromori
         m_pcInterSearch->motionCompensationori(pu, acMergeBufferori[uiMergeCand]);
+
 #endif // predfromori
 
         Distortion uiSad = distParam.distFunc( distParam );
@@ -4658,6 +4698,7 @@ void EncCu::xCheckRDCostAffineMerge2Nx2N( CodingStructure *&tempCS, CodingStruct
         tempCS->getPredBuf().copyFrom( acMergeBuffer[uiMergeCand] );
 #if predfromori
         tempCS->getBuf(pu,PIC_PREDFROMORI).copyFrom(acMergeBufferori[uiMergeCand]);
+
 #endif // predfromori
       }
       else
@@ -5821,7 +5862,7 @@ void EncCu::xEncodeInterResidual( CodingStructure *&tempCS, CodingStructure *&be
 #endif
       
 #if predfromori  
-      if (tempCS->area.lx() == 400 && tempCS->area.ly() == 48 && tempCS->slice->getPOC() == 1) {
+      if (tempCS->area.lx() == 0 && tempCS->area.ly() == 0 && tempCS->slice->getPOC() == 4) {
       int xxx = 0;
       }
     //CodingStructure ori(*tempCS);

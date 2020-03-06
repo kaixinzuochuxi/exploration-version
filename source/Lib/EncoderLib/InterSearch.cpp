@@ -7314,7 +7314,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #endif
     cs.getResiBuf().bufs[0].subtract(cs.getPredBuf().bufs[0]);
   }
-  if (chroma)
+   if (chroma)
   {
     cs.getResiBuf().bufs[1].copyFrom(cs.getOrgBuf().bufs[1]);
     cs.getResiBuf().bufs[2].copyFrom(cs.getOrgBuf().bufs[2]);
@@ -7951,7 +7951,8 @@ void InterSearch::symmvdCheckBestMvp(
         if (isCrossCPredictionAvailable)
         {
           csFull->getBuf(compArea, PIC_RESIFROMORI).copyFrom(cs.getOrgResiBuf(compArea));
-          preCalcAlpha = xCalcCrossComponentPredictionAlpha(tu, compID, m_pcEncCfg->getUseReconBasedCrossCPredictionEstimate());
+/////
+          preCalcAlpha = xCalcCrossComponentPredictionAlphaori(tu, compID, 0);
         }
 
 #if JVET_M0464_UNI_MTS
@@ -8018,7 +8019,7 @@ void InterSearch::symmvdCheckBestMvp(
             const bool bUseCrossCPrediction = crossCPredictionModeId != 0;
 
             // copy the original residual into the residual buffer
-            csFull->getBuf(compArea, PIC_RESIFROMORI).copyFrom(cs.getOrgResiBuf(compArea));
+            csFull->getBuf(compArea, PIC_RESIFROMORI).copyFrom(cs.getBuf(compArea,PIC_ORIRESIFROMORI));
 
             m_CABACEstimator->getCtx() = ctxStart;
             m_CABACEstimator->resetBits();
@@ -8652,16 +8653,16 @@ void InterSearch::symmvdCheckBestMvp(
             tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
 #if !disableWD
             oridistortion += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
-            
+
             //#if codingparameters 
 //            //cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
 //#endif // codingparameters
 
 #else
             oridistortion += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-//#if codingparameters && !predfromori
-//            cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-//#endif // codingparameters
+            //#if codingparameters && !predfromori
+            //            cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+            //#endif // codingparameters
 #endif
             yori = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
           }
@@ -8685,9 +8686,12 @@ void InterSearch::symmvdCheckBestMvp(
         }
         else
 #endif
-          oridistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+        {
+        
+        oridistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
         if (compID == COMPONENT_Y)
           yori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+        }
         //#if codingparameters 
 //        //cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
 //#endif // codingparameters
@@ -8790,8 +8794,8 @@ void InterSearch::symmvdCheckBestMvp(
     }
     if (chroma)
     {
-      cs.getBuf(*cs.pus[0], PIC_RESIFROMORI).bufs[1].copyFrom(cs.getBuf(*cs.pus[0], PIC_PREDFROMORI).bufs[1]);
-      cs.getBuf(*cs.pus[0], PIC_RESIFROMORI).bufs[2].copyFrom(cs.getBuf(*cs.pus[0], PIC_PREDFROMORI).bufs[2]);
+      cs.getBuf(*cs.pus[0], PIC_RESIFROMORI).bufs[1].copyFrom(cs.getBuf(*cs.pus[0], PIC_ORIGINAL).bufs[1]);
+      cs.getBuf(*cs.pus[0], PIC_RESIFROMORI).bufs[2].copyFrom(cs.getBuf(*cs.pus[0], PIC_ORIGINAL).bufs[2]);
       cs.getBuf(*cs.pus[0], PIC_RESIFROMORI).bufs[1].subtract(cs.getBuf(*cs.pus[0], PIC_PREDFROMORI).bufs[1]);
       cs.getBuf(*cs.pus[0], PIC_RESIFROMORI).bufs[2].subtract(cs.getBuf(*cs.pus[0], PIC_PREDFROMORI).bufs[2]);
     }
@@ -8808,6 +8812,7 @@ void InterSearch::symmvdCheckBestMvp(
       cs.getBuf(*cs.pus[0], PIC_ORIRESIFROMORI).bufs[1].copyFrom(cs.getBuf(*cs.pus[0], PIC_RESIFROMORI).bufs[1]);
       cs.getBuf(*cs.pus[0], PIC_ORIRESIFROMORI).bufs[2].copyFrom(cs.getBuf(*cs.pus[0], PIC_RESIFROMORI).bufs[2]);
     }
+
     xEstimateInterResidualQTori(cs, partitioner, &zeroDistortion, luma, chroma);
     TransformUnit &firstTU = *cs.getTU(partitioner.chType);
 
@@ -8955,7 +8960,7 @@ void InterSearch::symmvdCheckBestMvp(
 #else
           finalDistortionori += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
-          tmpRecLuma.copyFrom(pred);
+          //tmpRecLuma.copyFrom(pred);
           //tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
           distori = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
           

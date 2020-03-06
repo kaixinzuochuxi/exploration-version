@@ -1645,8 +1645,14 @@ private:
 #if HEVC_VPS
   const VPS*                 m_pcVPS;
 #endif
+
+#if test1
+  SPS*                 m_pcSPS;
+  PPS*                 m_pcPPS;
+#else
   const SPS*                 m_pcSPS;
   const PPS*                 m_pcPPS;
+#endif
   Picture*                   m_pcPic;
   bool                       m_colFromL0Flag;  // collocated picture from List0 flag
 
@@ -1738,11 +1744,23 @@ public:
   void                        setVPS( VPS* pcVPS )                                   { m_pcVPS = pcVPS;                                              }
   const VPS*                  getVPS() const                                         { return m_pcVPS;                                               }
 #endif
+  
+#if test1
+  void                        setSPS( SPS* pcSPS) { m_pcSPS = pcSPS; }
+  SPS*                  getSPS() const { return m_pcSPS; }
+#else
   void                        setSPS( const SPS* pcSPS )                             { m_pcSPS = pcSPS;                                              }
-  const SPS*                  getSPS() const                                         { return m_pcSPS;                                               }
-
+  const SPS*                  getSPS() const { return m_pcSPS; }
+#endif
+  
+#if test1
+  void                        setPPS( PPS* pcPPS) { m_pcPPS = pcPPS; m_iPPSId = (pcPPS) ? pcPPS->getPPSId() : -1; }
+  PPS*                  getPPS() const { return m_pcPPS; }
+#else
   void                        setPPS( const PPS* pcPPS )                             { m_pcPPS = pcPPS; m_iPPSId = (pcPPS) ? pcPPS->getPPSId() : -1; }
-  const PPS*                  getPPS() const                                         { return m_pcPPS;                                               }
+  const PPS*                  getPPS() const { return m_pcPPS; }
+#endif
+  
 
   void                        setPPSId( int PPSId )                                  { m_iPPSId = PPSId;                                             }
   int                         getPPSId() const                                       { return m_iPPSId;                                              }

@@ -907,7 +907,12 @@ const CPelUnitBuf Picture::getRecoBuf(const UnitArea &unit)     const { return g
        PelUnitBuf Picture::getRecoBuf()                               { return M_BUFS(scheduler.getSplitPicId(), PIC_RECONSTRUCTION); }
 const CPelUnitBuf Picture::getRecoBuf()                         const { return M_BUFS(scheduler.getSplitPicId(), PIC_RECONSTRUCTION); }
 
-void Picture::finalInit( const SPS& sps, const PPS& pps )
+#if test1
+void Picture::finalInit( SPS& sps,  PPS& pps)
+#else 
+void Picture::finalInit(const SPS& sps, const PPS& pps)
+#endif
+
 {
   for( auto &sei : SEIs )
   {

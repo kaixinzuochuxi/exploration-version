@@ -735,11 +735,20 @@ void DecLib::xActivateParameterSets()
 {
   if (m_bFirstSliceInPicture)
   {
+#if test1
+    PPS *pps = m_parameterSetManager.getPPS(m_apcSlicePilot->getPPSId()); // this is a temporary PPS object. Do not store this value
+    CHECK(pps == 0, "No PPS present");
+
+    SPS *sps = m_parameterSetManager.getSPS(pps->getSPSId());             // this is a temporary SPS object. Do not store this value
+    CHECK(sps == 0, "No SPS present");
+#else 
     const PPS *pps = m_parameterSetManager.getPPS(m_apcSlicePilot->getPPSId()); // this is a temporary PPS object. Do not store this value
     CHECK(pps == 0, "No PPS present");
 
     const SPS *sps = m_parameterSetManager.getSPS(pps->getSPSId());             // this is a temporary SPS object. Do not store this value
     CHECK(sps == 0, "No SPS present");
+#endif
+
 
     if (NULL == pps->pcv)
     {
@@ -857,8 +866,14 @@ void DecLib::xActivateParameterSets()
 
     Slice *pSlice = m_pcPic->slices[m_uiSliceSegmentIdx]; // we now have a real slice.
 
+#if test1
+    SPS *sps = pSlice->getSPS();
+    PPS *pps = pSlice->getPPS();
+#else 
     const SPS *sps = pSlice->getSPS();
     const PPS *pps = pSlice->getPPS();
+#endif
+    
 
     // fix Parameter Sets, now that we have the real slice
     m_pcPic->cs->slice = pSlice;

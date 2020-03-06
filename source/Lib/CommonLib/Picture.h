@@ -156,7 +156,11 @@ struct TileMap
   uint32_t getCtuRsToTsAddrMap( uint32_t ctuRsAddr ) const { return *(ctuRsToTsAddrMap + (ctuRsAddr>=pcv->sizeInCtus ? pcv->sizeInCtus : ctuRsAddr)); }
   uint32_t getSubstreamForCtuAddr(const uint32_t ctuAddr, const bool bAddressInRaster, Slice *pcSlice) const;
 
+#if test1
+    PreCalcValues* pcv;
+#else
   const PreCalcValues* pcv;
+#endif
   std::vector<Tile> tiles;
   uint32_t  numTiles;
   uint32_t  numTileColumns;
@@ -230,7 +234,12 @@ struct Picture : public UnitArea
   const CPelUnitBuf getBuf(const UnitArea &unit,     const PictureType &type) const;
 
   void extendPicBorder();
-  void finalInit( const SPS& sps, const PPS& pps );
+#if test1
+  void finalInit( SPS& sps,  PPS& pps);
+#else 
+  void finalInit(const SPS& sps, const PPS& pps);
+#endif
+  
 
   int  getPOC()                               const { return poc; }
   void setBorderExtension( bool bFlag)              { m_bIsBorderExtended = bFlag;}
