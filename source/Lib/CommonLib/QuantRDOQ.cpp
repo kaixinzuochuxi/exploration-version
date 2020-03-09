@@ -611,6 +611,55 @@ void QuantRDOQ::quant(TransformUnit &tu, const ComponentID &compID, const CCoeff
   }
 }
 
+#if predfromori
+void QuantRDOQ::quantori(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, TCoeff &uiAbsSum, const QpParam &cQP, const Ctx& ctx)
+{
+  const CompArea &rect = tu.blocks[compID];
+  const uint32_t uiWidth = rect.width;
+  const uint32_t uiHeight = rect.height;
+
+  const CCoeffBuf &piCoef = pSrc;
+  CoeffBuf   piQCoef = tu.getCoeffs(compID);
+
+#if JVET_M0464_UNI_MTS
+  const bool useTransformSkip = tu.mtsIdx == 1;
+#else
+  const bool useTransformSkip = tu.transformSkip[compID];
+#endif
+
+  bool useRDOQ = useTransformSkip ? m_useRDOQTS : m_useRDOQ;
+
+#if JVET_M0102_INTRA_SUBPARTITIONS
+  if (!tu.cu->ispMode || !isLuma(compID))
+#endif
+  {
+    useRDOQ &= uiWidth > 2;
+    useRDOQ &= uiHeight > 2;
+  }
+
+  if (useRDOQ && (isLuma(compID) || RDOQ_CHROMA))
+  {
+#if T0196_SELECTIVE_RDOQ
+    if (!m_useSelectiveRDOQ || xNeedRDOQ(tu, compID, piCoef, cQP))
+    {
+#endif
+      xRateDistOptQuant(tu, compID, pSrc, uiAbsSum, cQP, ctx);
+#if T0196_SELECTIVE_RDOQ
+    }
+    else
+    {
+      piQCoef.fill(0);
+      uiAbsSum = 0;
+    }
+#endif
+  }
+  else
+  {
+    Quant::quant(tu, compID, pSrc, uiAbsSum, cQP, ctx);
+  }
+}
+
+#endif
 
 
 void QuantRDOQ::xRateDistOptQuant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, TCoeff &uiAbsSum, const QpParam &cQP, const Ctx &ctx)

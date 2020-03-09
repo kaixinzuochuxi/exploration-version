@@ -776,8 +776,12 @@ struct TransformUnit : public UnitArea
   TransformUnit *prev;
 #endif
 
-#if printoriresi
+#if printresirec && !printresiori
   void init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq , TCoeff **resiwq, Pel **spresiwoq, Pel **spresiwq);
+#elif  !printresirec && printresiori
+  void init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoqori, TCoeff **resiwqori, Pel **spresiwoqori, Pel **spresiwqori);
+#elif printresirec && printresiori
+  void init(TCoeff **coeffs, Pel **pcmbuf, TCoeff **resiwoq, TCoeff **resiwq, Pel **spresiwoq, Pel **spresiwq, TCoeff **resiwoqori, TCoeff **resiwqori, Pel **spresiwoqori, Pel **spresiwqori);
 #else
   //void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf);
   void init(TCoeff **coeffs, Pel **pcmbuf);
@@ -804,13 +808,20 @@ struct TransformUnit : public UnitArea
   bool    cacheUsed;
 
 #endif
-#if printoriresi
+#if printresirec
 public:
   TCoeff *m_resiwoq[MAX_NUM_TBLOCKS];
   TCoeff *m_resiwq[MAX_NUM_TBLOCKS];
   Pel *m_spresiwoq[MAX_NUM_TBLOCKS];
   Pel *m_spresiwq[MAX_NUM_TBLOCKS];
-#else
+private:
+#endif
+#if printresiori
+public:
+  TCoeff *m_resiwoqori[MAX_NUM_TBLOCKS];
+  TCoeff *m_resiwqori[MAX_NUM_TBLOCKS];
+  Pel *m_spresiwoqori[MAX_NUM_TBLOCKS];
+  Pel *m_spresiwqori[MAX_NUM_TBLOCKS];
 private:
 #endif
   TCoeff *m_coeffs[ MAX_NUM_TBLOCKS ];

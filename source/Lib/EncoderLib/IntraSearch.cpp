@@ -1968,8 +1968,11 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
   else
 #endif
   piReco.reconstruct(piPred, piResi, cs.slice->clpRng( compID ));
-#if printoriresi
+#if printresirec
   memcpy(tu.m_spresiwq[compID], piResi.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
+#endif
+#if printresiori
+  memcpy(tu.m_spresiwqori[compID], piResi.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
 #endif
   //===== update distortion =====
 #if WCG_EXT

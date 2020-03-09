@@ -74,11 +74,17 @@ CodingStructure::CodingStructure(CUCache& cuCache, PUCache& puCache, TUCache& tu
   {
     m_coeffs[ i ] = nullptr;
     m_pcmbuf[ i ] = nullptr;
-#if printoriresi
+#if printresirec
     m_resiwoq[i] = nullptr;
     m_resiwq[i] = nullptr;
     m_spresiwoq[i] = nullptr;
     m_spresiwq[i] = nullptr;
+#endif
+#if printresiori
+    m_resiwoqori[i] = nullptr;
+    m_resiwqori[i] = nullptr;
+    m_spresiwoqori[i] = nullptr;
+    m_spresiwqori[i] = nullptr;
 #endif
     m_offsets[ i ] = 0;
   }
@@ -551,11 +557,17 @@ TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType c
 
   TCoeff *coeffs[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
   Pel    *pcmbuf[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-#if printoriresi
+#if printresirec
   TCoeff *resiwoq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
   TCoeff    *resiwq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
   Pel *spresiwoq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
   Pel    *spresiwq[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+#endif
+#if printresiori
+  TCoeff *resiwoqori[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+  TCoeff    *resiwqori[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+  Pel *spresiwoqori[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+  Pel    *spresiwqori[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
 #endif
   uint32_t numCh = ::getNumberValidComponents( area.chromaFormat );
 
@@ -600,18 +612,27 @@ TransformUnit& CodingStructure::addTU( const UnitArea &unit, const ChannelType c
 
     coeffs[i] = m_coeffs[i] + m_offsets[i];
     pcmbuf[i] = m_pcmbuf[i] + m_offsets[i];
-#if printoriresi
+#if printresirec
     resiwoq[i] = m_resiwoq[i] + m_offsets[i];
     resiwq[i] = m_resiwq[i] + m_offsets[i];
     spresiwoq[i] = m_spresiwoq[i] + m_offsets[i];
     spresiwq[i] = m_spresiwq[i] + m_offsets[i];
 #endif
-
+#if printresiori
+    resiwoqori[i] = m_resiwoqori[i] + m_offsets[i];
+    resiwqori[i] = m_resiwqori[i] + m_offsets[i];
+    spresiwoqori[i] = m_spresiwoqori[i] + m_offsets[i];
+    spresiwqori[i] = m_spresiwqori[i] + m_offsets[i];
+#endif
     unsigned areaSize = tu->blocks[i].area();
     m_offsets[i] += areaSize;
   }
-#if printoriresi
+#if printresirec && !printresiori
   tu->init(coeffs, pcmbuf, resiwoq,resiwq, spresiwoq, spresiwq);
+#elif !printresirec && printresiori
+  tu->init(coeffs, pcmbuf, resiwoqori, resiwqori, spresiwoqori, spresiwqori);
+#elif printresirec && printresiori
+  tu->init(coeffs, pcmbuf, resiwoq, resiwq, spresiwoq, spresiwq, resiwoqori, resiwqori, spresiwoqori, spresiwqori);
 #else
   tu->init( coeffs, pcmbuf );
 #endif
@@ -801,11 +822,17 @@ void CodingStructure::createCoeffs()
 
     m_coeffs[i] = _area > 0 ? ( TCoeff* ) xMalloc( TCoeff, _area ) : nullptr;
     m_pcmbuf[i] = _area > 0 ? ( Pel*    ) xMalloc( Pel,    _area ) : nullptr;
-#if printoriresi
+#if printresirec
     m_resiwoq[i] = _area > 0 ? (TCoeff*)xMalloc(TCoeff, _area) : nullptr;
     m_resiwq[i] = _area > 0 ? (TCoeff*)xMalloc(TCoeff, _area) : nullptr;
     m_spresiwoq[i] = _area > 0 ? (Pel*)xMalloc(Pel, _area) : nullptr;
     m_spresiwq[i] = _area > 0 ? (Pel*)xMalloc(Pel, _area) : nullptr;
+#endif
+#if printresiori
+    m_resiwoqori[i] = _area > 0 ? (TCoeff*)xMalloc(TCoeff, _area) : nullptr;
+    m_resiwqori[i] = _area > 0 ? (TCoeff*)xMalloc(TCoeff, _area) : nullptr;
+    m_spresiwoqori[i] = _area > 0 ? (Pel*)xMalloc(Pel, _area) : nullptr;
+    m_spresiwqori[i] = _area > 0 ? (Pel*)xMalloc(Pel, _area) : nullptr;
 #endif
   }
 }
@@ -816,11 +843,18 @@ void CodingStructure::destroyCoeffs()
   {
     if( m_coeffs[i] ) { xFree( m_coeffs[i] ); m_coeffs[i] = nullptr; }
     if( m_pcmbuf[i] ) { xFree( m_pcmbuf[i] ); m_pcmbuf[i] = nullptr; }
-#if printoriresi
+#if printresirec
     if (m_resiwoq[i]) { xFree(m_resiwoq[i]); m_resiwoq[i] = nullptr; }
     if (m_resiwq[i]) { xFree(m_resiwq[i]); m_resiwq[i] = nullptr; }
     if (m_spresiwoq[i]) { xFree(m_spresiwoq[i]); m_spresiwoq[i] = nullptr; }
     if (m_spresiwq[i]) { xFree(m_spresiwq[i]); m_spresiwq[i] = nullptr; }
+
+#endif
+#if printresiori
+    if (m_resiwoqori[i]) { xFree(m_resiwoqori[i]); m_resiwoqori[i] = nullptr; }
+    if (m_resiwqori[i]) { xFree(m_resiwqori[i]); m_resiwqori[i] = nullptr; }
+    if (m_spresiwoqori[i]) { xFree(m_spresiwoqori[i]); m_spresiwoqori[i] = nullptr; }
+    if (m_spresiwqori[i]) { xFree(m_spresiwqori[i]); m_spresiwqori[i] = nullptr; }
 
 #endif
   }

@@ -833,30 +833,48 @@ void BestEncInfoCache::init( const Slice &slice )
 #if REUSE_CU_RESULTS_WITH_MULTIPLE_TUS
   m_pCoeff  = new TCoeff[numCoeff*MAX_NUM_TUS];
   m_pPcmBuf = new Pel   [numCoeff*MAX_NUM_TUS];
-#if printoriresi
+#if printresirec
   m_resiwoq = new TCoeff[numCoeff*MAX_NUM_TUS];
   m_resiwq = new TCoeff[numCoeff*MAX_NUM_TUS];
   m_spresiwoq = new Pel[numCoeff*MAX_NUM_TUS];
   m_spresiwq = new Pel[numCoeff*MAX_NUM_TUS];
 #endif
+#if printresiori
+  m_resiwoqori = new TCoeff[numCoeff*MAX_NUM_TUS];
+  m_resiwqori = new TCoeff[numCoeff*MAX_NUM_TUS];
+  m_spresiwoqori = new Pel[numCoeff*MAX_NUM_TUS];
+  m_spresiwqori = new Pel[numCoeff*MAX_NUM_TUS];
+#endif
 #else
   m_pCoeff  = new TCoeff[numCoeff];
   m_pPcmBuf = new Pel   [numCoeff];
-#if printoriresi
+#if printresirec
   m_resiwoq = new TCoeff[numCoeff];
   m_resiwq = new TCoeff[numCoeff];
   m_spresiwoq = new Pel[numCoeff*MAX_NUM_TUS];
   m_spresiwq = new Pel[numCoeff*MAX_NUM_TUS];
 #endif
+#if printresiori
+  m_resiwoqori = new TCoeff[numCoeff];
+  m_resiwqori = new TCoeff[numCoeff];
+  m_spresiwoqori = new Pel[numCoeff*MAX_NUM_TUS];
+  m_spresiwqori = new Pel[numCoeff*MAX_NUM_TUS];
+#endif
 #endif
 
   TCoeff *coeffPtr = m_pCoeff;
   Pel    *pcmPtr   = m_pPcmBuf;
-#if printoriresi
+#if printresirec
   TCoeff *resiwoqPtr = m_resiwoq;
   TCoeff *resiwqPtr = m_resiwq; 
   Pel *spresiwoqPtr = m_spresiwoq;
   Pel *spresiwqPtr = m_spresiwq;
+#endif
+#if printresiori
+  TCoeff *resiwoqPtrori = m_resiwoqori;
+  TCoeff *resiwqPtrori = m_resiwqori;
+  Pel *spresiwoqPtrori = m_spresiwoqori;
+  Pel *spresiwqPtrori = m_spresiwqori;
 #endif
   m_dummyCS.pcv = m_slice_bencinf->getPPS()->pcv;
 
@@ -872,13 +890,18 @@ void BestEncInfoCache::init( const Slice &slice )
           {
             TCoeff *coeff[MAX_NUM_TBLOCKS] = { 0, };
             Pel    *pcmbf[MAX_NUM_TBLOCKS] = { 0, };
-#if printoriresi
+#if printresirec
             TCoeff *resiwoq[MAX_NUM_TBLOCKS] = { 0, };
             TCoeff *resiwq[MAX_NUM_TBLOCKS] = { 0, };
             Pel *spresiwoq[MAX_NUM_TBLOCKS] = { 0, };
             Pel *spresiwq[MAX_NUM_TBLOCKS] = { 0, };
 #endif
-
+#if printresiori
+            TCoeff *resiwoqori[MAX_NUM_TBLOCKS] = { 0, };
+            TCoeff *resiwqori[MAX_NUM_TBLOCKS] = { 0, };
+            Pel *spresiwoqori[MAX_NUM_TBLOCKS] = { 0, };
+            Pel *spresiwqori[MAX_NUM_TBLOCKS] = { 0, };
+#endif
 #if REUSE_CU_RESULTS_WITH_MULTIPLE_TUS
             for( int i = 0; i < MAX_NUM_TUS; i++ )
             {
@@ -889,17 +912,27 @@ void BestEncInfoCache::init( const Slice &slice )
               {
                 coeff[i] = coeffPtr; coeffPtr += area.blocks[i].area();
                 pcmbf[i] = pcmPtr;   pcmPtr += area.blocks[i].area();
-#if printoriresi
+#if printresirec
                 resiwoq[i] = resiwoqPtr; resiwoqPtr += area.blocks[i].area();
                 resiwq[i] = resiwqPtr; resiwqPtr += area.blocks[i].area();
                 spresiwoq[i] = spresiwoqPtr; spresiwoqPtr += area.blocks[i].area();
                 spresiwq[i] = spresiwqPtr; spresiwqPtr += area.blocks[i].area();
 #endif
+#if printresiori
+                resiwoqori[i] = resiwoqPtrori; resiwoqPtrori += area.blocks[i].area();
+                resiwqori[i] = resiwqPtrori; resiwqPtrori += area.blocks[i].area();
+                spresiwoqori[i] = spresiwoqPtrori; spresiwoqPtrori += area.blocks[i].area();
+                spresiwqori[i] = spresiwqPtrori; spresiwqPtrori += area.blocks[i].area();
+#endif
               }
 
               tu.cs = &m_dummyCS;
-#if printoriresi
+#if printresirec && !printresiori
               tu.init(coeff, pcmbf, resiwoq, resiwq, spresiwoq, spresiwq);
+#elif !printresirec && printresiori
+              tu.init(coeff, pcmbf, resiwoqori, resiwqori, spresiwoqori, spresiwqori);
+#elif printresirec && printresiori
+              tu.init(coeff, pcmbf, resiwoq, resiwq, spresiwoq, spresiwq, resiwoqori, resiwqori, spresiwoqori, spresiwqori);
 #else
               tu.init(coeff, pcmbf);
 #endif
@@ -911,17 +944,29 @@ void BestEncInfoCache::init( const Slice &slice )
             {
               coeff[i] = coeffPtr; coeffPtr += area.blocks[i].area();
               pcmbf[i] =   pcmPtr;   pcmPtr += area.blocks[i].area();
-#if printoriresi
+#if printresirec
               resiwoq[i] = resiwoqPtr; resiwoqPtr += area.blocks[i].area();
               resiwq[i] = resiwqPtr; resiwqPtr += area.blocks[i].area();
               spresiwoq[i] = spresiwoqPtr; spresiwoqPtr += area.blocks[i].area();
               spresiwq[i] = spresiwqPtr; spresiwqPtr += area.blocks[i].area();
 #endif
+#if printresiori
+              resiwoqori[i] = resiwoqPtrori; resiwoqPtrori += area.blocks[i].area();
+              resiwqori[i] = resiwqPtrori; resiwqPtrori += area.blocks[i].area();
+              spresiwoqori[i] = spresiwoqPtrori; spresiwoqPtrori += area.blocks[i].area();
+              spresiwqori[i] = spresiwqPtrori; spresiwqPtrori += area.blocks[i].area();
+#endif
             }
 
             m_bestEncInfo[x][y][wIdx][hIdx]->tu.cs = &m_dummyCS;
-#if printoriresi
+#if printresirec && !printresiori
             m_bestEncInfo[x][y][wIdx][hIdx]->tu.init(coeff, pcmbf, resiwoq, resiwq, spresiwoq, spresiwq);
+#elif !printresirec && printresiori
+            m_bestEncInfo[x][y][wIdx][hIdx]->tu.init(coeff, pcmbf, resiwoqori, resiwqori, spresiwoqori, spresiwqori);
+#elif printresirec && printresiori
+            m_bestEncInfo[x][y][wIdx][hIdx]->tu.init(coeff, pcmbf, resiwoq, resiwq, spresiwoq, spresiwq, resiwoqori, resiwqori, spresiwoqori, spresiwqori);
+
+
 #else
             m_bestEncInfo[x][y][wIdx][hIdx]->tu.init( coeff, pcmbf );
 #endif

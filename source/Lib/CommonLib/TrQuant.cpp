@@ -205,7 +205,7 @@ void TrQuant::invTransformNxN( TransformUnit &tu, const ComponentID &compID, Pel
 
     DTRACE_COEFF_BUF( D_TCOEFF, tempCoeff, tu, tu.cu->predMode, compID );
 
-#if printoriresi
+#if printresirec
     //for (int x = 0; x < uiWidth*uiHeight; x++)
     //{
     //  printf("%d:", tempCoeff.buf[x]);
@@ -647,7 +647,7 @@ void TrQuant::transformNxN(TransformUnit &tu, const ComponentID &compID, const Q
   const uint32_t height     = rect.height;
 
   const CPelBuf  resiBuf    = cs.getResiBuf(rect);
-#if printoriresi
+#if printresirec
   memcpy(tu.m_spresiwoq[compID], resiBuf.buf, width*height*sizeof(Pel));
 #endif
   CHECK( sps.getMaxTrSize() < width, "Unsupported transformation size" );
@@ -826,7 +826,7 @@ void TrQuant::transformNxN(TransformUnit &tu, const ComponentID &compID, const Q
         xGetCoeffEnergy( tu, compID, tempCoeff, diagRatio, horVerRatio );
       }
 #endif
-#if printoriresi
+#if printresirec
       memcpy(tu.m_resiwoq[compID], m_mtsCoeffs[tu.mtsIdx], rect.height*rect.width * sizeof(TCoeff));
 #endif
       DTRACE_COEFF_BUF( D_TCOEFF, tempCoeff, tu, tu.cu->predMode, compID );
@@ -1057,6 +1057,75 @@ void TrQuant::xTransformSkip(const TransformUnit &tu, const ComponentID &compID,
 }
 
 #if predfromori 
+void TrQuant::xQuantori(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, TCoeff &uiAbsSum, const QpParam &cQP, const Ctx& ctx)
+{
+  m_quant->quantori(tu, compID, pSrc, uiAbsSum, cQP, ctx);
+}
+void TrQuant::invTransformNxNori(TransformUnit &tu, const ComponentID &compID, PelBuf &pResi, const QpParam &cQP)
+{
+  const CompArea &area = tu.blocks[compID];
+  const uint32_t uiWidth = area.width;
+  const uint32_t uiHeight = area.height;
+
+  CHECK(uiWidth > tu.cs->sps->getMaxTrSize() || uiHeight > tu.cs->sps->getMaxTrSize(), "Maximal allowed transformation size exceeded!");
+
+  if (tu.cu->transQuantBypass)
+  {
+    // where should this logic go?
+    const bool rotateResidual = TU::isNonTransformedResidualRotated(tu, compID);
+    const CCoeffBuf pCoeff = tu.getCoeffs(compID);
+
+    for (uint32_t y = 0, coefficientIndex = 0; y < uiHeight; y++)
+    {
+      for (uint32_t x = 0; x < uiWidth; x++, coefficientIndex++)
+      {
+        pResi.at(x, y) = rotateResidual ? pCoeff.at(pCoeff.width - x - 1, pCoeff.height - y - 1) : pCoeff.at(x, y);
+      }
+    }
+  }
+  else
+  {
+    CoeffBuf tempCoeff = CoeffBuf(m_plTempCoeff, area);
+    xDeQuant(tu, tempCoeff, compID, cQP);
+
+    DTRACE_COEFF_BUF(D_TCOEFF, tempCoeff, tu, tu.cu->predMode, compID);
+
+#if printresiori
+    //for (int x = 0; x < uiWidth*uiHeight; x++)
+    //{
+    //  printf("%d:", tempCoeff.buf[x]);
+    //}
+    const SPS&        sps = *tu.cs->sps;
+    const CompArea&   area = tu.blocks[compID];
+    const ChannelType chType = toChannelType(compID);
+    const int         channelBitDepth = sps.getBitDepth(chType);
+    const int         maxLog2TrDynamicRange = sps.getMaxLog2TrDynamicRange(chType);
+    const int         nomTransformShift = getTransformShift(channelBitDepth, area.size(), maxLog2TrDynamicRange);
+    memcpy(tu.m_resiwqori[compID], tempCoeff.buf, uiWidth*uiHeight * sizeof(TCoeff));
+    for (int i = 0; i < uiWidth*uiHeight; i++)
+    {
+      tu.m_resiwqori[compID][i] = tu.m_resiwqori[compID][i] >> nomTransformShift;
+    }
+#endif
+#if JVET_M0464_UNI_MTS
+    if (isLuma(compID) && tu.mtsIdx == 1)
+#else
+    if (tu.transformSkip[compID])
+#endif
+    {
+      xITransformSkip(tempCoeff, pResi, tu, compID);
+    }
+    else
+    {
+      xIT(tu, compID, tempCoeff, pResi);
+    }
+
+  }
+
+  //DTRACE_BLOCK_COEFF(tu.getCoeffs(compID), tu, tu.cu->predMode, compID);
+  DTRACE_PEL_BUF(D_RESIDUALS, pResi, tu, tu.cu->predMode, compID);
+  invRdpcmNxN(tu, compID, pResi);
+}
 
 
 #if JVET_M0464_UNI_MTS
@@ -1073,8 +1142,8 @@ void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, cons
   const uint32_t height = rect.height;
 
   const CPelBuf  resiBuf = cs.getBuf(rect, PIC_RESIFROMORI);
-#if printoriresi
-  memcpy(tu.m_spresiwoq[compID], resiBuf.buf, width*height * sizeof(Pel));
+#if printresiori
+  memcpy(tu.m_spresiwoqori[compID], resiBuf.buf, width*height * sizeof(Pel));
 #endif
   CHECK(sps.getMaxTrSize() < width, "Unsupported transformation size");
 
@@ -1252,12 +1321,12 @@ void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, cons
       xGetCoeffEnergy(tu, compID, tempCoeff, diagRatio, horVerRatio);
     }
 #endif
-#if printoriresi
-    memcpy(tu.m_resiwoq[compID], m_mtsCoeffs[tu.mtsIdx], rect.height*rect.width * sizeof(TCoeff));
+#if printresiori
+    memcpy(tu.m_resiwoqori[compID], m_mtsCoeffs[tu.mtsIdx], rect.height*rect.width * sizeof(TCoeff));
 #endif
     DTRACE_COEFF_BUF(D_TCOEFF, tempCoeff, tu, tu.cu->predMode, compID);
 
-    xQuant(tu, compID, tempCoeff, uiAbsSum, cQP, ctx);
+    xQuantori(tu, compID, tempCoeff, uiAbsSum, cQP, ctx);
 
     DTRACE_COEFF_BUF(D_TCOEFF, tu.getCoeffs(compID), tu, tu.cu->predMode, compID);
     }

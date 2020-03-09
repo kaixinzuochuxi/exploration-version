@@ -126,11 +126,11 @@
 #define printall 1
 #define disablefast 0
 #define printchormacu 0
-#define printoriresi 0
+#define printresirec 1
 #define predfromori 1
 #if predfromori
 #define keepbestoricost 0
-#define printresiori 0
+#define printresiori 1
 #endif
 #endif
 

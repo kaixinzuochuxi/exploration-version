@@ -825,7 +825,120 @@ void Quant::quant(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf 
   } //if RDOQ
   //return;
 }
+#if predfromori
+void Quant::quantori(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, TCoeff &uiAbsSum, const QpParam &cQP, const Ctx& ctx)
+{
+  const SPS &sps = *tu.cs->sps;
+  const CompArea &rect = tu.blocks[compID];
+#if HEVC_USE_SCALING_LISTS || HEVC_USE_SIGN_HIDING
+  const uint32_t uiWidth = rect.width;
+  const uint32_t uiHeight = rect.height;
+#endif
+  const int channelBitDepth = sps.getBitDepth(toChannelType(compID));
 
+  const CCoeffBuf &piCoef = pSrc;
+  CoeffBuf   piQCoef = tu.getCoeffs(compID);
+
+#if JVET_M0464_UNI_MTS
+  const bool useTransformSkip = tu.mtsIdx == 1;
+#else
+  const bool useTransformSkip = tu.transformSkip[compID];
+#endif
+  const int  maxLog2TrDynamicRange = sps.getMaxLog2TrDynamicRange(toChannelType(compID));
+
+  {
+#if HEVC_USE_SIGN_HIDING
+    CoeffCodingContext cctx(tu, compID, tu.cs->slice->getSignDataHidingEnabledFlag());
+#else
+    CoeffCodingContext cctx(tu, compID);
+#endif
+
+    const TCoeff entropyCodingMinimum = -(1 << maxLog2TrDynamicRange);
+    const TCoeff entropyCodingMaximum = (1 << maxLog2TrDynamicRange) - 1;
+
+#if HEVC_USE_SIGN_HIDING
+    TCoeff deltaU[MAX_TU_SIZE * MAX_TU_SIZE];
+#endif
+#if HEVC_USE_SCALING_LISTS
+    int scalingListType = getScalingListType(tu.cu->predMode, compID);
+    CHECK(scalingListType >= SCALING_LIST_NUM, "Invalid scaling list");
+    const uint32_t uiLog2TrWidth = g_aucLog2[uiWidth];
+    const uint32_t uiLog2TrHeight = g_aucLog2[uiHeight];
+    int *piQuantCoeff = getQuantCoeff(scalingListType, cQP.rem, uiLog2TrWidth - 1, uiLog2TrHeight - 1);
+
+    const bool enableScalingLists = getUseScalingList(uiWidth, uiHeight, useTransformSkip);
+#endif
+    const int  defaultQuantisationCoefficient = g_quantScales[cQP.rem];
+
+    /* for 422 chroma blocks, the effective scaling applied during transformation is not a power of 2, hence it cannot be
+     * implemented as a bit-shift (the quantised result will be sqrt(2) * larger than required). Alternatively, adjust the
+     * uiLog2TrSize applied in iTransformShift, such that the result is 1/sqrt(2) the required result (i.e. smaller)
+     * Then a QP+3 (sqrt(2)) or QP-3 (1/sqrt(2)) method could be used to get the required result
+     */
+     // Represents scaling through forward transform
+    int iTransformShift = getTransformShift(channelBitDepth, rect.size(), maxLog2TrDynamicRange);
+
+    if (useTransformSkip && sps.getSpsRangeExtension().getExtendedPrecisionProcessingFlag())
+    {
+      iTransformShift = std::max<int>(0, iTransformShift);
+    }
+
+    int iWHScale = 1;
+#if HM_QTBT_AS_IN_JEM_QUANT
+#if JVET_M0119_NO_TRANSFORM_SKIP_QUANTISATION_ADJUSTMENT
+    if (TU::needsBlockSizeTrafoScale(tu, compID))
+#else
+    if (TU::needsBlockSizeTrafoScale(rect))
+#endif
+    {
+      iTransformShift += ADJ_QUANT_SHIFT;
+      iWHScale = 181;
+    }
+#endif
+
+    const int iQBits = QUANT_SHIFT + cQP.per + iTransformShift;
+    // QBits will be OK for any internal bit depth as the reduction in transform shift is balanced by an increase in Qp_per due to QpBDOffset
+
+    const int64_t iAdd = int64_t(tu.cs->slice->isIRAP() ? 171 : 85) << int64_t(iQBits - 9);
+#if HEVC_USE_SIGN_HIDING
+    const int qBits8 = iQBits - 8;
+#endif
+
+    for (int uiBlockPos = 0; uiBlockPos < piQCoef.area(); uiBlockPos++)
+    {
+      const TCoeff iLevel = piCoef.buf[uiBlockPos];
+      const TCoeff iSign = (iLevel < 0 ? -1 : 1);
+
+#if HEVC_USE_SCALING_LISTS
+      const int64_t  tmpLevel = (int64_t)abs(iLevel) * (enableScalingLists ? piQuantCoeff[uiBlockPos] : defaultQuantisationCoefficient);
+#else
+      const int64_t  tmpLevel = (int64_t)abs(iLevel) * defaultQuantisationCoefficient;
+#endif
+
+      const TCoeff quantisedMagnitude = TCoeff((tmpLevel * iWHScale + iAdd) >> iQBits);
+#if HEVC_USE_SIGN_HIDING
+      deltaU[uiBlockPos] = (TCoeff)((tmpLevel * iWHScale - ((int64_t)quantisedMagnitude << iQBits)) >> qBits8);
+#endif
+
+      uiAbsSum += quantisedMagnitude;
+      const TCoeff quantisedCoefficient = quantisedMagnitude * iSign;
+
+      piQCoef.buf[uiBlockPos] = Clip3<TCoeff>(entropyCodingMinimum, entropyCodingMaximum, quantisedCoefficient);
+
+    } // for n
+#if HEVC_USE_SIGN_HIDING
+    if (cctx.signHiding() && uiWidth >= 4 && uiHeight >= 4)
+    {
+      if (uiAbsSum >= 2) //this prevents TUs with only one coefficient of value 1 from being tested
+      {
+        xSignBitHidingHDQ(piQCoef.buf, piCoef.buf, deltaU, cctx, maxLog2TrDynamicRange);
+      }
+    }
+#endif
+  } //if RDOQ
+  //return;
+}
+#endif
 bool Quant::xNeedRDOQ(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, const QpParam &cQP)
 {
   const SPS &sps            = *tu.cs->sps;

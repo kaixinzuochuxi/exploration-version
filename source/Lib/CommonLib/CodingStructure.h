@@ -292,11 +292,17 @@ private:
 
   TCoeff *m_coeffs [ MAX_NUM_COMPONENT ];
   Pel    *m_pcmbuf [ MAX_NUM_COMPONENT ];
-#if printoriresi
+#if printresirec
   TCoeff *m_resiwoq[MAX_NUM_COMPONENT];
   TCoeff *m_resiwq[MAX_NUM_COMPONENT];
   Pel *m_spresiwoq[MAX_NUM_TBLOCKS];
   Pel *m_spresiwq[MAX_NUM_TBLOCKS];
+#endif
+#if printresiori
+  TCoeff *m_resiwoqori[MAX_NUM_COMPONENT];
+  TCoeff *m_resiwqori[MAX_NUM_COMPONENT];
+  Pel *m_spresiwoqori[MAX_NUM_TBLOCKS];
+  Pel *m_spresiwqori[MAX_NUM_TBLOCKS];
 #endif
 #if test1
   public:

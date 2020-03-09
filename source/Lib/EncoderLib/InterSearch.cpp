@@ -6836,7 +6836,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
             {
               crossComponentPrediction( tu, compID, lumaResi, resiBuf, resiBuf, true );
             }
-#if printoriresi
+#if printresirec
             memcpy(tu.m_spresiwq[compID], resiBuf.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
 #endif
             currCompDist = m_pcRdCost->getDistPart(orgResiBuf, resiBuf, channelBitDepth, compID, DF_SSE);
@@ -8162,7 +8162,7 @@ void InterSearch::symmvdCheckBestMvp(
               PelBuf resiBuf = csFull->getBuf(compArea, PIC_RESIFROMORI);
               CPelBuf orgResiBuf = csFull->getBuf(compArea, PIC_ORIRESIFROMORI);
 
-              m_pcTrQuant->invTransformNxN(tu, compID, resiBuf, cQP);
+              m_pcTrQuant->invTransformNxNori(tu, compID, resiBuf, cQP);
 #if JVET_M0427_INLOOP_RESHAPER
               if (slice.getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && isChroma(compID) && slice.getReshapeInfo().getSliceReshapeChromaAdj() && tu.blocks[compID].width*tu.blocks[compID].height > 4)
               {
@@ -8174,8 +8174,8 @@ void InterSearch::symmvdCheckBestMvp(
               {
                 crossComponentPrediction(tu, compID, lumaResi, resiBuf, resiBuf, true);
               }
-#if printoriresi
-              memcpy(tu.m_spresiwq[compID], resiBuf.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
+#if printresiori
+              memcpy(tu.m_spresiwqori[compID], resiBuf.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
 #endif
               currCompDist = m_pcRdCost->getDistPart(orgResiBuf, resiBuf, channelBitDepth, compID, DF_SSE);
 

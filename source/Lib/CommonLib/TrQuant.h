@@ -186,7 +186,8 @@ private:
 
 #if predfromori 
   public:
-  void invTransformNxNori(TransformUnit &tu, const ComponentID &compID, PelBuf &pResi, const QpParam &cQPs);
+    void xQuantori(TransformUnit & tu, const ComponentID & compID, const CCoeffBuf & pSrc, TCoeff & uiAbsSum, const QpParam & cQP, const Ctx & ctx);
+    void invTransformNxNori(TransformUnit &tu, const ComponentID &compID, PelBuf &pResi, const QpParam &cQPs);
 
 #if JVET_M0464_UNI_MTS
 #if JVET_M0102_INTRA_SUBPARTITIONS

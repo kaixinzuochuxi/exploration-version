@@ -743,6 +743,10 @@ namespace DQIntern
     void  dequantBlock  ( const TransformUnit& tu, const ComponentID compID, const QpParam& cQP, CoeffBuf& recCoeff   ) const;
     void  initQuantBlock( const TransformUnit& tu, const ComponentID compID, const QpParam& cQP, const double lambda  );
 
+    
+#if predfromori
+    void initQuantBlockori(const TransformUnit & tu, const ComponentID compID, const QpParam & cQP, const double lambda);
+#endif
     inline void   preQuantCoeff(const TCoeff absCoeff, PQData *pqData) const;
     inline TCoeff getLastThreshold() const { return m_thresLast; }
     inline TCoeff getSSbbThreshold() const { return m_thresSSbb; }
@@ -799,10 +803,13 @@ namespace DQIntern
     const bool        clipTransformShift    = ( tu.transformSkip[ compID ] && sps.getSpsRangeExtension().getExtendedPrecisionProcessingFlag() );
 #endif
     const int         transformShift        = ( clipTransformShift ? std::max<int>( 0, nomTransformShift ) : nomTransformShift );
-#if printoriresi
+#if printresirec || printresiori
     for (int i = 0; i < area.area(); i++)
     {
+#if printresirec
       tu.m_resiwoq[compID][i] = tu.m_resiwoq[compID][i] >> transformShift;
+#endif
+
     }
 #endif
     // quant parameters
@@ -844,6 +851,78 @@ namespace DQIntern
     m_DistOrgFact               = (int64_t)( nomDistFactor * double(int64_t(1)<<(m_DistShift+1       )) + .5 );
   }
 
+#if predfromori
+  void Quantizer::initQuantBlockori(const TransformUnit& tu, const ComponentID compID, const QpParam& cQP, const double lambda)
+  {
+#if HEVC_USE_SCALING_LISTS
+    CHECK(tu.cs->sps->getScalingListFlag(), "Scaling lists not supported");
+#endif
+    CHECKD(lambda <= 0.0, "Lambda must be greater than 0");
+
+    const int         qpDQ = cQP.Qp + 1;
+    const int         qpPer = qpDQ / 6;
+    const int         qpRem = qpDQ - 6 * qpPer;
+    const SPS&        sps = *tu.cs->sps;
+    const CompArea&   area = tu.blocks[compID];
+    const ChannelType chType = toChannelType(compID);
+    const int         channelBitDepth = sps.getBitDepth(chType);
+    const int         maxLog2TrDynamicRange = sps.getMaxLog2TrDynamicRange(chType);
+    const int         nomTransformShift = getTransformShift(channelBitDepth, area.size(), maxLog2TrDynamicRange);
+#if JVET_M0464_UNI_MTS
+    const bool        clipTransformShift = (tu.mtsIdx == 1 && sps.getSpsRangeExtension().getExtendedPrecisionProcessingFlag());
+#else
+    const bool        clipTransformShift = (tu.transformSkip[compID] && sps.getSpsRangeExtension().getExtendedPrecisionProcessingFlag());
+#endif
+    const int         transformShift = (clipTransformShift ? std::max<int>(0, nomTransformShift) : nomTransformShift);
+#if printresirec || printresiori
+    for (int i = 0; i < area.area(); i++)
+    {
+
+#if printresiori
+      tu.m_resiwoqori[compID][i] = tu.m_resiwoqori[compID][i] >> transformShift;
+#endif
+    }
+#endif
+    // quant parameters
+    m_QShift = QUANT_SHIFT - 1 + qpPer + transformShift;
+    m_QAdd = -((3 << m_QShift) >> 1);
+#if HM_QTBT_AS_IN_JEM_QUANT
+#if JVET_M0119_NO_TRANSFORM_SKIP_QUANTISATION_ADJUSTMENT
+    Intermediate_Int  invShift = IQUANT_SHIFT + 1 - qpPer - transformShift + (TU::needsBlockSizeTrafoScale(tu, compID) ? ADJ_DEQUANT_SHIFT : 0);
+    m_QScale = (TU::needsSqrt2Scale(tu, compID) ? (g_quantScales[qpRem] * 181) >> 7 : g_quantScales[qpRem]);
+#else
+    Intermediate_Int  invShift = IQUANT_SHIFT + 1 - qpPer - transformShift + (TU::needsBlockSizeTrafoScale(area) ? ADJ_DEQUANT_SHIFT : 0);
+    m_QScale = (TU::needsSqrt2Scale(area) ? (g_quantScales[qpRem] * 181) >> 7 : g_quantScales[qpRem]);
+#endif
+#else
+    Intermediate_Int  invShift = IQUANT_SHIFT + 1 - qpPer - transformShift;
+    m_QScale = g_quantScales[qpRem];
+#endif
+    const unsigned    qIdxBD = std::min<unsigned>(maxLog2TrDynamicRange + 1, 8 * sizeof(Intermediate_Int) + invShift - IQUANT_SHIFT - 1);
+    m_maxQIdx = (1 << (qIdxBD - 1)) - 4;
+    m_thresLast = TCoeff((int64_t(3) << m_QShift) / (4 * m_QScale));
+    m_thresSSbb = TCoeff((int64_t(3) << m_QShift) / (4 * m_QScale));
+
+    // distortion calculation parameters
+    const int64_t qScale = g_quantScales[qpRem];
+#if HM_QTBT_AS_IN_JEM_QUANT
+    const int nomDShift =
+      SCALE_BITS - 2 * (nomTransformShift + DISTORTION_PRECISION_ADJUSTMENT(channelBitDepth)) + m_QShift;
+#else
+    const int nomDShift = SCALE_BITS - 2 * (nomTransformShift + DISTORTION_PRECISION_ADJUSTMENT(channelBitDepth))
+      + m_QShift + (TU::needsQP3Offset(tu, compID) ? 1 : 0);
+#endif
+    const double  qScale2 = double(qScale * qScale);
+    const double  nomDistFactor = (nomDShift < 0 ? 1.0 / (double(int64_t(1) << (-nomDShift))*qScale2*lambda) : double(int64_t(1) << nomDShift) / (qScale2*lambda));
+    const int64_t pow2dfShift = (int64_t)(nomDistFactor * qScale2) + 1;
+    const int     dfShift = ceil_log2(pow2dfShift);
+    m_DistShift = 62 + m_QShift - 2 * maxLog2TrDynamicRange - dfShift;
+    m_DistAdd = (int64_t(1) << m_DistShift) >> 1;
+    m_DistStepAdd = (int64_t)(nomDistFactor * double(int64_t(1) << (m_DistShift + m_QShift)) + .5);
+    m_DistOrgFact = (int64_t)(nomDistFactor * double(int64_t(1) << (m_DistShift + 1)) + .5);
+  }
+
+#endif
   void Quantizer::dequantBlock( const TransformUnit& tu, const ComponentID compID, const QpParam& cQP, CoeffBuf& recCoeff ) const
   {
 #if HEVC_USE_SCALING_LISTS
@@ -1485,6 +1564,10 @@ namespace DQIntern
     DepQuant();
 
     void    quant   ( TransformUnit& tu, const CCoeffBuf& srcCoeff, const ComponentID compID, const QpParam& cQP, const double lambda, const Ctx& ctx, TCoeff& absSum );
+    
+#if predfromori
+    void quantori(TransformUnit & tu, const CCoeffBuf & srcCoeff, const ComponentID compID, const QpParam & cQP, const double lambda, const Ctx & ctx, TCoeff & absSum);
+#endif
     void    dequant ( const TransformUnit& tu,  CoeffBuf& recCoeff, const ComponentID compID, const QpParam& cQP )  const;
 
   private:
@@ -1747,6 +1830,103 @@ namespace DQIntern
     }
   }
 
+#if predfromori
+  void DepQuant::quantori(TransformUnit& tu, const CCoeffBuf& srcCoeff, const ComponentID compID, const QpParam& cQP, const double lambda, const Ctx& ctx, TCoeff& absSum)
+  {
+    CHECKD(tu.cs->sps->getSpsRangeExtension().getExtendedPrecisionProcessingFlag(), "ext precision is not supported");
+
+    //===== reset / pre-init =====
+    const TUParameters& tuPars = *g_Rom.getTUPars(tu.blocks[compID], compID);
+    m_quant.initQuantBlockori(tu, compID, cQP, lambda);
+    TCoeff*       qCoeff = tu.getCoeffs(compID).buf;
+    const TCoeff* tCoeff = srcCoeff.buf;
+    const int     numCoeff = tu.blocks[compID].area();
+    ::memset(tu.getCoeffs(compID).buf, 0x00, numCoeff * sizeof(TCoeff));
+    absSum = 0;
+
+    //===== find first test position =====
+    int   firstTestPos = numCoeff - 1;
+    const TCoeff thres = m_quant.getLastThreshold();
+    for (; firstTestPos >= 0; firstTestPos--)
+    {
+      if (abs(tCoeff[tuPars.m_scanId2BlkPos[firstTestPos].idx]) > thres)
+      {
+        break;
+      }
+    }
+    if (firstTestPos < 0)
+    {
+      return;
+    }
+
+    //===== real init =====
+    RateEstimator::initCtx(tuPars, tu, compID, ctx.getFracBitsAcess());
+    m_commonCtx.reset(tuPars, *this);
+    for (int k = 0; k < 12; k++)
+    {
+      m_allStates[k].init();
+    }
+    m_startState.init();
+
+#if JVET_M0297_32PT_MTS_ZERO_OUT
+    int effWidth = tuPars.m_width, effHeight = tuPars.m_height;
+    bool zeroOut = false;
+#if JVET_M0140_SBT
+#if JVET_M0464_UNI_MTS
+    if ((tu.mtsIdx > 1 || (tu.cu->sbtInfo != 0 && tuPars.m_height <= 32 && tuPars.m_width <= 32)) && !tu.cu->transQuantBypass && compID == COMPONENT_Y)
+#else
+    if (((tu.cu->emtFlag && !tu.transformSkip[compID]) || (tu.cu->sbtInfo != 0 && tuPars.m_height <= 32 && tuPars.m_width <= 32)) && !tu.cu->transQuantBypass && compID == COMPONENT_Y)
+#endif
+#else
+#if JVET_M0464_UNI_MTS
+    if (tu.mtsIdx > 1 && !tu.cu->transQuantBypass && compID == COMPONENT_Y)
+#else
+    if (tu.cu->emtFlag && !tu.transformSkip[compID] && !tu.cu->transQuantBypass && compID == COMPONENT_Y)
+#endif
+#endif
+    {
+      effHeight = (tuPars.m_height == 32) ? 16 : tuPars.m_height;
+      effWidth = (tuPars.m_width == 32) ? 16 : tuPars.m_width;
+      zeroOut = (effHeight < tuPars.m_height || effWidth < tuPars.m_width);
+    }
+#endif
+
+    //===== populate trellis =====
+    for (int scanIdx = firstTestPos; scanIdx >= 0; scanIdx--)
+    {
+      const ScanInfo& scanInfo = tuPars.m_scanInfo[scanIdx];
+#if JVET_M0297_32PT_MTS_ZERO_OUT
+      xDecideAndUpdate(abs(tCoeff[scanInfo.rasterPos]), scanInfo, zeroOut && (scanInfo.posX >= effWidth || scanInfo.posY >= effHeight));
+#else
+      xDecideAndUpdate(abs(tCoeff[scanInfo.rasterPos]), scanInfo);
+#endif
+    }
+
+    //===== find best path =====
+    Decision  decision = { std::numeric_limits<int64_t>::max(), -1, -2 };
+    int64_t   minPathCost = 0;
+    for (int8_t stateId = 0; stateId < 4; stateId++)
+    {
+      int64_t pathCost = m_trellis[0][stateId].rdCost;
+      if (pathCost < minPathCost)
+      {
+        decision.prevId = stateId;
+        minPathCost = pathCost;
+      }
+    }
+
+    //===== backward scanning =====
+    int scanIdx = 0;
+    for (; decision.prevId >= 0; scanIdx++)
+    {
+      decision = m_trellis[scanIdx][decision.prevId];
+      int32_t blkpos = tuPars.m_scanId2BlkPos[scanIdx].idx;
+      qCoeff[blkpos] = (tCoeff[blkpos] < 0 ? -decision.absLevel : decision.absLevel);
+      absSum += decision.absLevel;
+    }
+  }
+
+#endif
 }; // namespace DQIntern
 
 
@@ -1780,6 +1960,19 @@ void DepQuant::quant( TransformUnit &tu, const ComponentID &compID, const CCoeff
     QuantRDOQ::quant( tu, compID, pSrc, uiAbsSum, cQP, ctx );
   }
 }
+#if predfromori
+void DepQuant::quantori(TransformUnit &tu, const ComponentID &compID, const CCoeffBuf &pSrc, TCoeff &uiAbsSum, const QpParam &cQP, const Ctx& ctx)
+{
+  if (tu.cs->slice->getDepQuantEnabledFlag())
+  {
+    static_cast<DQIntern::DepQuant*>(p)->quantori(tu, pSrc, compID, cQP, Quant::m_dLambda, ctx, uiAbsSum);
+  }
+  else
+  {
+    QuantRDOQ::quantori(tu, compID, pSrc, uiAbsSum, cQP, ctx);
+  }
+}
+#endif
 
 void DepQuant::dequant( const TransformUnit &tu, CoeffBuf &dstCoeff, const ComponentID &compID, const QpParam &cQP )
 {
