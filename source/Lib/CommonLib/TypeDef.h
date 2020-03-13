@@ -62,7 +62,8 @@
 #define printresi 0
 
 #define intermediate 0
-#define codingparameters 0
+#define codingparameters 1
+
 
 #define AdaptiveGOP 0
 
@@ -130,7 +131,7 @@
 #define predfromori 1
 #if predfromori
 #define keepbestoricost 0
-#define printresiori 1
+#define printresiori 0
 #endif
 #endif
 

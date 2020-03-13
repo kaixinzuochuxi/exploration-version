@@ -990,7 +990,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       {
       bool resiwoq = 1;
       bool resiwq = 1;
-      bool spresiwoq = 0;
+      bool spresiwoq = 1;
       bool spresiwq = 0;
       bool printinaline = 1;
 
@@ -1139,46 +1139,58 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
           }
         }
         else {
-          for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
-          {
+          
             if (resiwoq)
             {
-              for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+              for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU->next))
               {
-                printf("%d ", ttu.m_resiwoq[0][p]);
+                for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                {
+                  printf("%d ", ttu.m_resiwoq[0][p]);
 
+                }
               }
+
               printf(" resiwoq! ");
             }
             if (resiwq)
             {
-              for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+              for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU->next))
               {
+                for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                {
 
-                printf("%d ", ttu.m_resiwq[0][p]);
+                  printf("%d ", ttu.m_resiwq[0][p]);
 
+                }
               }
               printf(" resiwq! ");
             }
             if (spresiwoq)
             {
-              for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+              for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU->next))
               {
+                for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                {
 
-                printf("%d ", ttu.m_spresiwoq[0][p]);
+                  printf("%d ", ttu.m_spresiwoq[0][p]);
 
+                }
               }
               printf(" spresiwoq! ");
             }
             if (spresiwq)
             {
-              for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+              for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU->next))
               {
+                for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                {
 
-                printf("%d ", ttu.m_spresiwq[0][p]);
+                  printf("%d ", ttu.m_spresiwq[0][p]);
+                }
               }
               printf(" spresiwq! ");
-            }
+            
           }
         }
       }
@@ -1337,47 +1349,58 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
             }
           }
           else {
-            for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU))
-            {
+            
               if (resiwoq)
               {
-                for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU->next))
                 {
-                  printf("%d ", ttu.m_resiwoqori[0][p]);
+                  for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                  {
+                    printf("%d ", ttu.m_resiwoqori[0][p]);
 
+                  }
                 }
                 printf(" resiwoqori! ");
               }
               if (resiwq)
               {
-                for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU->next))
                 {
+                  for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                  {
 
-                  printf("%d ", ttu.m_resiwqori[0][p]);
+                    printf("%d ", ttu.m_resiwqori[0][p]);
 
+                  }
                 }
                 printf(" resiwqori! ");
               }
               if (spresiwoq)
               {
-                for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU->next))
                 {
+                  for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                  {
 
-                  printf("%d ", ttu.m_spresiwoqori[0][p]);
+                    printf("%d ", ttu.m_spresiwoqori[0][p]);
 
+                  }
                 }
                 printf(" spresiwoqori! ");
               }
               if (spresiwq)
               {
-                for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU->next))
                 {
+                  for (int p = 0; p < ttu.lheight()*ttu.lwidth(); p++)
+                  {
 
-                  printf("%d ", ttu.m_spresiwqori[0][p]);
+                    printf("%d ", ttu.m_spresiwqori[0][p]);
+                  }
                 }
                 printf(" spresiwqori! ");
               }
-            }
+            
           }
         }
       }
@@ -1474,7 +1497,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
           pu->intradist, pu->interdist, pu->intrabits, pu->interbits);
 #if predfromori
         printf(" interdistori:%llu  interbitsori:%llu dist:%llu distori:%llu ",
-          pu->interdistori, pu->interbitsori, pu->dist, pu->distori);
+          pu->interdistori, pu->interbitsori, pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori);
 #endif
         printf("\t QP : %d | ", pu->cu->qp);
         printf("affine:%d*imv:%d*affinetype:%d  MV:%d*%d*%d*%d affineMV:%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d*%d ",
@@ -1860,7 +1883,7 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
 #endif
 
 #if build_cu_tree
-  if (tempCS->area.lx() == 64 && tempCS->area.ly() == 0 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==8)
+  if (tempCS->area.lx() == 48 && tempCS->area.ly() == 80 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==8)
   {
     int xxx = 0;
   }

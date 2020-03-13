@@ -461,6 +461,9 @@ void DecCu::xReconInter(CodingUnit &cu)
     const uint8_t candIdx1 = g_triangleCombination[mergeIdx][2];
 #endif
     m_pcInterPred->motionCompensation4Triangle( cu, m_triangleMrgCtx, splitDir, candIdx0, candIdx1 );
+//#if predfromori
+//    m_pcInterPred->motionCompensation4Triangleori(cu, m_triangleMrgCtx, splitDir, candIdx0, candIdx1);
+//#endif
 #if JVET_M0883_TRIANGLE_SIGNALING
     PU::spanTriangleMotionInfo( *cu.firstPU, m_triangleMrgCtx, splitDir, candIdx0, candIdx1 );
 #else
@@ -488,10 +491,16 @@ void DecCu::xReconInter(CodingUnit &cu)
   if (luma && chroma)
   {
     m_pcInterPred->motionCompensation(cu);
+//#if predfromori
+//    m_pcInterPred->motionCompensationori(cu);
+//#endif
   }
   else
   {
     m_pcInterPred->motionCompensation(cu, REF_PIC_LIST_0, luma, chroma);
+//#if predfromori
+//    m_pcInterPred->motionCompensationori(cu, REF_PIC_LIST_0, luma, chroma);
+//#endif
   }
   }
   if (cu.Y().valid())
@@ -508,6 +517,18 @@ void DecCu::xReconInter(CodingUnit &cu)
     m_pcIntraPred->geneWeightedPred(COMPONENT_Y, cu.cs->getPredBuf(*cu.firstPU).Y(), *cu.firstPU, m_pcIntraPred->getPredictorPtr2(COMPONENT_Y, 0));
     m_pcIntraPred->geneWeightedPred(COMPONENT_Cb, cu.cs->getPredBuf(*cu.firstPU).Cb(), *cu.firstPU, m_pcIntraPred->getPredictorPtr2(COMPONENT_Cb, 0));
     m_pcIntraPred->geneWeightedPred(COMPONENT_Cr, cu.cs->getPredBuf(*cu.firstPU).Cr(), *cu.firstPU, m_pcIntraPred->getPredictorPtr2(COMPONENT_Cr, 0));
+
+//#if predfromori
+//#if JVET_M0427_INLOOP_RESHAPER
+//    if (cu.cs->slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag())
+//    {
+//      cu.cs->getBuf(*cu.firstPU,PIC_PREDFROMORI).Y().rspSignal(m_pcReshape->getFwdLUT());
+//    }
+//#endif
+//    m_pcIntraPred->geneWeightedPred(COMPONENT_Y, cu.cs->getBuf(*cu.firstPU, PIC_PREDFROMORI).Y(), *cu.firstPU, m_pcIntraPred->getPredictorPtr2(COMPONENT_Y, 0));
+//    m_pcIntraPred->geneWeightedPred(COMPONENT_Cb, cu.cs->getBuf(*cu.firstPU, PIC_PREDFROMORI).Cb(), *cu.firstPU, m_pcIntraPred->getPredictorPtr2(COMPONENT_Cb, 0));
+//    m_pcIntraPred->geneWeightedPred(COMPONENT_Cr, cu.cs->getBuf(*cu.firstPU, PIC_PREDFROMORI).Cr(), *cu.firstPU, m_pcIntraPred->getPredictorPtr2(COMPONENT_Cr, 0));
+//#endif
   }
 
   DTRACE    ( g_trace_ctx, D_TMP, "pred " );

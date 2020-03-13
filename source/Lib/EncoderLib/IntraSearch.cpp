@@ -1841,6 +1841,9 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
 #endif
   //===== get residual signal =====
   piResi.copyFrom( piOrg  );
+
+
+
 #if JVET_M0427_INLOOP_RESHAPER
   if (slice.getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID==COMPONENT_Y)
   {
@@ -1968,13 +1971,70 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
   else
 #endif
   piReco.reconstruct(piPred, piResi, cs.slice->clpRng( compID ));
-#if printresirec
-  memcpy(tu.m_spresiwq[compID], piResi.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
-#endif
-#if printresiori
-  memcpy(tu.m_spresiwqori[compID], piResi.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
-#endif
+//#if printresirec
+//  memcpy(tu.m_spresiwq[compID], piResi.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
+//#endif
+//#if printresiori
+//  memcpy(tu.m_spresiwqori[compID], piResi.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
+//#endif
   //===== update distortion =====
+
+#if printresirec
+
+  const CompArea &tarea = tu.blocks[compID];
+  /*CompArea      tmpArea(compID, area.chromaFormat, Position(0, 0), area.size());
+  PelBuf tmpPred = m_tmpStorageLCU.getBuf(tmpArea);
+  tmpPred.copyFrom(cs.getPredBuf(compID));*/
+  Pel* tbuf1 = (Pel*)xMalloc(Pel, tarea.area());
+  PelBuf tpred(tbuf1, tarea.width, tarea.width, tarea.height);
+  tpred.copyFrom(piReco);
+
+  Pel* tbuf = (Pel*)xMalloc(Pel, area.area());
+  PelBuf spresi(tbuf, tarea.width, tarea.width, tarea.height);
+  spresi.copyFrom(piOrg);
+
+
+#if JVET_M0427_INLOOP_RESHAPER
+  if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
+  {
+    if (cs.slice->getSliceType() == I_SLICE)
+      tpred.rspSignal(m_pcReshape->getInvLUT());
+    else
+      spresi.rspSignal(m_pcReshape->getFwdLUT());
+  }
+#endif
+  spresi.subtract(tpred);
+  std::memcpy(tu.m_spresiwq[compID], tbuf, sizeof(Pel)* tarea.area());
+  if (!tu.cbf)
+  {
+    std::memcpy(tu.m_spresiwoq[compID], tbuf, sizeof(Pel)* tarea.area());
+    
+  }
+  else 
+  {
+    tpred.copyFrom(piPred);
+    spresi.copyFrom(piOrg);
+#if JVET_M0427_INLOOP_RESHAPER
+    if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
+    {
+      if (cs.slice->getSliceType() == I_SLICE)
+        tpred.rspSignal(m_pcReshape->getInvLUT());
+      else
+        spresi.rspSignal(m_pcReshape->getFwdLUT());
+      
+    }
+#endif
+    spresi.subtract(tpred);
+    std::memcpy(tu.m_spresiwoq[compID], tbuf, sizeof(Pel)* tarea.area());
+  }
+
+  xFree(tbuf); tbuf = nullptr;
+  xFree(tbuf1); tbuf1 = nullptr;
+
+#endif
+
+
+
 #if WCG_EXT
 #if JVET_M0427_INLOOP_RESHAPER
   if (m_pcEncCfg->getLumaLevelToDeltaQPMapping().isEnabled() || (m_pcEncCfg->getReshaper()
@@ -1991,6 +2051,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
       PelBuf tmpRecLuma = m_tmpStorageLCU.getBuf(tmpArea1);
       tmpRecLuma.copyFrom(piReco);
       tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
+
 #if !disableWD
       ruiDist += m_pcRdCost->getDistPart(piOrg, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE_WTD, &orgLuma);
 #else

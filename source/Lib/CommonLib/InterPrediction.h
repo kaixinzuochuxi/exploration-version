@@ -93,6 +93,9 @@ protected:
 
   int                  m_iRefListIdx;
   PelStorage           m_triangleBuf;
+#if predfromori
+  PelStorage           m_triangleBufori;
+#endif
   Mv*                  m_storedMv;
 #if JVET_M0147_DMVR
  /*buffers for bilinear Filter data for DMVR refinement*/
@@ -267,6 +270,7 @@ public:
   void motionCompensationori(PredictionUnit &pu, const RefPicList &eRefPicList = REF_PIC_LIST_X /*= REF_PIC_LIST_X*/
     , const bool luma = true, const bool chroma = true
   );
+  void motionCompensation4Triangleori(CodingUnit & cu, MergeCtx & triangleMrgCtx, const bool splitDir, const uint8_t candIdx0, const uint8_t candIdx1);
 #endif
 };
 

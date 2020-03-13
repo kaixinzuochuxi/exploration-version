@@ -984,6 +984,24 @@ void IntraPrediction::geneIntrainterPred(const CodingUnit &cu)
     PelBuf tmpBuf = currCompID == 0 ? cu.cs->getPredBuf(*pu).Y() : (currCompID == 1 ? cu.cs->getPredBuf(*pu).Cb() : cu.cs->getPredBuf(*pu).Cr());
     switchBuffer(*pu, currCompID2, tmpBuf, getPredictorPtr2(currCompID2, 0));
   }
+//#if predfromori
+//  isUseFilter = IntraPrediction::useFilteredIntraRefSamples(COMPONENT_Y, *pu, true, *pu);
+//  initIntraPatternChType(cu, pu->Y(), isUseFilter);
+//  predIntraAng(COMPONENT_Y, cu.cs->getBuf(*pu,PIC_PREDFROMORI).Y(), *pu, isUseFilter);
+//  isUseFilter = IntraPrediction::useFilteredIntraRefSamples(COMPONENT_Cb, *pu, true, *pu);
+//  initIntraPatternChType(cu, pu->Cb(), isUseFilter);
+//  predIntraAng(COMPONENT_Cb, cu.cs->getBuf(*pu, PIC_PREDFROMORI).Cb(), *pu, isUseFilter);
+//  isUseFilter = IntraPrediction::useFilteredIntraRefSamples(COMPONENT_Cr, *pu, true, *pu);
+//  initIntraPatternChType(cu, pu->Cr(), isUseFilter);
+//  predIntraAng(COMPONENT_Cr, cu.cs->getBuf(*pu, PIC_PREDFROMORI).Cr(), *pu, isUseFilter);
+//
+//  for (int currCompID = 0; currCompID < 3; currCompID++)
+//  {
+//    ComponentID currCompID2 = (ComponentID)currCompID;
+//    PelBuf tmpBuf = currCompID == 0 ? cu.cs->getBuf(*pu, PIC_PREDFROMORI).Y() : (currCompID == 1 ? cu.cs->getBuf(*pu, PIC_PREDFROMORI).Cb() : cu.cs->getBuf(*pu, PIC_PREDFROMORI).Cr());
+//    switchBuffer(*pu, currCompID2, tmpBuf, getPredictorPtr2(currCompID2, 0));
+//  }
+//#endif
 }
 
 inline bool isAboveLeftAvailable  ( const CodingUnit &cu, const ChannelType &chType, const Position &posLT );

@@ -795,6 +795,8 @@ void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf)
   }
 }
 
+
+
 TransformUnit& TransformUnit::operator=(const TransformUnit& other)
 {
   CHECK( chromaFormat != other.chromaFormat, "Incompatible formats" );

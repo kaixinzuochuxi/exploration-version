@@ -125,7 +125,9 @@ void InterPrediction::destroy()
   }
 
   m_triangleBuf.destroy();
-
+#if predfromori
+  m_triangleBufori.destroy();
+#endif
   if (m_storedMv != nullptr)
   {
     delete[]m_storedMv;
@@ -191,7 +193,9 @@ void InterPrediction::init( RdCost* pcRdCost, ChromaFormat chromaFormatIDC )
     }
 
     m_triangleBuf.create(UnitArea(chromaFormatIDC, Area(0, 0, MAX_CU_SIZE, MAX_CU_SIZE)));
-
+#if predfromori
+    m_triangleBufori.create(UnitArea(chromaFormatIDC, Area(0, 0, MAX_CU_SIZE, MAX_CU_SIZE)));
+#endif
     m_iRefListIdx = -1;
 
     m_gradX0 = (Pel*)xMalloc(Pel, BIO_TEMP_BUFFER_SIZE);
@@ -1178,6 +1182,31 @@ void InterPrediction::motionCompensationori(PredictionUnit &pu, const RefPicList
   motionCompensationori(pu, predBuf, eRefPicList
     , luma, chroma
   );
+}
+
+
+void InterPrediction::motionCompensation4Triangleori(CodingUnit &cu, MergeCtx &triangleMrgCtx, const bool splitDir, const uint8_t candIdx0, const uint8_t candIdx1)
+{
+  for (auto &pu : CU::traversePUs(cu))
+  {
+    const UnitArea localUnitArea(cu.cs->area.chromaFormat, Area(0, 0, pu.lwidth(), pu.lheight()));
+    PelUnitBuf tmpTriangleBuf = m_triangleBufori.getBuf(localUnitArea);
+    PelUnitBuf predBuf = cu.cs->getBuf(pu,PIC_PREDFROMORI);
+
+    triangleMrgCtx.setMergeInfo(pu, candIdx0);
+    PU::spanMotionInfo(pu);
+    motionCompensationori(pu, tmpTriangleBuf);
+
+    triangleMrgCtx.setMergeInfo(pu, candIdx1);
+    PU::spanMotionInfo(pu);
+    motionCompensationori(pu, predBuf);
+
+#if JVET_M0328_KEEP_ONE_WEIGHT_GROUP
+    weightedTriangleBlk(pu, splitDir, MAX_NUM_CHANNEL_TYPE, predBuf, tmpTriangleBuf, predBuf);
+#else
+    weightedTriangleBlk(pu, PU::getTriangleWeights(pu, triangleMrgCtx, candIdx0, candIdx1), splitDir, MAX_NUM_CHANNEL_TYPE, predBuf, tmpTriangleBuf, predBuf);
+#endif
+  }
 }
 
 #endif 
