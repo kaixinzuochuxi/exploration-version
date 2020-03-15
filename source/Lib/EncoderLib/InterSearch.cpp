@@ -6597,39 +6597,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
       {
         continue;
       }
-//#if printresirec
-//      for (TransformUnit ttu : TUTraverser(cu.firstTU, cu.lastTU->next))
-//      {
-//        const CompArea &area = ttu.blocks[compID];
-//        /*CompArea      tmpArea(compID, area.chromaFormat, Position(0, 0), area.size());
-//        PelBuf tmpPred = m_tmpStorageLCU.getBuf(tmpArea);
-//        tmpPred.copyFrom(cs.getPredBuf(compID));*/
-//        Pel* tbuf1 = (Pel*)xMalloc(Pel, area.area());
-//        PelBuf tpred(tbuf1, area.width, area.width, area.height);
-//        tpred.copyFrom(cs.getBuf(ttu, PIC_PREDICTION).bufs[compID]);
-//
-//        Pel* tbuf = (Pel*)xMalloc(Pel, area.area());
-//        PelBuf spresi(tbuf, area.width, area.width, area.height);
-//        spresi.copyFrom(cs.picture->getBuf(ttu, PIC_TRUE_ORIGINAL).bufs[compID]);
-//
-//
-//#if JVET_M0427_INLOOP_RESHAPER
-//        if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
-//        {
-//#if JVET_M0483_IBC
-//          if (cu.firstPU->mhIntraFlag || CU::isIBC(cu))
-//#else
-//          if (!cu.firstPU->mhIntraFlag && !cu.ibc)
-//#endif
-//            tpred.rspSignal(m_pcReshape->getInvLUT());
-//        }
-//#endif
-//        spresi.subtract(tpred);
-//        std::memcpy(tu.m_spresiwoq[compID], tbuf, sizeof(Pel)* area.area());
-//        xFree(tbuf); tbuf = nullptr;
-//        xFree(tbuf1); tbuf1 = nullptr;
-//      }
-//#endif
+
 
 #if !JVET_M0464_UNI_MTS
       checkTransformSkip[compID] = pps.getUseTransformSkip() && TU::hasTransformSkipFlag( *tu.cs, tu.blocks[compID] ) && !cs.isLossless;
@@ -6869,9 +6837,7 @@ void InterSearch::xEstimateInterResidualQT(CodingStructure &cs, Partitioner &par
             {
               crossComponentPrediction( tu, compID, lumaResi, resiBuf, resiBuf, true );
             }
-//#if printresirec
-//            memcpy(tu.m_spresiwq[compID], resiBuf.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
-//#endif
+
             currCompDist = m_pcRdCost->getDistPart(orgResiBuf, resiBuf, channelBitDepth, compID, DF_SSE);
 
 #if WCG_EXT
@@ -7218,7 +7184,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
         Pel* tbuf = (Pel*)xMalloc(Pel, area.area());
         PelBuf spresi(tbuf, area.width, area.width, area.height);
-        spresi.copyFrom(cs.picture->getBuf(ttu, PIC_TRUE_ORIGINAL).bufs[compID]);
+        spresi.copyFrom(org);
 
 
 #if JVET_M0427_INLOOP_RESHAPER
@@ -7229,12 +7195,45 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 //#else
 //          if (!cu.firstPU->mhIntraFlag && !cu.ibc)
 //#endif
-            tpred.rspSignal(m_pcReshape->getInvLUT());
+//            tpred.rspSignal(m_pcReshape->getFwdLUT());
+          tpred.rspSignal(m_pcReshape->getInvLUT());
         }
 #endif
+        
         spresi.subtract(tpred);
-        std::memcpy(ttu.m_spresiwoq[compID], tbuf, sizeof(Pel)* area.area());
-        std::memcpy(ttu.m_spresiwq[compID], tbuf, sizeof(Pel)* area.area());
+        
+        //if (!ttu.cbf)
+        //{
+          std::memcpy(ttu.m_spresiwq[compID], tbuf, sizeof(Pel)* area.area());
+          std::memcpy(ttu.m_spresiwoq[compID], tbuf, sizeof(Pel)* area.area());
+        //}
+//        else
+//        {
+//          std::memcpy(ttu.m_spresiwq[compID], tbuf, sizeof(Pel)* area.area());
+//          tpred.copyFrom(cs.getBuf(ttu, PIC_PREDFROMORI).bufs[compID]);
+//          spresi.copyFrom(cs.picture->getBuf(ttu, PIC_TRUE_ORIGINAL).bufs[compID]);
+//
+//
+////#if JVET_M0427_INLOOP_RESHAPER
+////          if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
+////          {
+////#if JVET_M0483_IBC
+////            if (!cu.firstPU->mhIntraFlag && !CU::isIBC(cu))
+////#else
+////            if (!cu.firstPU->mhIntraFlag && !cu.ibc)
+////#endif
+////              tpred.rspSignal(m_pcReshape->getFwdLUT());
+////            
+////          }
+////#endif
+//          tpred.rspSignal(m_pcReshape->getFwdLUT());
+//          tpred.rspSignal(m_pcReshape->getInvLUT());
+//          spresi.subtract(tpred);
+//          std::memcpy(ttu.m_spresiwoq[compID], tbuf, sizeof(Pel)* area.area());
+//        }
+
+
+
         xFree(tbuf); tbuf = nullptr;
         xFree(tbuf1); tbuf1 = nullptr;
       }
@@ -7552,9 +7551,12 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 //#else
 //        if (!cu.firstPU->mhIntraFlag && !cu.ibc)
 //#endif
-          tpred.rspSignal(m_pcReshape->getInvLUT());
+//          tpred.rspSignal(m_pcReshape->getFwdLUT());
+        tpred.rspSignal(m_pcReshape->getInvLUT());
       }
+      
 #endif
+      auto tdist = m_pcRdCost->getDistPart(tpred, spresi, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
       spresi.subtract(tpred);
       if (!cu.rootCbf)
       {
@@ -7564,24 +7566,30 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
       else
       {
         std::memcpy(ttu.m_spresiwq[compID], tbuf, sizeof(Pel)* area.area());
-        tpred.copyFrom(cs.getBuf(ttu, PIC_PREDFROMORI).bufs[compID]);
-        spresi.copyFrom(cs.picture->getBuf(ttu, PIC_TRUE_ORIGINAL).bufs[compID]);
+        tpred.copyFrom(cs.getBuf(ttu, PIC_PREDICTION).bufs[compID]);
+        spresi.copyFrom(cs.getOrgBuf(ttu).bufs[compID]);
 
 
 #if JVET_M0427_INLOOP_RESHAPER
         if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
         {
-          //#if JVET_M0483_IBC
-          //        if (!cu.firstPU->mhIntraFlag && !CU::isIBC(cu))
-          //#else
-          //        if (!cu.firstPU->mhIntraFlag && !cu.ibc)
-          //#endif
+#if JVET_M0483_IBC
+          if (!cu.firstPU->mhIntraFlag && !CU::isIBC(cu))
+#else
+          if (!cu.firstPU->mhIntraFlag && !cu.ibc)
+#endif
+            tpred.rspSignal(m_pcReshape->getFwdLUT());
           tpred.rspSignal(m_pcReshape->getInvLUT());
         }
 #endif
+        
+        auto tdist = m_pcRdCost->getDistPart(tpred, spresi, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
         spresi.subtract(tpred);
         std::memcpy(ttu.m_spresiwoq[compID], tbuf, sizeof(Pel)* area.area());
-      }
+        }
+
+        
+      
       xFree(tbuf); tbuf = nullptr;
       xFree(tbuf1); tbuf1 = nullptr;
     }
@@ -8064,39 +8072,7 @@ void InterSearch::symmvdCheckBestMvp(
         {
           continue;
         }
-//#if printresiori
-//        for (TransformUnit ttu : TUTraverser(cu.firstTU, cu.lastTU->next))
-//        {
-//          const CompArea &area = ttu.blocks[compID];
-//          /*CompArea      tmpArea(compID, area.chromaFormat, Position(0, 0), area.size());
-//          PelBuf tmpPred = m_tmpStorageLCU.getBuf(tmpArea);
-//          tmpPred.copyFrom(cs.getPredBuf(compID));*/
-//          Pel* tbuf1 = (Pel*)xMalloc(Pel, area.area());
-//          PelBuf tpred(tbuf1, area.width, area.width, area.height);
-//          tpred.copyFrom(cs.getBuf(ttu, PIC_PREDFROMORI).bufs[compID]);
-//
-//          Pel* tbuf = (Pel*)xMalloc(Pel, area.area());
-//          PelBuf spresi(tbuf, area.width, area.width, area.height);
-//          spresi.copyFrom(cs.picture->getBuf(ttu, PIC_TRUE_ORIGINAL).bufs[compID]);
-//
-//
-//          //#if JVET_M0427_INLOOP_RESHAPER
-//          //        if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
-//          //        {
-//          //#if JVET_M0483_IBC
-//          //          if (cu.firstPU->mhIntraFlag || CU::isIBC(cu))
-//          //#else
-//          //          if (!cu.firstPU->mhIntraFlag && !cu.ibc)
-//          //#endif
-//          //            tpred.rspSignal(m_pcReshape->getInvLUT());
-//          //        }
-//          //#endif
-//          spresi.subtract(tpred);
-//          std::memcpy(tu.m_spresiwoqori[compID], tbuf, sizeof(Pel)* area.area());
-//          xFree(tbuf); tbuf = nullptr;
-//          xFree(tbuf1); tbuf1 = nullptr;
-//      }
-//#endif
+
 #if !JVET_M0464_UNI_MTS
         checkTransformSkip[compID] = pps.getUseTransformSkip() && TU::hasTransformSkipFlag(*tu.cs, tu.blocks[compID]) && !cs.isLossless;
         if (isLuma(compID))
@@ -8336,9 +8312,7 @@ void InterSearch::symmvdCheckBestMvp(
               {
                 crossComponentPrediction(tu, compID, lumaResi, resiBuf, resiBuf, true);
               }
-//#if printresiori
-//              memcpy(tu.m_spresiwqori[compID], resiBuf.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
-//#endif
+
               currCompDist = m_pcRdCost->getDistPart(orgResiBuf, resiBuf, channelBitDepth, compID, DF_SSE);
 
 #if WCG_EXT
@@ -8809,21 +8783,56 @@ void InterSearch::symmvdCheckBestMvp(
 
           Pel* tbuf = (Pel*)xMalloc(Pel, area.area());
           PelBuf spresi(tbuf, area.width, area.width, area.height);
-          spresi.copyFrom(cs.picture->getBuf(ttu, PIC_TRUE_ORIGINAL).bufs[compID]);
+          spresi.copyFrom(org);
 
 
-          #if JVET_M0427_INLOOP_RESHAPER
-                  if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
-                  {
-          #if JVET_M0483_IBC
-                    if (cu.firstPU->mhIntraFlag || CU::isIBC(cu))
-          
-          #endif
-                      tpred.rspSignal(m_pcReshape->getInvLUT());
-                  }
-          #endif
+#if JVET_M0427_INLOOP_RESHAPER
+          if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
+          {
+            //#if JVET_M0483_IBC
+            //          if (!cu.firstPU->mhIntraFlag && !CU::isIBC(cu))
+            //#else
+            //          if (!cu.firstPU->mhIntraFlag && !cu.ibc)
+            //#endif
+            //            tpred.rspSignal(m_pcReshape->getFwdLUT());
+            tpred.rspSignal(m_pcReshape->getInvLUT());
+          }
+#endif
+          //auto yori = m_pcRdCost->getDistPart(tpred, spresi, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
           spresi.subtract(tpred);
-          std::memcpy(ttu->m_spresiwoqori[compID], tbuf, sizeof(Pel)* area.area());
+
+          //if (!ttu.cbf)
+          //{
+          std::memcpy(ttu.m_spresiwqori[compID], tbuf, sizeof(Pel)* area.area());
+          std::memcpy(ttu.m_spresiwoqori[compID], tbuf, sizeof(Pel)* area.area());
+          //}
+  //        else
+  //        {
+  //          std::memcpy(ttu.m_spresiwqori[compID], tbuf, sizeof(Pel)* area.area());
+  //          tpred.copyFrom(cs.getBuf(ttu, PIC_PREDFROMORI).bufs[compID]);
+  //          spresi.copyFrom(cs.picture->getBuf(ttu, PIC_TRUE_ORIGINAL).bufs[compID]);
+  //
+  //
+  ////#if JVET_M0427_INLOOP_RESHAPER
+  ////          if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
+  ////          {
+  ////#if JVET_M0483_IBC
+  ////            if (!cu.firstPU->mhIntraFlag && !CU::isIBC(cu))
+  ////#else
+  ////            if (!cu.firstPU->mhIntraFlag && !cu.ibc)
+  ////#endif
+  ////              tpred.rspSignal(m_pcReshape->getFwdLUT());
+  ////            
+  ////          }
+  ////#endif
+  //          tpred.rspSignal(m_pcReshape->getFwdLUT());
+  //          tpred.rspSignal(m_pcReshape->getInvLUT());
+  //          spresi.subtract(tpred);
+  //          std::memcpy(ttu.m_spresiwoqori[compID], tbuf, sizeof(Pel)* area.area());
+  //        }
+
+
+
           xFree(tbuf); tbuf = nullptr;
           xFree(tbuf1); tbuf1 = nullptr;
       }
@@ -9152,18 +9161,53 @@ void InterSearch::symmvdCheckBestMvp(
 #if JVET_M0427_INLOOP_RESHAPER
         if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
         {
-#if JVET_M0483_IBC
-          if (cu.firstPU->mhIntraFlag || CU::isIBC(cu))
+          //#if JVET_M0483_IBC
+          //        if (!cu.firstPU->mhIntraFlag && !CU::isIBC(cu))
+          //#else
+          //        if (!cu.firstPU->mhIntraFlag && !cu.ibc)
+          //#endif
+          //          tpred.rspSignal(m_pcReshape->getFwdLUT());
+          tpred.rspSignal(m_pcReshape->getInvLUT());
+        }
 
 #endif
-            tpred.rspSignal(m_pcReshape->getInvLUT());
-        }
-#endif
+        auto tdist = m_pcRdCost->getDistPart(tpred, spresi, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
         spresi.subtract(tpred);
-        std::memcpy(ttu->m_spresiwoqori[compID], tbuf, sizeof(Pel)* area.area());
+        if (!cu.rootCbf)
+        {
+          std::memcpy(ttu.m_spresiwqori[compID], tbuf, sizeof(Pel)* area.area());
+          std::memcpy(ttu.m_spresiwoqori[compID], tbuf, sizeof(Pel)* area.area());
+        }
+        else
+        {
+          std::memcpy(ttu.m_spresiwqori[compID], tbuf, sizeof(Pel)* area.area());
+          tpred.copyFrom(cs.getBuf(ttu, PIC_PREDFROMORI).bufs[compID]);
+          spresi.copyFrom(cs.getOrgBuf(ttu).bufs[compID]);
+
+
+#if JVET_M0427_INLOOP_RESHAPER
+          if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
+          {
+#if JVET_M0483_IBC
+            if (!cu.firstPU->mhIntraFlag && !CU::isIBC(cu))
+#else
+            if (!cu.firstPU->mhIntraFlag && !cu.ibc)
+#endif
+              tpred.rspSignal(m_pcReshape->getFwdLUT());
+            tpred.rspSignal(m_pcReshape->getInvLUT());
+          }
+#endif
+
+          auto tdist = m_pcRdCost->getDistPart(tpred, spresi, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+          spresi.subtract(tpred);
+          std::memcpy(ttu.m_spresiwoqori[compID], tbuf, sizeof(Pel)* area.area());
+        }
+
+
+
         xFree(tbuf); tbuf = nullptr;
         xFree(tbuf1); tbuf1 = nullptr;
-      }
+    }
 #endif
 
 #if WCG_EXT

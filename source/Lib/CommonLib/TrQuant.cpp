@@ -647,9 +647,7 @@ void TrQuant::transformNxN(TransformUnit &tu, const ComponentID &compID, const Q
   const uint32_t height     = rect.height;
 
   const CPelBuf  resiBuf    = cs.getResiBuf(rect);
-//#if printresirec
-//  memcpy(tu.m_spresiwoq[compID], resiBuf.buf, width*height*sizeof(Pel));
-//#endif
+
   CHECK( sps.getMaxTrSize() < width, "Unsupported transformation size" );
 
   int pos = 0;
@@ -1142,9 +1140,7 @@ void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, cons
   const uint32_t height = rect.height;
 
   const CPelBuf  resiBuf = cs.getBuf(rect, PIC_RESIFROMORI);
-#if printresiori
-  memcpy(tu.m_spresiwoqori[compID], resiBuf.buf, width*height * sizeof(Pel));
-#endif
+
   CHECK(sps.getMaxTrSize() < width, "Unsupported transformation size");
 
   int pos = 0;

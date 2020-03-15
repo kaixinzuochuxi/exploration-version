@@ -1971,12 +1971,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
   else
 #endif
   piReco.reconstruct(piPred, piResi, cs.slice->clpRng( compID ));
-//#if printresirec
-//  memcpy(tu.m_spresiwq[compID], piResi.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
-//#endif
-//#if printresiori
-//  memcpy(tu.m_spresiwqori[compID], piResi.buf, tu.block(compID).width*tu.block(compID).height * sizeof(Pel));
-//#endif
+
   //===== update distortion =====
 
 #if printresirec
@@ -1989,18 +1984,24 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
   PelBuf tpred(tbuf1, tarea.width, tarea.width, tarea.height);
   tpred.copyFrom(piReco);
 
-  Pel* tbuf = (Pel*)xMalloc(Pel, area.area());
+  Pel* tbuf = (Pel*)xMalloc(Pel, tarea.area());
   PelBuf spresi(tbuf, tarea.width, tarea.width, tarea.height);
+ 
   spresi.copyFrom(piOrg);
-
-
+  
+#if Iintradistfwd
+  if (cs.slice->getSliceType() != I_SLICE && compID == COMPONENT_Y)
+    tpred.rspSignal(m_pcReshape->getInvLUT());
+#else
+  if (cs.slice->getSliceType() == I_SLICE && compID == COMPONENT_Y)
+    spresi.copyFrom(cs.picture->getBuf(tu,PIC_TRUE_ORIGINAL).Y());
+    tpred.rspSignal(m_pcReshape->getInvLUT());
+#endif
 #if JVET_M0427_INLOOP_RESHAPER
   if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
   {
-    if (cs.slice->getSliceType() == I_SLICE)
-      tpred.rspSignal(m_pcReshape->getInvLUT());
-    else
-      spresi.rspSignal(m_pcReshape->getFwdLUT());
+    ;
+    
   }
 #endif
   spresi.subtract(tpred);
@@ -2014,13 +2015,20 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
   {
     tpred.copyFrom(piPred);
     spresi.copyFrom(piOrg);
+#if Iintradistfwd
+    if (cs.slice->getSliceType() != I_SLICE && compID == COMPONENT_Y)
+      tpred.rspSignal(m_pcReshape->getInvLUT());
+#else
+    if (cs.slice->getSliceType() == I_SLICE && compID == COMPONENT_Y)
+      spresi.copyFrom(cs.picture->getBuf(tu, PIC_TRUE_ORIGINAL).Y());
+    tpred.rspSignal(m_pcReshape->getInvLUT());
+#endif
+    
 #if JVET_M0427_INLOOP_RESHAPER
     if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
     {
-      if (cs.slice->getSliceType() == I_SLICE)
-        tpred.rspSignal(m_pcReshape->getInvLUT());
-      else
-        spresi.rspSignal(m_pcReshape->getFwdLUT());
+      ;
+      
       
     }
 #endif
@@ -2057,19 +2065,24 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
 #else
       ruiDist += m_pcRdCost->getDistPart(piOrg, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
+
     }
     else
+    {
 #endif
 #if !disableWD
       ruiDist += m_pcRdCost->getDistPart(piOrg, piReco, bitDepth, compID, DF_SSE_WTD, &orgLuma);
 #else
       ruiDist += m_pcRdCost->getDistPart(piOrg, piReco, bitDepth, compID, DF_SSE, &orgLuma);
 #endif
+
+    }
   }
   else
 #endif
   {
     ruiDist += m_pcRdCost->getDistPart( piOrg, piReco, bitDepth, compID, DF_SSE );
+
   }
 }
 

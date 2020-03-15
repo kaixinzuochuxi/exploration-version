@@ -988,10 +988,10 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
 #if printresirec
       {
-      bool resiwoq = 1;
-      bool resiwq = 1;
+      bool resiwoq = 0;
+      bool resiwq = 0;
       bool spresiwoq = 1;
-      bool spresiwq = 0;
+      bool spresiwq = 1;
       bool printinaline = 1;
 
       if (!printinaline)
@@ -1126,7 +1126,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
               printf("%d ", pu->cu->firstTU->m_spresiwoq[0][p]);
 
             }
-            printf(" spresiwoq! ");
+            printf(" resispwoq! ");
           }
           if (spresiwq)
           {
@@ -1135,7 +1135,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
               printf("%d ", pu->cu->firstTU->m_spresiwq[0][p]);
             }
-            printf(" spresiwq! ");
+            printf(" resispwq! ");
           }
         }
         else {
@@ -1177,7 +1177,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
                 }
               }
-              printf(" spresiwoq! ");
+              printf(" resispwoq! ");
             }
             if (spresiwq)
             {
@@ -1189,7 +1189,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                   printf("%d ", ttu.m_spresiwq[0][p]);
                 }
               }
-              printf(" spresiwq! ");
+              printf(" resispwq! ");
             
           }
         }
@@ -1198,10 +1198,10 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #endif
 #if printresiori
       {
-        bool resiwoq = 1;
-        bool resiwq = 1;
-        bool spresiwoq = 0;
-        bool spresiwq = 0;
+        bool resiwoq = 0;
+        bool resiwq = 0;
+        bool spresiwoq = 1;
+        bool spresiwq = 1;
         bool printinaline = 1;
 
         if (!printinaline)
@@ -1336,7 +1336,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                 printf("%d ", pu->cu->firstTU->m_spresiwoqori[0][p]);
 
               }
-              printf(" spresiwoqori! ");
+              printf(" resispwoqori! ");
             }
             if (spresiwq)
             {
@@ -1345,7 +1345,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
                 printf("%d ", pu->cu->firstTU->m_spresiwqori[0][p]);
               }
-              printf(" spresiwqori! ");
+              printf(" resispwqori! ");
             }
           }
           else {
@@ -1386,7 +1386,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
                   }
                 }
-                printf(" spresiwoqori! ");
+                printf(" resispwoqori! ");
               }
               if (spresiwq)
               {
@@ -1398,7 +1398,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
                     printf("%d ", ttu.m_spresiwqori[0][p]);
                   }
                 }
-                printf(" spresiwqori! ");
+                printf(" resispwqori! ");
               }
             
           }
@@ -1883,7 +1883,7 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
 #endif
 
 #if build_cu_tree
-  if (tempCS->area.lx() == 48 && tempCS->area.ly() == 80 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==8)
+  if (tempCS->area.lx() == 272 && tempCS->area.ly() == 80 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==8)
   {
     int xxx = 0;
   }
@@ -2968,7 +2968,10 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
 #endif
       m_pcIntraSearch->estIntraPredLumaQT( cu, partitioner, bestCostSoFar );
 
-
+#if build_cu_tree
+      auto intradist = tempCS->dist;
+      auto intrabits = tempCS->fracBits;
+#endif
 
       useIntraSubPartitions = cu.ispMode != NOT_INTRA_SUBPARTITIONS;
       if( !CS::isDualITree( *tempCS ) )
@@ -3014,12 +3017,18 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
         reco2.copyFrom(tempCS->getRecoBuf(cu.blocks[0]));
         org2.copyFrom(tempCS->getOrgBuf(cu.blocks[0]));
 #if JVET_M0427_INLOOP_RESHAPER
-        //reco2.rspSignal(this->m_pcSliceEncoder->m_pcLib->getReshaper()->getInvLUT());
-        //org2.rspSignal(this->m_pcSliceEncoder->m_pcLib->getReshaper()->getInvLUT());
+#if Iintradistfwd
+        if (tempCS->slice->getSliceType() != I_SLICE)
+          reco2.rspSignal(m_pcReshape->getInvLUT());
+#else
+        if (tempCS->slice->getSliceType() == I_SLICE)
+          org2.copyFrom(tempCS->picture->getBuf(cu.blocks[0],PIC_TRUE_ORIGINAL));
+         reco2.rspSignal(m_pcReshape->getInvLUT());
+#endif
 #endif
         CPelBuf reco1 = reco2;
         CPelBuf org1 = org2;
-        cu.cucp.D[0] = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org1);
+        cu.cucp.D[0] = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE);
       
 #endif
     }
@@ -3032,14 +3041,14 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
 #if JVET_M0102_INTRA_SUBPARTITIONS
       TUIntraSubPartitioner subTuPartitioner( partitioner );
       m_pcIntraSearch->estIntraPredChromaQT( cu, ( !useIntraSubPartitions || ( CS::isDualITree( *cu.cs ) && !isLuma( CHANNEL_TYPE_CHROMA ) ) ) ? partitioner : subTuPartitioner, maxCostAllowedForChroma );
-#if codingparameters
-      CPelBuf reco = tempCS->getRecoBuf(cu.blocks[1]);
-      CPelBuf org = tempCS->getOrgBuf(cu.blocks[1]);
-      cu.cucp.D[1] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
-      reco = tempCS->getRecoBuf(cu.blocks[2]);
-      org = tempCS->getOrgBuf(cu.blocks[2]);
-      cu.cucp.D[2] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
-#endif
+//#if codingparameters
+//      CPelBuf reco = tempCS->getRecoBuf(cu.blocks[1]);
+//      CPelBuf org = tempCS->getOrgBuf(cu.blocks[1]);
+//      cu.cucp.D[1] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
+//      reco = tempCS->getRecoBuf(cu.blocks[2]);
+//      org = tempCS->getOrgBuf(cu.blocks[2]);
+//      cu.cucp.D[2] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
+//#endif
       if( useIntraSubPartitions && !cu.ispMode )
       {
         //At this point the temp cost is larger than the best cost. Therefore, we can already skip the remaining calculations
@@ -3061,14 +3070,14 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
       }
 #else
       m_pcIntraSearch->estIntraPredChromaQT( cu, partitioner );
-#if codingparameters
-      CPelBuf reco = tempCS->getRecoBuf(cu.blocks[1]);
-      CPelBuf org = tempCS->getOrgBuf(cu.blocks[1]);
-      cu.cucp.D[1] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
-      reco = tempCS->getRecoBuf(cu.blocks[2]);
-      org = tempCS->getOrgBuf(cu.blocks[2]);
-      cu.cucp.D[2] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
-#endif
+//#if codingparameters
+//      CPelBuf reco = tempCS->getRecoBuf(cu.blocks[1]);
+//      CPelBuf org = tempCS->getOrgBuf(cu.blocks[1]);
+//      cu.cucp.D[1] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
+//      reco = tempCS->getRecoBuf(cu.blocks[2]);
+//      org = tempCS->getOrgBuf(cu.blocks[2]);
+//      cu.cucp.D[2] = m_pcRdCost->getDistPart(org, reco, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE, &org);
+//#endif
 #endif
     }
 
@@ -3143,8 +3152,11 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
     DTRACE_MODE_COST( *tempCS, m_pcRdCost->getLambda() );
 #endif
 #if build_cu_tree
-    cu.firstPU->intradist = tempCS->dist;
-    cu.firstPU->intrabits = tempCS->fracBits;
+#if codingparameters
+    cu.firstPU->intradist = cu.cucp.D[0];
+   
+#endif
+    
     if (bestCS->pus.size() > 0) {
       if (tempCS->cost < bestCS->cost) {
         cu.firstPU->interdist = bestCS->pus[0]->interdist;
@@ -5252,9 +5264,91 @@ void EncCu::xCheckRDCostIBCModeMerge2Nx2N(CodingStructure *&tempCS, CodingStruct
             //CodingStructure ori(*tempCS);
             m_pcInterSearch->motionCompensationori(pu, REF_PIC_LIST_0, true, chroma);
             m_pcInterSearch->encodeResAndCalcRdInterCUori(*tempCS, partitioner, (numResidualPass != 0), true, chroma);
+#if printresiori
+            TCoeff* tbwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+            TCoeff* tbwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+            Pel* tbspwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+            Pel* tbspwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+            for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+            {
+              const CompArea &area = cu.blocks[compID];
+              tbwoq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+              tbspwoq[compID] = (Pel*)xMalloc(Pel, area.area());
+              tbwq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+              tbspwq[compID] = (Pel*)xMalloc(Pel, area.area());
+              PelBuf spresioriwoq(tbspwoq[compID], area);
+              CoeffBuf resioriwoq(tbwoq[compID], area);
+              PelBuf spresioriwq(tbspwq[compID], area);
+              CoeffBuf resioriwq(tbwq[compID], area);
+
+              for (auto ttu : TUTraverser(cu.firstTU, cu.lastTU->next))
+              {
+                const CompArea &tarea = ttu.blocks[compID];
+
+                PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+                PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+                tubuf.copyFrom(tori);
+
+                tori = PelBuf(ttu.m_spresiwqori[compID], tarea);
+                tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+                tubuf.copyFrom(tori);
+
+                CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+                CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+                ctubuf.copyFrom(ctori);
+
+                ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+                ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+                ctubuf.copyFrom(ctori);
+              }
+            }
+#endif
+            
+            
             tempCS->clearTUs();
+
+
 #endif
             m_pcInterSearch->encodeResAndCalcRdInterCU(*tempCS, partitioner, (numResidualPass != 0), true, chroma);
+#if predfromori && printresiori
+            for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+            {
+              const CompArea &area = cu.blocks[compID];
+              
+              PelBuf spresioriwoq(tbspwoq[compID], area);
+              CoeffBuf resioriwoq(tbwoq[compID], area);
+              PelBuf spresioriwq(tbspwq[compID], area);
+              CoeffBuf resioriwq(tbwq[compID], area);
+
+              for (auto ttu : TUTraverser(cu.firstTU, cu.lastTU->next))
+              {
+                const CompArea &tarea = ttu.blocks[compID];
+
+                PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+                PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+                tori.copyFrom(tubuf);
+
+                tori = PelBuf(ttu.m_spresiwqori[compID], tarea);
+                tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+                tori.copyFrom(tubuf);
+
+                CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+                CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+                ctori.copyFrom(ctubuf);
+
+                ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+                ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+                ctori.copyFrom(ctubuf);
+              }
+
+              xFree(tbwoq[compID]); tbwoq[compID] = nullptr;
+              xFree(tbwq[compID]); tbwq[compID] = nullptr;
+              xFree(tbspwoq[compID]); tbspwoq[compID] = nullptr;
+              xFree(tbspwq[compID]); tbspwq[compID] = nullptr;
+            }
+
+
+#endif
             xEncodeDontSplit(*tempCS, partitioner);
 
             if (tempCS->pps->getUseDQP() && (partitioner.currDepth) <= tempCS->pps->getMaxCuDQPDepth())
@@ -5380,10 +5474,87 @@ void EncCu::xCheckRDCostIBCMode(CodingStructure *&tempCS, CodingStructure *&best
           //CodingStructure ori(*tempCS);
           m_pcInterSearch->motionCompensationori(pu, REF_PIC_LIST_0, true, chroma);
           m_pcInterSearch->encodeResAndCalcRdInterCUori(*tempCS, partitioner, false, true, chroma);
-          
+#if printresiori
+          TCoeff* tbwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+          TCoeff* tbwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+          Pel* tbspwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+          Pel* tbspwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+          for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+          {
+            const CompArea &area = cu.blocks[compID];
+            tbwoq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+            tbspwoq[compID] = (Pel*)xMalloc(Pel, area.area());
+            tbwq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+            tbspwq[compID] = (Pel*)xMalloc(Pel, area.area());
+            PelBuf spresioriwoq(tbspwoq[compID], area);
+            CoeffBuf resioriwoq(tbwoq[compID], area);
+            PelBuf spresioriwq(tbspwq[compID], area);
+            CoeffBuf resioriwq(tbwq[compID], area);
+
+            for (auto ttu : TUTraverser(cu.firstTU, cu.lastTU->next))
+            {
+              const CompArea &tarea = ttu.blocks[compID];
+
+              PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+              PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+              tubuf.copyFrom(tori);
+
+              tori = PelBuf(ttu.m_spresiwqori[compID], tarea);
+              tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+              tubuf.copyFrom(tori);
+
+              CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+              CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+              ctubuf.copyFrom(ctori);
+
+              ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+              ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+              ctubuf.copyFrom(ctori);
+            }
+          }
+#endif
           tempCS->clearTUs();
 #endif
           m_pcInterSearch->encodeResAndCalcRdInterCU(*tempCS, partitioner, false, true, chroma);
+#if predfromori && printresiori
+          for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+          {
+            const CompArea &area = cu.blocks[compID];
+            
+            PelBuf spresioriwoq(tbspwoq[compID], area);
+            CoeffBuf resioriwoq(tbwoq[compID], area);
+            PelBuf spresioriwq(tbspwq[compID], area);
+            CoeffBuf resioriwq(tbwq[compID], area);
+
+            for (auto ttu : TUTraverser(cu.firstTU, cu.lastTU->next))
+            {
+              const CompArea &tarea = ttu.blocks[compID];
+
+              PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+              PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+              tori.copyFrom(tubuf);
+
+              tori = PelBuf(ttu.m_spresiwqori[compID], tarea);
+              tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+              tori.copyFrom(tubuf);
+
+              CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+              CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+              ctori.copyFrom(ctubuf);
+
+              ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+              ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+              ctori.copyFrom(ctubuf);
+            }
+
+            xFree(tbwoq[compID]); tbwoq[compID] = nullptr;
+            xFree(tbwq[compID]); tbwq[compID] = nullptr;
+            xFree(tbspwoq[compID]); tbspwoq[compID] = nullptr;
+            xFree(tbspwq[compID]); tbspwq[compID] = nullptr;
+        }
+
+
+#endif
 
 #if !JVET_M0464_UNI_MTS
           if (m_pcEncCfg->getFastInterEMT())
@@ -5490,9 +5661,87 @@ void EncCu::xCheckRDCostIBCMode(CodingStructure *&tempCS, CodingStructure *&best
 //CodingStructure ori(*tempCS);
         m_pcInterSearch->motionCompensationori(pu, REF_PIC_LIST_0, false, true); // luma=0, chroma=1
         m_pcInterSearch->encodeResAndCalcRdInterCUori(*tempCS, partitioner, false, false, true);
+#if printresiori
+        TCoeff* tbwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+        TCoeff* tbwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+        Pel* tbspwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+        Pel* tbspwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+        for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+        {
+          const CompArea &area = cu.blocks[compID];
+          tbwoq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+          tbspwoq[compID] = (Pel*)xMalloc(Pel, area.area());
+          tbwq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+          tbspwq[compID] = (Pel*)xMalloc(Pel, area.area());
+          PelBuf spresioriwoq(tbspwoq[compID], area);
+          CoeffBuf resioriwoq(tbwoq[compID], area);
+          PelBuf spresioriwq(tbspwq[compID], area);
+          CoeffBuf resioriwq(tbwq[compID], area);
+
+          for (auto ttu : TUTraverser(cu.firstTU, cu.lastTU->next))
+          {
+            const CompArea &tarea = ttu.blocks[compID];
+
+            PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+            PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+            tubuf.copyFrom(tori);
+
+            tori = PelBuf(ttu.m_spresiwqori[compID], tarea);
+            tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+            tubuf.copyFrom(tori);
+
+            CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+            CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+            ctubuf.copyFrom(ctori);
+
+            ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+            ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+            ctubuf.copyFrom(ctori);
+          }
+        }
+#endif
         tempCS->clearTUs();
 #endif
         m_pcInterSearch->encodeResAndCalcRdInterCU(*tempCS, partitioner, false, false, true);
+#if predfromori && printresiori
+        for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+        {
+          const CompArea &area = cu.blocks[compID];
+          
+          PelBuf spresioriwoq(tbspwoq[compID], area);
+          CoeffBuf resioriwoq(tbwoq[compID], area);
+          PelBuf spresioriwq(tbspwq[compID], area);
+          CoeffBuf resioriwq(tbwq[compID], area);
+
+          for (auto ttu : TUTraverser(cu.firstTU, cu.lastTU->next))
+          {
+            const CompArea &tarea = ttu.blocks[compID];
+
+            PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+            PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+            tori.copyFrom(tubuf);
+
+            tori = PelBuf(ttu.m_spresiwqori[compID], tarea);
+            tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+            tori.copyFrom(tubuf);
+
+            CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+            CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+            ctori.copyFrom(ctubuf);
+
+            ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+            ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu.blocks[compID].pos(), tarea.size());
+            ctori.copyFrom(ctubuf);
+          }
+
+          xFree(tbwoq[compID]); tbwoq[compID] = nullptr;
+          xFree(tbwq[compID]); tbwq[compID] = nullptr;
+          xFree(tbspwoq[compID]); tbspwoq[compID] = nullptr;
+          xFree(tbspwq[compID]); tbspwq[compID] = nullptr;
+        }
+
+
+#endif
 
         xEncodeDontSplit(*tempCS, partitioner);
 
@@ -6088,18 +6337,90 @@ void EncCu::xEncodeInterResidual( CodingStructure *&tempCS, CodingStructure *&be
       }
     //CodingStructure ori(*tempCS);
     m_pcInterSearch->encodeResAndCalcRdInterCUori(*tempCS, partitioner, skipResidual);
-    //tempCS->clearTUs();
-    //m_pcInterSearch->encodeResAndCalcRdInterCUori(*tempCS, partitioner, skipResidual);
-    //tempCS->clearTUs();
-    //m_pcInterSearch->encodeResAndCalcRdInterCUori(*tempCS, partitioner, skipResidual);
-    //tempCS->clearTUs();
-    //m_pcInterSearch->encodeResAndCalcRdInterCUori(*tempCS, partitioner, skipResidual);
+    
+#if printresiori
+    TCoeff* tbwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+    TCoeff* tbwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+    Pel* tbspwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+    Pel* tbspwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+    for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+    {
+      const CompArea &area = cu->blocks[compID];
+      tbwoq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+      tbspwoq[compID] = (Pel*)xMalloc(Pel, area.area());
+      tbwq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+      tbspwq[compID] = (Pel*)xMalloc(Pel, area.area());
+      PelBuf spresioriwoq(tbspwoq[compID], area);
+      CoeffBuf resioriwoq(tbwoq[compID], area);
+      PelBuf spresioriwq(tbspwq[compID], area);
+      CoeffBuf resioriwq(tbwq[compID], area);
+
+      for (auto ttu : TUTraverser(cu->firstTU, cu->lastTU->next))
+      {
+        const CompArea &tarea = ttu.blocks[compID];
+
+        PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+        PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+        tubuf.copyFrom(tori);
+
+        tori= PelBuf(ttu.m_spresiwqori[compID], tarea);
+        tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+        tubuf.copyFrom(tori);
+
+        CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+        CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+        ctubuf.copyFrom(ctori);
+
+        ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+        ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+        ctubuf.copyFrom(ctori);
+      }
+    }
+#endif
     tempCS->clearTUs();
 
 #endif
 
     m_pcInterSearch->encodeResAndCalcRdInterCU(*tempCS, partitioner, skipResidual);
-    
+#if predfromori && printresiori
+    for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+    {
+      const CompArea &area = cu->blocks[compID];
+      
+      PelBuf spresioriwoq(tbspwoq[compID], area);
+      CoeffBuf resioriwoq(tbwoq[compID], area);
+      PelBuf spresioriwq(tbspwq[compID], area);
+      CoeffBuf resioriwq(tbwq[compID], area);
+
+      for (auto ttu : TUTraverser(cu->firstTU, cu->lastTU->next))
+      {
+        const CompArea &tarea = ttu.blocks[compID];
+
+        PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+        PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+        tori.copyFrom(tubuf);
+
+        tori = PelBuf(ttu.m_spresiwqori[compID], tarea);
+        tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+        tori.copyFrom(tubuf);
+
+        CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+        CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+        ctori.copyFrom(ctubuf);
+
+        ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+        ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+        ctori.copyFrom(ctubuf);
+      }
+
+      xFree(tbwoq[compID]); tbwoq[compID] = nullptr;
+      xFree(tbwq[compID]); tbwq[compID] = nullptr;
+      xFree(tbspwoq[compID]); tbspwoq[compID] = nullptr;
+      xFree(tbspwq[compID]); tbspwq[compID] = nullptr;
+    }
+
+
+#endif
     
 #if JVET_M0140_SBT
     numRDOTried += mtsAllowed ? 2 : 1;
@@ -6318,9 +6639,87 @@ void EncCu::xEncodeInterResidual( CodingStructure *&tempCS, CodingStructure *&be
 #if predfromori
 //CodingStructure ori(*tempCS);
       m_pcInterSearch->encodeResAndCalcRdInterCUori(*tempCS, partitioner, skipResidual);
+#if printresiori
+      TCoeff* tbwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+      TCoeff* tbwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+      Pel* tbspwoq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+      Pel* tbspwq[MAX_NUM_CHANNEL_TYPE] = { nullptr };
+      for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+      {
+        const CompArea &area = cu->blocks[compID];
+        tbwoq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+        tbspwoq[compID] = (Pel*)xMalloc(Pel, area.area());
+        tbwq[compID] = (TCoeff*)xMalloc(TCoeff, area.area());
+        tbspwq[compID] = (Pel*)xMalloc(Pel, area.area());
+        PelBuf spresioriwoq(tbspwoq[compID], area);
+        CoeffBuf resioriwoq(tbwoq[compID], area);
+        PelBuf spresioriwq(tbspwq[compID], area);
+        CoeffBuf resioriwq(tbwq[compID], area);
+
+        for (auto ttu : TUTraverser(cu->firstTU, cu->lastTU->next))
+        {
+          const CompArea &tarea = ttu.blocks[compID];
+
+          PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+          PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+          tubuf.copyFrom(tori);
+
+          tori = PelBuf(ttu.m_spresiwqori[compID], tarea);
+          tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+          tubuf.copyFrom(tori);
+
+          CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+          CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+          ctubuf.copyFrom(ctori);
+
+          ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+          ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+          ctubuf.copyFrom(ctori);
+        }
+      }
+#endif
       tempCS->clearTUs();
 #endif
       m_pcInterSearch->encodeResAndCalcRdInterCU( *tempCS, partitioner, skipResidual );
+#if predfromori && printresiori
+      for (int compID = 0; compID < MAX_NUM_CHANNEL_TYPE; compID++)
+      {
+        const CompArea &area = cu->blocks[compID];
+        
+        PelBuf spresioriwoq(tbspwoq[compID], area);
+        CoeffBuf resioriwoq(tbwoq[compID], area);
+        PelBuf spresioriwq(tbspwq[compID], area);
+        CoeffBuf resioriwq(tbwq[compID], area);
+
+        for (auto ttu : TUTraverser(cu->firstTU, cu->lastTU->next))
+        {
+          const CompArea &tarea = ttu.blocks[compID];
+
+          PelBuf tori(ttu.m_spresiwoqori[compID], tarea);
+          PelBuf tubuf = spresioriwoq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+          tori.copyFrom(tubuf);
+
+          tori = PelBuf(ttu.m_spresiwqori[compID], tarea);
+          tubuf = spresioriwq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+          tori.copyFrom(tubuf);
+
+          CoeffBuf ctori = CoeffBuf(ttu.m_resiwoqori[compID], tarea);
+          CoeffBuf ctubuf = resioriwoq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+          ctori.copyFrom(ctubuf);
+
+          ctori = CoeffBuf(ttu.m_resiwqori[compID], tarea);
+          ctubuf = resioriwq.subBuf(ttu.blocks[compID].pos() - cu->blocks[compID].pos(), tarea.size());
+          ctori.copyFrom(ctubuf);
+        }
+
+        xFree(tbwoq[compID]); tbwoq[compID] = nullptr;
+        xFree(tbwq[compID]); tbwq[compID] = nullptr;
+        xFree(tbspwoq[compID]); tbspwoq[compID] = nullptr;
+        xFree(tbspwq[compID]); tbspwq[compID] = nullptr;
+      }
+
+
+#endif
       numRDOTried++;
 
       xEncodeDontSplit( *tempCS, partitioner );
