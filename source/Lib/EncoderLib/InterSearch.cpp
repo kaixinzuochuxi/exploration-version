@@ -7640,7 +7640,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #endif
 #if build_cu_tree
         if (compID == COMPONENT_Y)
-        dist = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+        dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
 #if codingparameters
         cu.cucp.D[compID] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
@@ -7657,7 +7657,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #endif
 #if build_cu_tree
       if (compID == COMPONENT_Y)
-      dist = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+      dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
 #endif
     }
   }

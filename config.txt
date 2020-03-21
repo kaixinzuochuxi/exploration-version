@@ -9,3 +9,7 @@ slideeditting
  
  skipilf
  --ALF=0 --SAO=0 --LoopFilterDisable=1 
+ 
+ 
+ BasketballDrill
+  -c  D:/Projects/data/cfg_VTM4_0/encoder_rawoilf_vtm.cfg -c  D:/Projects/data/cfg_VTM4_0/per-sequence/BasketballDrill.cfg -i D:/Projects/data/test_seq/HEVC/BasketballDrill_832x480_50.yuv --PrintFrameMSE=1 -f 20 -q 22  >../result/ClassC_BasketballDrill_832x480_50_fq22_RA.txt 

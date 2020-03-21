@@ -825,7 +825,8 @@ void TrQuant::transformNxN(TransformUnit &tu, const ComponentID &compID, const Q
       }
 #endif
 #if printresirec
-      memcpy(tu.m_resiwoq[compID], m_mtsCoeffs[tu.mtsIdx], rect.height*rect.width * sizeof(TCoeff));
+      //memcpy(tu.m_resiwoq[compID], m_mtsCoeffs[tu.mtsIdx], rect.height*rect.width * sizeof(TCoeff));
+      memcpy(tu.m_resiwoq[compID], tempCoeff.buf, rect.height*rect.width * sizeof(TCoeff));
 #endif
       DTRACE_COEFF_BUF( D_TCOEFF, tempCoeff, tu, tu.cu->predMode, compID );
 
@@ -1318,7 +1319,8 @@ void TrQuant::transformNxNori(TransformUnit &tu, const ComponentID &compID, cons
     }
 #endif
 #if printresiori
-    memcpy(tu.m_resiwoqori[compID], m_mtsCoeffs[tu.mtsIdx], rect.height*rect.width * sizeof(TCoeff));
+    //memcpy(tu.m_resiwoqori[compID], m_mtsCoeffs[tu.mtsIdx], rect.height*rect.width * sizeof(TCoeff));
+    memcpy(tu.m_resiwoqori[compID], tempCoeff.buf, rect.height*rect.width * sizeof(TCoeff));
 #endif
     DTRACE_COEFF_BUF(D_TCOEFF, tempCoeff, tu, tu.cu->predMode, compID);
 

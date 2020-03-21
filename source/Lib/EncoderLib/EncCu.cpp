@@ -988,9 +988,9 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
 #if printresirec
       {
-      bool resiwoq = 0;
+      bool resiwoq = 1;
       bool resiwq = 0;
-      bool spresiwoq = 1;
+      bool spresiwoq = 0;
       bool spresiwq = 1;
       bool printinaline = 1;
 
@@ -1198,10 +1198,10 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #endif
 #if printresiori
       {
-        bool resiwoq = 0;
-        bool resiwq = 0;
-        bool spresiwoq = 1;
-        bool spresiwq = 1;
+        bool resiwoq = 1;
+        bool resiwq = 1;
+        bool spresiwoq = 0;
+        bool spresiwq = 0;
         bool printinaline = 1;
 
         if (!printinaline)
@@ -1883,7 +1883,7 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
 #endif
 
 #if build_cu_tree
-  if (tempCS->area.lx() == 272 && tempCS->area.ly() == 80 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==8)
+  if (tempCS->area.lx() == 304 && tempCS->area.ly() == 48 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==4)
   {
     int xxx = 0;
   }
@@ -6332,9 +6332,8 @@ void EncCu::xEncodeInterResidual( CodingStructure *&tempCS, CodingStructure *&be
 #endif
       
 #if predfromori  
-      if (tempCS->area.lx() == 0 && tempCS->area.ly() == 0 && tempCS->slice->getPOC() == 4) {
-      int xxx = 0;
-      }
+
+
     //CodingStructure ori(*tempCS);
     m_pcInterSearch->encodeResAndCalcRdInterCUori(*tempCS, partitioner, skipResidual);
     

@@ -131,7 +131,7 @@
 #define predfromori 1
 #if predfromori
 #define keepbestoricost 0
-#define printresiori 1
+#define printresiori 0
 #endif
 #endif
 
