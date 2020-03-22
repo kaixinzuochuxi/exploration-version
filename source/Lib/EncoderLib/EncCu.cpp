@@ -990,8 +990,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       {
       bool resiwoq = 1;
       bool resiwq = 0;
-      bool spresiwoq = 0;
-      bool spresiwq = 1;
+      bool spresiwoq = 1;
+      bool spresiwq = 0;
       bool printinaline = 1;
 
       if (!printinaline)
@@ -2158,6 +2158,7 @@ do
 
   if (currTestMode.type == ETM_INTER_ME)
   {
+
     if ((currTestMode.opts & ETO_IMV) != 0)
     {
 #if JVET_M0246_AFFINE_AMVR
@@ -2178,7 +2179,6 @@ do
       xCheckRDCostInter(tempCS, bestCS, partitioner, currTestMode);
 #endif
     }
-
   }
 #if JVET_M0253_HASH_ME
   else if (currTestMode.type == ETM_HASH_INTER)
@@ -2188,20 +2188,26 @@ do
 #endif
   else if (currTestMode.type == ETM_AFFINE)
   {
+
     xCheckRDCostAffineMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
+
   }
 #if REUSE_CU_RESULTS
   else if (currTestMode.type == ETM_RECO_CACHED)
   {
+#if !disablereuse
     xReuseCachedResult(tempCS, bestCS, partitioner);
+#endif
   }
 #endif
   else if (currTestMode.type == ETM_MERGE_SKIP)
   {
+
     xCheckRDCostMerge2Nx2N(tempCS, bestCS, partitioner, currTestMode);
     CodingUnit* cu = bestCS->getCU(partitioner.chType);
     if (cu)
       cu->mmvdSkip = cu->skip == false ? false : cu->mmvdSkip;
+
   }
   else if (currTestMode.type == ETM_MERGE_TRIANGLE)
   {
