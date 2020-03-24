@@ -127,7 +127,7 @@
 #define printall 1
 #define disablefast 0
 #define printchormacu 0
-#define printresirec 1
+#define printresirec 0
 #define predfromori 1
 #if predfromori
 #define keepbestoricost 0
@@ -150,7 +150,7 @@
 #define getseqname 1
 #endif
 #define disable_hierarchical_qp_clip 0
-#define disablereuse 1
+#define disablereuse 0
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DEBUG log
 #define debug20190924 0

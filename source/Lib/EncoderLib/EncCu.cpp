@@ -988,7 +988,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 
 #if printresirec
       {
-      bool resiwoq = 1;
+      bool resiwoq = 0;
       bool resiwq = 0;
       bool spresiwoq = 1;
       bool spresiwq = 0;
@@ -1883,7 +1883,7 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
 #endif
 
 #if build_cu_tree
-  if (tempCS->area.lx() == 304 && tempCS->area.ly() == 48 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==4)
+  if (tempCS->area.lx() == 0 && tempCS->area.ly() == 0 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==1)
   {
     int xxx = 0;
   }
@@ -4271,6 +4271,22 @@ void EncCu::xCheckRDCostMerge2Nx2N( CodingStructure *&tempCS, CodingStructure *&
         int xxx = 0;
       }
 
+      //CPelBuf predori = tempCS->getBuf(*tempCS->pus[0], PIC_PREDFROMORI).bufs[0];
+      //CPelBuf pred = tempCS->getPredBuf(*tempCS->pus[0]).bufs[0];
+      //CPelBuf org = tempCS->getOrgBuf(*tempCS->pus[0]).bufs[0];
+
+      //const CompArea &areaY = cu.Y();
+      //CompArea      tmpArea1(COMPONENT_Y, areaY.chromaFormat, Position(0, 0), areaY.size());
+      //PelBuf tmpRecLuma = m_pcInterSearch->m_tmpStorageLCUori.getBuf(tmpArea1);
+      //tmpRecLuma.copyFrom(predori);
+      //tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
+      //auto distori = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE);
+
+
+      //
+      //tmpRecLuma.copyFrom(pred);
+      //tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
+      //auto dist = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE);
 #endif
       xEncodeInterResidual( tempCS, bestCS, partitioner, encTestMode, uiNoResidualPass, NULL, uiNoResidualPass == 0 ? &candHasNoResidual[uiMrgHADIdx] : NULL );
 #else

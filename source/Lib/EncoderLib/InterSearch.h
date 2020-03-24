@@ -108,10 +108,12 @@ private:
   Pel*            m_tmpAffiError;
 
 #if predfromori
+public:
   PelStorage      m_tmpPredStorageori[NUM_REF_PIC_LIST_01];
   PelStorage      m_tmpStorageLCUori;
   PelStorage      m_tmpAffiStorageori;
   Pel*            m_tmpAffiErrorori;
+private:
 #endif // predfromori
 
   int*            m_tmpAffiDeri[2];
