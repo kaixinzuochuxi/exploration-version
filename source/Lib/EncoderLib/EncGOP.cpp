@@ -2399,14 +2399,14 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     }
 #endif
 
-    if( encPic )
-    // now compress (trial encode) the various slice segments (slices, and dependent slices)
+    if (encPic)
+      // now compress (trial encode) the various slice segments (slices, and dependent slices)
     {
-      DTRACE_UPDATE( g_trace_ctx, ( std::make_pair( "poc", pocCurr ) ) );
+      DTRACE_UPDATE(g_trace_ctx, (std::make_pair("poc", pocCurr)));
 
-      pcSlice->setSliceCurStartCtuTsAddr( 0 );
+      pcSlice->setSliceCurStartCtuTsAddr(0);
 #if HEVC_DEPENDENT_SLICES
-      pcSlice->setSliceSegmentCurStartCtuTsAddr( 0 );
+      pcSlice->setSliceSegmentCurStartCtuTsAddr(0);
 #endif
 #if intermediate
       //extern fl;
@@ -2419,13 +2419,13 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       //fl.output_cp_lambda(COMPONENT_Cr);
 #endif // intermediate
 
-      for(uint32_t nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
+      for (uint32_t nextCtuTsAddr = 0; nextCtuTsAddr < numberOfCtusInFrame; )
       {
 
-        m_pcSliceEncoder->precompressSlice( pcPic );
+        m_pcSliceEncoder->precompressSlice(pcPic);
 #if test1
         extern bool skipmerge;
-        
+
         if (pcPic->slices[0]->getSliceType() != I_SLICE)
         {
           skipmerge = 1;
@@ -2446,8 +2446,8 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
           skipmerge = 0;
         }
 #endif
-        m_pcSliceEncoder->compressSlice   ( pcPic, false, false );
-        
+        m_pcSliceEncoder->compressSlice(pcPic, false, false);
+
 
 
 #if HEVC_DEPENDENT_SLICES
@@ -2455,40 +2455,40 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         if (curSliceSegmentEnd < numberOfCtusInFrame)
         {
           const bool bNextSegmentIsDependentSlice = curSliceSegmentEnd < pcSlice->getSliceCurEndCtuTsAddr();
-          const uint32_t sliceBits                    = pcSlice->getSliceBits();
-          uint32_t independentSliceIdx                = pcSlice->getIndependentSliceIdx();
+          const uint32_t sliceBits = pcSlice->getSliceBits();
+          uint32_t independentSliceIdx = pcSlice->getIndependentSliceIdx();
           pcPic->allocateNewSlice();
           // prepare for next slice
-          m_pcSliceEncoder->setSliceSegmentIdx      ( uiNumSliceSegments   );
-          pcSlice = pcPic->slices                   [ uiNumSliceSegments   ];
-          CHECK(!(pcSlice->getPPS()!=0), "Unspecified error");
-          pcSlice->copySliceInfo                    ( pcPic->slices[uiNumSliceSegments-1]  );
-          pcSlice->setSliceSegmentIdx               ( uiNumSliceSegments   );
+          m_pcSliceEncoder->setSliceSegmentIdx(uiNumSliceSegments);
+          pcSlice = pcPic->slices[uiNumSliceSegments];
+          CHECK(!(pcSlice->getPPS() != 0), "Unspecified error");
+          pcSlice->copySliceInfo(pcPic->slices[uiNumSliceSegments - 1]);
+          pcSlice->setSliceSegmentIdx(uiNumSliceSegments);
           if (bNextSegmentIsDependentSlice)
           {
             pcSlice->setSliceBits(sliceBits);
           }
           else
           {
-            pcSlice->setSliceCurStartCtuTsAddr      ( curSliceSegmentEnd );
+            pcSlice->setSliceCurStartCtuTsAddr(curSliceSegmentEnd);
             pcSlice->setSliceBits(0);
-            independentSliceIdx ++;
+            independentSliceIdx++;
           }
-          pcSlice->setIndependentSliceIdx( independentSliceIdx );
-          pcSlice->setDependentSliceSegmentFlag( bNextSegmentIsDependentSlice );
-          pcSlice->setSliceSegmentCurStartCtuTsAddr ( curSliceSegmentEnd );
+          pcSlice->setIndependentSliceIdx(independentSliceIdx);
+          pcSlice->setDependentSliceSegmentFlag(bNextSegmentIsDependentSlice);
+          pcSlice->setSliceSegmentCurStartCtuTsAddr(curSliceSegmentEnd);
           // TODO: optimise cabac_init during compress slice to improve multi-slice operation
           // pcSlice->setEncCABACTableIdx(m_pcSliceEncoder->getEncCABACTableIdx());
-          uiNumSliceSegments ++;
+          uiNumSliceSegments++;
         }
         nextCtuTsAddr = curSliceSegmentEnd;
 #else
         const uint32_t curSliceEnd = pcSlice->getSliceCurEndCtuTsAddr();
-        if(curSliceEnd < numberOfCtusInFrame)
+        if (curSliceEnd < numberOfCtusInFrame)
         {
           uint32_t independentSliceIdx = pcSlice->getIndependentSliceIdx();
           pcPic->allocateNewSlice();
-          m_pcSliceEncoder->setSliceSegmentIdx      (uiNumSliceSegments);
+          m_pcSliceEncoder->setSliceSegmentIdx(uiNumSliceSegments);
           // prepare for next slice
           pcSlice = pcPic->slices[uiNumSliceSegments];
           CHECK(!(pcSlice->getPPS() != 0), "Unspecified error");
@@ -2502,8 +2502,8 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         nextCtuTsAddr = curSliceEnd;
 #endif
       }
-      
-      
+
+
       duData.clear();
 
       CodingStructure& cs = *pcPic->cs;
@@ -2512,65 +2512,60 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 #if JVET_M0427_INLOOP_RESHAPER
       if (pcSlice->getSPS()->getUseReshaper() && m_pcReshaper->getSliceReshaperInfo().getUseSliceReshaper())
       {
-          CHECK((m_pcReshaper->getRecReshaped() == false), "Rec picture is not reshaped!");
-          pcPic->getRecoBuf(COMPONENT_Y).rspSignal(m_pcReshaper->getInvLUT());
-          m_pcReshaper->setRecReshaped(false);
+        CHECK((m_pcReshaper->getRecReshaped() == false), "Rec picture is not reshaped!");
+        pcPic->getRecoBuf(COMPONENT_Y).rspSignal(m_pcReshaper->getInvLUT());
+        m_pcReshaper->setRecReshaped(false);
 
-          pcPic->getOrigBuf().copyFrom(pcPic->getTrueOrigBuf());
+        pcPic->getOrigBuf().copyFrom(pcPic->getTrueOrigBuf());
       }
 #endif
 
       // SAO parameter estimation using non-deblocked pixels for CTU bottom and right boundary areas
-      if( pcSlice->getSPS()->getSAOEnabledFlag() && m_pcCfg->getSaoCtuBoundary() )
+      if (pcSlice->getSPS()->getSAOEnabledFlag() && m_pcCfg->getSaoCtuBoundary())
       {
-        m_pcSAO->getPreDBFStatistics( cs );
+        m_pcSAO->getPreDBFStatistics(cs);
       }
 
       //-- Loop filter
-      if ( m_pcCfg->getDeblockingFilterMetric() )
+      if (m_pcCfg->getDeblockingFilterMetric())
       {
-  #if W0038_DB_OPT
-        if ( m_pcCfg->getDeblockingFilterMetric()==2 )
+#if W0038_DB_OPT
+        if (m_pcCfg->getDeblockingFilterMetric() == 2)
         {
           applyDeblockingFilterParameterSelection(pcPic, uiNumSliceSegments, iGOPid);
         }
         else
         {
-  #endif
+#endif
           applyDeblockingFilterMetric(pcPic, uiNumSliceSegments);
-  #if W0038_DB_OPT
+#if W0038_DB_OPT
         }
-  #endif
+#endif
       }
 
-      m_pcLoopFilter->loopFilterPic( cs );
+      m_pcLoopFilter->loopFilterPic(cs);
 
 #if JVET_M0147_DMVR
       CS::setRefinedMotionField(cs);
 #endif
-      DTRACE_UPDATE( g_trace_ctx, ( std::make_pair( "final", 1 ) ) );
-      /////
-      if (pcSlice->getPOC() == 5)
-      {
-        int xxx = 5;
-      }
-      /////
-      if( pcSlice->getSPS()->getSAOEnabledFlag() )
+      DTRACE_UPDATE(g_trace_ctx, (std::make_pair("final", 1)));
+
+      if (pcSlice->getSPS()->getSAOEnabledFlag())
       {
         bool sliceEnabled[MAX_NUM_COMPONENT];
-        m_pcSAO->initCABACEstimator( m_pcEncLib->getCABACEncoder(), m_pcEncLib->getCtxCache(), pcSlice );
+        m_pcSAO->initCABACEstimator(m_pcEncLib->getCABACEncoder(), m_pcEncLib->getCtxCache(), pcSlice);
 
-        m_pcSAO->SAOProcess( cs, sliceEnabled, pcSlice->getLambdas(),
+        m_pcSAO->SAOProcess(cs, sliceEnabled, pcSlice->getLambdas(),
 #if ENABLE_QPA
-                             (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && pcSlice->getPPS()->getUseDQP() ? m_pcEncLib->getRdCost (PARL_PARAM0 (0))->getChromaWeight() : 0.0),
+        (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && pcSlice->getPPS()->getUseDQP() ? m_pcEncLib->getRdCost(PARL_PARAM0(0))->getChromaWeight() : 0.0),
 #endif
 #if K0238_SAO_GREEDY_MERGE_ENCODING
-                             m_pcCfg->getTestSAODisableAtPictureLevel(), m_pcCfg->getSaoEncodingRate(), m_pcCfg->getSaoEncodingRateChroma(), m_pcCfg->getSaoCtuBoundary(), m_pcCfg->getSaoGreedyMergeEnc() );
+          m_pcCfg->getTestSAODisableAtPictureLevel(), m_pcCfg->getSaoEncodingRate(), m_pcCfg->getSaoEncodingRateChroma(), m_pcCfg->getSaoCtuBoundary(), m_pcCfg->getSaoGreedyMergeEnc());
 #else
-                             m_pcCfg->getTestSAODisableAtPictureLevel(), m_pcCfg->getSaoEncodingRate(), m_pcCfg->getSaoEncodingRateChroma(), m_pcCfg->getSaoCtuBoundary() );
+          m_pcCfg->getTestSAODisableAtPictureLevel(), m_pcCfg->getSaoEncodingRate(), m_pcCfg->getSaoEncodingRateChroma(), m_pcCfg->getSaoCtuBoundary() );
 #endif
         //assign SAO slice header
-        for(int s=0; s< uiNumSliceSegments; s++)
+        for (int s = 0; s < uiNumSliceSegments; s++)
         {
           pcPic->slices[s]->setSaoEnabledFlag(CHANNEL_TYPE_LUMA, sliceEnabled[COMPONENT_Y]);
           CHECK(!(sliceEnabled[COMPONENT_Cb] == sliceEnabled[COMPONENT_Cr]), "Unspecified error");
@@ -2578,26 +2573,28 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
         }
       }
 
-      if( pcSlice->getSPS()->getALFEnabledFlag() )
+      if (pcSlice->getSPS()->getALFEnabledFlag())
       {
         AlfSliceParam alfSliceParam;
-        m_pcALF->initCABACEstimator( m_pcEncLib->getCABACEncoder(), m_pcEncLib->getCtxCache(), pcSlice );
+        m_pcALF->initCABACEstimator(m_pcEncLib->getCABACEncoder(), m_pcEncLib->getCtxCache(), pcSlice);
 
-        m_pcALF->ALFProcess( cs, pcSlice->getLambdas(),
+        m_pcALF->ALFProcess(cs, pcSlice->getLambdas(),
 #if ENABLE_QPA
-                             (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && pcSlice->getPPS()->getUseDQP() ? m_pcEncLib->getRdCost (PARL_PARAM0 (0))->getChromaWeight() : 0.0),
+        (m_pcCfg->getUsePerceptQPA() && !m_pcCfg->getUseRateCtrl() && pcSlice->getPPS()->getUseDQP() ? m_pcEncLib->getRdCost(PARL_PARAM0(0))->getChromaWeight() : 0.0),
 #endif
-                             alfSliceParam );
+          alfSliceParam);
         //assign ALF slice header
-        for( int s = 0; s< uiNumSliceSegments; s++ )
+        for (int s = 0; s < uiNumSliceSegments; s++)
         {
-          pcPic->slices[s]->setAlfSliceParam( alfSliceParam );
+          pcPic->slices[s]->setAlfSliceParam(alfSliceParam);
         }
       }
       if (pcPic->cs->sps->getUseCompositeRef() && getPrepareLTRef())
       {
         updateCompositeReference(pcSlice, rcListPic, pocCurr);
       }
+
+
     }
     else // skip enc picture
     {
@@ -2712,12 +2709,8 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
 
         ////slice header
         tmpBitsBeforeWriting = m_HLSWriter->getNumberOfWrittenBits();
-		/////
-		if (pcSlice->getPOC() == 5)
-		{
-			int xxx = 5;
-		}
-		/////
+
+
         m_HLSWriter->codeSliceHeader( pcSlice );
         actualHeadBits += ( m_HLSWriter->getNumberOfWrittenBits() - tmpBitsBeforeWriting );
 #if codingparameters
@@ -2901,6 +2894,9 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
     DTRACE_UPDATE( g_trace_ctx, ( std::make_pair( "final", 0 ) ) );
 
     pcPic->reconstructed = true;
+#if force_use_ori_reference
+    pcPic->getRecoBuf().copyFrom(pcPic->getTrueOrigBuf());
+#endif
 #if JVET_M0483_IBC ==0
     pcPic->longTerm = false;
 #endif

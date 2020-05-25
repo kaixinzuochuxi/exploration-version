@@ -62,7 +62,7 @@
 #define printresi 0
 
 #define intermediate 0
-#define codingparameters 1
+#define codingparameters 0
 #define Iintradistfwd 0
 
 #define AdaptiveGOP 0
@@ -81,7 +81,7 @@
 
 #ifdef QPAmethod
 
-#define windows 1
+#define windows 0
 #define useoriaqp 0
 #define usecutreeaqp 1
 #define alambda 1
@@ -121,11 +121,14 @@
 
 
 // build cu tree, print CU level information
-#define build_cu_tree 1
+#define build_cu_tree 0
 /////
 #if build_cu_tree 
+#define outputjson 1
+#define simplify20200506 1
 #define printall 1
 #define disablefast 0
+#define disableintraininter 1
 #define printchormacu 0
 #define printresirec 0
 #define predfromori 1
@@ -151,6 +154,10 @@
 #endif
 #define disable_hierarchical_qp_clip 0
 #define disablereuse 0
+
+#define force_use_ori_reference 1
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // DEBUG log
 #define debug20190924 0

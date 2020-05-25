@@ -527,19 +527,18 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
     //  );
     //}
     Distortion temp = 0;
+
     for (auto pu : bestCS->pus)
     {
       // location
-      printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC()
+//#if simplify20200506
+//      printf("||");
+//#else
+      printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC());
+//#endif
 
-      );
-#if build_cu_tree
-      if (tempCS->area.lx() == 48 && tempCS->area.ly() == 16 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC() == 16)
-      {
-        int xxx = 0;
-      }
+      
 
-#endif
       ///// compute sigma
       {
         pu->orisigma = 0;
@@ -930,6 +929,108 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #endif
       }
       // dist,bits
+#if outputjson
+#if simplify20200506
+      printf("{");
+#if predfromori
+      printf("\"distwithrec\":%ju,\"distwithori\":%ju",
+         pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori);
+
+
+#endif
+      // parameter
+      //printf("\t QP:%d lambda:%f | ", pu->cu->qp, m_pcRdCost->getLambda());
+      printf("}|{");
+      // mode
+      printf("\"skip\":%d,\"cbf\":%d",
+        
+        pu->cu->skip,
+        pu->cu->rootCbf
+        
+      );
+
+      printf(",\"refidx\":[%d,%d],\"refpoc\":[",  pu->refIdx[0], pu->refIdx[1]);
+      for (int iRefList = 0; iRefList < 2; iRefList++)
+      {
+        printf("[");
+        for (int iRefIndex = 0; iRefIndex < bestCS->slice->getNumRefIdx(RefPicList(iRefList)); iRefIndex++)
+        {
+          if (iRefIndex != 0)
+            printf(",");
+          printf("%d", bestCS->slice->getRefPOC(RefPicList(iRefList), iRefIndex) - bestCS->slice->getLastIDR());
+        }
+        printf("]");
+        if (iRefList == 0)
+          printf(",");
+      }
+      printf("]}");
+#else
+
+      printf("{ \"intradist\":%ju, \"interdist\":%ju, \"intrabits\":%ju ,\"interbits\":%ju, \"orisigma\":%.2f, \"refsigma0\":%.2f ,\"refsigma1\":%.2f, \"SSEY_refrec_curori_0\":%.2f, \"SSEY_refrec_curori_1\":%.2f  ",
+        pu->intradist, pu->interdist, pu->intrabits, pu->interbits, pu->orisigma, pu->refsigma0, pu->refsigma1, pu->D_refrec_curori_0, pu->D_refrec_curori_1);
+#if predfromori
+      printf(" ,\"interdistori\":%ju,  \"interbitsori\":%ju, \"distwithrec\":%ju, \"distwithori\":%ju, \"reforisigma0\":%.2f, \"reforisigma1\":%.2f, \"SSEY_refori_curori_0\":%.2f, \"SSEY_refori_curori_1\":%.2f ",
+        pu->interdistori, pu->interbitsori, pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori, pu->reforisigma0, pu->reforisigma1, pu->SSEY_refori_curori_0, pu->SSEY_refori_curori_1);
+
+
+#endif
+      // parameter
+      //printf("\t QP:%d lambda:%f | ", pu->cu->qp, m_pcRdCost->getLambda());
+      printf(" } | { ");
+      // mode
+      printf(" \"affine\":%d,\"imv\":%d,\"affinetype\":%d,\"skip\":%d,\"cbf\":%d,\"mhintra\":%d,\"triangle\":%d,\"merge\":%d,\"mergeidx\":%d,\"gbi\":%d,\"intradir\":[%u,%u],\"multiRefIdx\":%d   ",
+        pu->cu->affine,
+        pu->cu->imv,
+        pu->cu->affineType,
+        pu->cu->skip,
+        pu->cu->rootCbf,
+        pu->mhIntraFlag,
+        pu->cu->triangle,
+        pu->mergeFlag,
+        pu->mergeIdx,
+        pu->cu->GBiIdx,
+
+        pu->intraDir[0],
+        pu->intraDir[1],
+        pu->multiRefIdx
+      );
+      printf(" ,\"mv\":[%d,%d,%d,%d], \"affinemv\":[%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d] ",
+        pu->mv[0].hor,
+        pu->mv[0].ver,
+        pu->mv[1].hor,
+        pu->mv[1].ver,
+        pu->mvAffi[0][0].hor,
+        pu->mvAffi[0][0].ver,
+        pu->mvAffi[0][1].hor,
+        pu->mvAffi[0][1].ver,
+        pu->mvAffi[0][2].hor,
+        pu->mvAffi[0][2].ver,
+        pu->mvAffi[1][0].hor,
+        pu->mvAffi[1][0].ver,
+        pu->mvAffi[1][1].hor,
+        pu->mvAffi[1][1].ver,
+        pu->mvAffi[1][2].hor,
+        pu->mvAffi[1][2].ver
+
+      );
+      printf(" ,\"interdir\":%d, \"refidx\":[%d,%d],\"refpoc\":[ ", pu->interDir, pu->refIdx[0], pu->refIdx[1]);
+      for (int iRefList = 0; iRefList < 2; iRefList++)
+      {
+        printf(" [ " );
+        for (int iRefIndex = 0; iRefIndex < bestCS->slice->getNumRefIdx(RefPicList(iRefList)); iRefIndex++)
+        {
+          if (iRefIndex != 0)
+            printf(",");
+          printf("%d", bestCS->slice->getRefPOC(RefPicList(iRefList), iRefIndex) - bestCS->slice->getLastIDR());
+
+        }
+        printf( " ]");
+        if (iRefList == 0)
+          printf(",");
+      }
+      printf("] }");
+#endif
+#else
       printf("intradist:%ju interdist:%ju intrabits:%ju interbits:%ju orisigma:%.2f refsigma0:%.2f refsigma1:%.2f D_refrec_curori_0:%.2f D_refrec_curori_1:%.2f ",
         pu->intradist, pu->interdist, pu->intrabits, pu->interbits, pu->orisigma, pu->refsigma0, pu->refsigma1, pu->D_refrec_curori_0, pu->D_refrec_curori_1);
 #if predfromori
@@ -940,8 +1041,9 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #endif
       // parameter
       printf("\t QP:%d lambda:%f | ", pu->cu->qp, m_pcRdCost->getLambda());
+
       // mode
-      printf("affine:%d*imv:%d*affinetype:%d*skip:%d*cbf:%d*mhintra:%d*triangle:%d*mergeFlag:%d*mergeidx:%d*intradir:%u&%u*multiRefIdx:%d  ",
+      printf("affine:%d*imv:%d*affinetype:%d*skip:%d*cbf:%d*mhintra:%d*triangle:%d*mergeFlag:%d*mergeidx:%d*gbi:%d*intradir:%u&%u*multiRefIdx:%d  ",
         pu->cu->affine,
         pu->cu->imv,
         pu->cu->affineType,
@@ -951,6 +1053,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         pu->cu->triangle,
         pu->mergeFlag,
         pu->mergeIdx,
+        pu->cu->GBiIdx,
 
         pu->intraDir[0],
         pu->intraDir[1],
@@ -985,7 +1088,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
         //printf( " ");
       }
-
+#endif
 #if printresirec
       {
       bool resiwoq = 0;
@@ -1408,8 +1511,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       printf(" |\n");
 
     }
-    printf("luma CU finished\n");
-
+    //printf("luma CU finished\n");
+    
   }
 
 #endif
@@ -2215,7 +2318,9 @@ do
   }
   else if (currTestMode.type == ETM_INTRA)
   {
-    //printf("x");
+#if disableintraininter
+    if(tempCS->slice->getSliceType()==I_SLICE)
+#endif
     xCheckRDCostIntra(tempCS, bestCS, partitioner, currTestMode);
   }
   else if (currTestMode.type == ETM_IPCM)
