@@ -121,17 +121,20 @@
 
 
 // build cu tree, print CU level information
-#define build_cu_tree 0
+#define build_cu_tree 1
 /////
 #if build_cu_tree 
+//cfg 
+#define disableintraininter 0
+#define predfromori 0
+#define disablefast 0
+// output
 #define outputjson 1
 #define simplify20200506 1
 #define printall 1
-#define disablefast 0
-#define disableintraininter 1
 #define printchormacu 0
-#define printresirec 0
-#define predfromori 1
+#define printresirec 1
+#define preddist 0
 #if predfromori
 #define keepbestoricost 0
 #define printresiori 0

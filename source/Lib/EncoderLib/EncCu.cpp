@@ -537,7 +537,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       printf("|%4d %4d %4d %4d %4d | ", pu->lumaPos().x, pu->lumaPos().y, pu->lumaSize().width, pu->lumaSize().height, bestCS->slice->getPOC());
 //#endif
 
-      
+#if preddist   
 
       ///// compute sigma
       {
@@ -927,14 +927,17 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
         }
 
 #endif
+
+
       }
+#endif
       // dist,bits
 #if outputjson
 #if simplify20200506
       printf("{");
 #if predfromori
-      printf("\"distwithrec\":%ju,\"distwithori\":%ju",
-         pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori);
+      printf("\"interbits\":%ju,\"interbitsori\":%ju,\"distwithrec\":%ju,\"distwithori\":%ju",
+        pu->interbits, pu->interbitsori,pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori);
 
 
 #endif
@@ -966,12 +969,19 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
       printf("]}");
 #else
 
-      printf("{ \"intradist\":%ju, \"interdist\":%ju, \"intrabits\":%ju ,\"interbits\":%ju, \"orisigma\":%.2f, \"refsigma0\":%.2f ,\"refsigma1\":%.2f, \"SSEY_refrec_curori_0\":%.2f, \"SSEY_refrec_curori_1\":%.2f  ",
-        pu->intradist, pu->interdist, pu->intrabits, pu->interbits, pu->orisigma, pu->refsigma0, pu->refsigma1, pu->D_refrec_curori_0, pu->D_refrec_curori_1);
+      printf("{ \"intradist\":%ju, \"interdist\":%ju, \"intrabits\":%ju ,\"interbits\":%ju, \"distwithrec\":%ju  ",
+        pu->intradist, pu->interdist, pu->intrabits, pu->interbits, pu->D_currecwoilf_curori_refrec);
+#if preddist
+      printf(", \"orisigma\":%.2f, \"refsigma0\":%.2f ,\"refsigma1\":%.2f, \"SSEY_refrec_curori_0\":%.2f, \"SSEY_refrec_curori_1\":%.2f",
+        pu->orisigma, pu->refsigma0, pu->refsigma1, pu->D_refrec_curori_0, pu->D_refrec_curori_1);
+#endif
 #if predfromori
-      printf(" ,\"interdistori\":%ju,  \"interbitsori\":%ju, \"distwithrec\":%ju, \"distwithori\":%ju, \"reforisigma0\":%.2f, \"reforisigma1\":%.2f, \"SSEY_refori_curori_0\":%.2f, \"SSEY_refori_curori_1\":%.2f ",
-        pu->interdistori, pu->interbitsori, pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori, pu->reforisigma0, pu->reforisigma1, pu->SSEY_refori_curori_0, pu->SSEY_refori_curori_1);
-
+      printf(" ,\"interdistori\":%ju,  \"interbitsori\":%ju, \"distwithori\":%ju ",
+        pu->interdistori, pu->interbitsori, pu->D_currecwoilf_curori_refori);
+#if preddist
+      printf(" , \"reforisigma0\":%.2f, \"reforisigma1\":%.2f, \"SSEY_refori_curori_0\":%.2f, \"SSEY_refori_curori_1\":%.2f ",
+         pu->reforisigma0, pu->reforisigma1, pu->SSEY_refori_curori_0, pu->SSEY_refori_curori_1);
+#endif
 
 #endif
       // parameter
@@ -1091,10 +1101,10 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #endif
 #if printresirec
       {
-      bool resiwoq = 0;
-      bool resiwq = 0;
+      bool resiwoq = 1;
+      bool resiwq = 1;
       bool spresiwoq = 1;
-      bool spresiwq = 0;
+      bool spresiwq = 1;
       bool printinaline = 1;
 
       if (!printinaline)

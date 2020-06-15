@@ -217,9 +217,15 @@ void TrQuant::invTransformNxN( TransformUnit &tu, const ComponentID &compID, Pel
     const int         maxLog2TrDynamicRange = sps.getMaxLog2TrDynamicRange(chType);
     const int         nomTransformShift = getTransformShift(channelBitDepth, area.size(), maxLog2TrDynamicRange);
     memcpy(tu.m_resiwq[compID], tempCoeff.buf, uiWidth*uiHeight * sizeof(TCoeff));
+    int shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area()] + 1) / 2;
+    
     for (int i = 0; i < uiWidth*uiHeight; i++)
     {
-      tu.m_resiwq[compID][i] = tu.m_resiwq[compID][i] >> nomTransformShift;
+      if (shift2ori > 0)
+        tu.m_resiwq[compID][i] = tu.m_resiwq[compID][i] << shift2ori;
+      else
+        tu.m_resiwq[compID][i] = tu.m_resiwq[compID][i] >> (-shift2ori);
+      
     }
 #endif
 #if JVET_M0464_UNI_MTS
@@ -1101,11 +1107,17 @@ void TrQuant::invTransformNxNori(TransformUnit &tu, const ComponentID &compID, P
     const int         maxLog2TrDynamicRange = sps.getMaxLog2TrDynamicRange(chType);
     const int         nomTransformShift = getTransformShift(channelBitDepth, area.size(), maxLog2TrDynamicRange);
     memcpy(tu.m_resiwqori[compID], tempCoeff.buf, uiWidth*uiHeight * sizeof(TCoeff));
+    int shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area()] + 1) / 2;
     for (int i = 0; i < uiWidth*uiHeight; i++)
     {
-      tu.m_resiwqori[compID][i] = tu.m_resiwqori[compID][i] >> nomTransformShift;
+      if (shift2ori > 0)
+        tu.m_resiwqori[compID][i] = tu.m_resiwqori[compID][i] << shift2ori;
+      else
+        tu.m_resiwqori[compID][i] = tu.m_resiwqori[compID][i] >> (-shift2ori);
+      
     }
 #endif
+
 #if JVET_M0464_UNI_MTS
     if (isLuma(compID) && tu.mtsIdx == 1)
 #else

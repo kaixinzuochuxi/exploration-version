@@ -804,10 +804,15 @@ namespace DQIntern
 #endif
     const int         transformShift        = ( clipTransformShift ? std::max<int>( 0, nomTransformShift ) : nomTransformShift );
 #if printresirec || printresiori
+    int shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area()] + 1) / 2;
     for (int i = 0; i < area.area(); i++)
     {
 #if printresirec
-      tu.m_resiwoq[compID][i] = tu.m_resiwoq[compID][i] >> transformShift;
+      
+      if (shift2ori >0)
+        tu.m_resiwoq[compID][i] = tu.m_resiwoq[compID][i] << shift2ori;
+      else
+        tu.m_resiwoq[compID][i] = tu.m_resiwoq[compID][i] >> (-shift2ori);
 #endif
 
     }
@@ -875,11 +880,17 @@ namespace DQIntern
 #endif
     const int         transformShift = (clipTransformShift ? std::max<int>(0, nomTransformShift) : nomTransformShift);
 #if printresirec || printresiori
+    int shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area()] + 1) / 2;
     for (int i = 0; i < area.area(); i++)
     {
 
 #if printresiori
-      tu.m_resiwoqori[compID][i] = tu.m_resiwoqori[compID][i] >> transformShift;
+     
+      if (shift2ori > 0)
+        tu.m_resiwoqori[compID][i] = tu.m_resiwoqori[compID][i] << shift2ori;
+      else
+        tu.m_resiwoqori[compID][i] = tu.m_resiwoqori[compID][i] >> (-shift2ori);
+      
 #endif
     }
 #endif

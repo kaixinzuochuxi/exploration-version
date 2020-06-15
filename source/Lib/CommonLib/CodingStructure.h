@@ -388,7 +388,7 @@ public:
   const CPelUnitBuf   getRecoBuf()                           const { return m_reco; }
 
 private:
-#if predfromori
+#if predfromori || printresirec
 public:
           PelBuf       getBuf(const CompArea &blk, const PictureType &type);
    const CPelBuf       getBuf(const CompArea &blk, const PictureType &type) const;
