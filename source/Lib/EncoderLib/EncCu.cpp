@@ -935,11 +935,69 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #if outputjson
 #if simplify20200506
       printf("{");
+      printf("\"interbits\":%ju,\"distwithrec\":%ju",
+        pu->interbits, pu->D_currecwoilf_curori_refrec);
+#if meansatd
+      //if (cs.slice[0].getSliceType() == I_SLICE)
+      {
+        printf(",\"satdrec\":%ju",
+          pu->cu->satdrec);
+      }
+      
+#endif
 #if predfromori
-      printf("\"interbits\":%ju,\"interbitsori\":%ju,\"distwithrec\":%ju,\"distwithori\":%ju",
-        pu->interbits, pu->interbitsori,pu->D_currecwoilf_curori_refrec, pu->D_currecwoilf_curori_refori);
+      printf(",\"interbitsori\":%ju,\"distwithori\":%ju",
+         pu->interbitsori,  pu->D_currecwoilf_curori_refori);
+
+      //{
+      //  printf(",\"resibits\":%ju",
+      //    pu->cu->cucp.R_resi[0]+ pu->cu->cucp.R_resi[1]+ pu->cu->cucp.R_resi[2]);
+      //}
+
+#if meansatd
+      //if (cs.slice[0].getSliceType() == I_SLICE)
+
+      //else
+      {
+        printf(",\"satdori\":%ju",
+          pu->cu->satdori);
+      }
+#endif
+      
 
 
+
+#endif
+
+
+#if printresirec
+      double avgresirec = 0;
+#if printresiori
+      double avgresiori = 0;
+#endif
+      for (auto ttu : TUTraverser(pu->cu->firstTU, pu->cu->lastTU->next))
+      {
+        for (int y = 0; y < ttu.lheight(); y++)
+        {
+          for (int x = 0; x < ttu.lwidth(); x++)
+          {
+            avgresirec += abs(ttu.m_resiwoq[0][y* ttu.lwidth() + x]);
+#if printresiori
+            avgresiori += abs(ttu.m_resiwoqori[0][y* ttu.lwidth() + x]);
+#endif
+          }
+
+        }
+      }
+
+      avgresirec = avgresirec / (cs.slice[0].getPic()->lwidth()*cs.slice[0].getPic()->lheight());
+      printf(",\"avgresirec\":%.6f,",
+        avgresirec);
+#if printresiori
+      avgresiori = avgresiori / (cs.slice[0].getPic()->lwidth()*cs.slice[0].getPic()->lheight());
+      printf("\"avgresiori\":%.6f",
+        avgresiori);
+#endif
 #endif
       // parameter
       //printf("\t QP:%d lambda:%f | ", pu->cu->qp, m_pcRdCost->getLambda());
@@ -1101,10 +1159,10 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #endif
 #if printresirec
       {
-      bool resiwoq = 1;
-      bool resiwq = 1;
-      bool spresiwoq = 1;
-      bool spresiwq = 1;
+      bool resiwoq = 0;
+      bool resiwq = 0;
+      bool spresiwoq = 0;
+      bool spresiwq = 0;
       bool printinaline = 1;
 
       if (!printinaline)
@@ -1174,7 +1232,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
               {
                 for (int x = 0; x < ttu.lwidth(); x++)
                 {
-                  printf("%4d ", ttu.m_resiwoq[0][y* ttu.lheight() + x]);
+                  printf("%4d ", ttu.m_resiwoq[0][y* ttu.lwidth() + x]);
                 }
                 printf("\t|\t");
               }
@@ -1182,7 +1240,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
               {
                 for (int x = 0; x < ttu.lwidth(); x++)
                 {
-                  printf("%4d ", ttu.m_resiwq[0][y* ttu.lheight() + x]);
+                  printf("%4d ", ttu.m_resiwq[0][y* ttu.lwidth() + x]);
                 }
                 printf("\t|\t");
               }
@@ -1190,7 +1248,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
               {
                 for (int x = 0; x < ttu.lwidth(); x++)
                 {
-                  printf("%4d ", ttu.m_spresiwoq[0][y* ttu.lheight() + x]);
+                  printf("%4d ", ttu.m_spresiwoq[0][y* ttu.lwidth() + x]);
                 }
                 printf("\t|\t");
               }
@@ -1198,7 +1256,7 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
               {
                 for (int x = 0; x < ttu.lwidth(); x++)
                 {
-                  printf("%4d ", ttu.m_spresiwq[0][y* ttu.lheight() + x]);
+                  printf("%4d ", ttu.m_spresiwq[0][y* ttu.lwidth() + x]);
                 }
                 printf("\n");
               }
@@ -1311,8 +1369,8 @@ void EncCu::compressCtu( CodingStructure& cs, const UnitArea& area, const unsign
 #endif
 #if printresiori
       {
-        bool resiwoq = 1;
-        bool resiwq = 1;
+        bool resiwoq = 0;
+        bool resiwq = 0;
         bool spresiwoq = 0;
         bool spresiwq = 0;
         bool printinaline = 1;
@@ -1996,7 +2054,7 @@ void EncCu::xCompressCU( CodingStructure *&tempCS, CodingStructure *&bestCS, Par
 #endif
 
 #if build_cu_tree
-  if (tempCS->area.lx() == 0 && tempCS->area.ly() == 0 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==1)
+  if (tempCS->area.lx() == 48 && tempCS->area.ly() == 32 && tempCS->area.lwidth() == 16 && tempCS->area.lheight() == 16 && tempCS->picture->slices[0]->getPOC()==16)
   {
     int xxx = 0;
   }
@@ -3138,7 +3196,7 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
         reco2.copyFrom(tempCS->getRecoBuf(cu.blocks[0]));
         org2.copyFrom(tempCS->getOrgBuf(cu.blocks[0]));
 #if JVET_M0427_INLOOP_RESHAPER
-#if Iintradistfwd
+#if cmp_intradist_with_reshaper
         if (tempCS->slice->getSliceType() != I_SLICE)
           reco2.rspSignal(m_pcReshape->getInvLUT());
 #else
@@ -3150,7 +3208,38 @@ void EncCu::xCheckRDCostIntra( CodingStructure *&tempCS, CodingStructure *&bestC
         CPelBuf reco1 = reco2;
         CPelBuf org1 = org2;
         cu.cucp.D[0] = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_SSE);
-      
+#if meansatd && build_cu_tree
+        Pel *pred = (Pel*)xMalloc(Pel, tempCS->getPredBuf(cu.blocks[0]).area());
+        PelBuf pred2 = PelBuf(pred, tempCS->getPredBuf(cu.blocks[0]).width, tempCS->getPredBuf(cu.blocks[0]).height);// = tempCS->getRecoBuf(cu.blocks[0]);
+        pred2.copyFrom(tempCS->getPredBuf(cu.blocks[0]));
+#if JVET_M0427_INLOOP_RESHAPER
+#if cmp_intradist_with_reshaper
+        if (tempCS->slice->getSliceType() != I_SLICE)
+          pred2.rspSignal(m_pcReshape->getInvLUT());
+#else
+        if (tempCS->slice->getSliceType() == I_SLICE)
+          org2.copyFrom(tempCS->picture->getBuf(cu.blocks[0], PIC_TRUE_ORIGINAL));
+        pred2.rspSignal(m_pcReshape->getInvLUT());
+#endif
+#endif
+
+        cu.satdrec = m_pcRdCost->getDistPart(org1, pred2, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_HAD);
+        //auto x1 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_HAD2);
+        //auto x2 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_HAD4);
+        //auto x3 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_HAD8);
+        //auto x4 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_HAD16);
+        //auto x5 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_HAD32);
+        //auto x6 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_HAD64);
+        //auto x7 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_HAD16N);
+
+        //auto y1 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_MRHAD2);
+        //auto y2 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_MRHAD4);
+        //auto y3 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_MRHAD8);
+        //auto y4 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_MRHAD16);
+        //auto y5 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_MRHAD32);
+        //auto y6 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_MRHAD64);
+        //auto y7 = m_pcRdCost->getDistPart(org1, reco1, tempCS->sps->getBitDepth(toChannelType(COMPONENT_Y)), COMPONENT_Y, DF_MRHAD16N);
+#endif
 #endif
     }
 

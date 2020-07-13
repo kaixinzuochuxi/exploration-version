@@ -2587,7 +2587,7 @@ void EncSlice::encodeCtus( Picture* pcPic, const bool bCompressEntireSlice, cons
     pcPic->scheduler.setReady( ctuXPosInCtus, ctuYPosInCtus );
 #endif
 
-#if codingparameters 
+#if codingparameters && printctucp
     extern coding_parameterscy ctucp;
     
     printf("codingparameters:ctulevel | ");

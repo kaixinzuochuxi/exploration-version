@@ -1348,4 +1348,91 @@ TU::setCbfAtDepth(tu, compID, tu.depth, uiAbsSum > 0);
 
 
 #endif
+
+void transform(const TransformUnit &tu, const ComponentID &compID, const CPelBuf &resi, CoeffBuf &dstCoeff, const int width, const int height)
+{
+  
+  const unsigned maxLog2TrDynamicRange = tu.cs->sps->getMaxLog2TrDynamicRange(toChannelType(compID));
+  const unsigned bitDepth = tu.cs->sps->getBitDepth(toChannelType(compID));
+  const int      TRANSFORM_MATRIX_SHIFT = g_transformMatrixShift[TRANSFORM_FORWARD];
+#if !JVET_M0102_INTRA_SUBPARTITIONS
+  const int      shift_1st = ((g_aucLog2[width]) + bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange + COM16_C806_TRANS_PREC;
+  const int      shift_2nd = (g_aucLog2[height]) + TRANSFORM_MATRIX_SHIFT + COM16_C806_TRANS_PREC;
+#endif
+  const uint32_t transformWidthIndex = g_aucLog2[width] - 1;  // nLog2WidthMinus1, since transform start from 2-point
+  const uint32_t transformHeightIndex = g_aucLog2[height] - 1;  // nLog2HeightMinus1, since transform start from 2-point
+#if !JVET_M0297_32PT_MTS_ZERO_OUT
+  const int      skipWidth = width > JVET_C0024_ZERO_OUT_TH ? width - JVET_C0024_ZERO_OUT_TH : 0;
+  const int      skipHeight = height > JVET_C0024_ZERO_OUT_TH ? height - JVET_C0024_ZERO_OUT_TH : 0;
+#endif
+
+#if !JVET_M0102_INTRA_SUBPARTITIONS
+  CHECK(shift_1st < 0, "Negative shift");
+  CHECK(shift_2nd < 0, "Negative shift");
+#endif
+
+  int trTypeHor = DCT2;
+  int trTypeVer = DCT2;
+
+  //getTrTypes(tu, compID, trTypeHor, trTypeVer);
+
+#if JVET_M0297_32PT_MTS_ZERO_OUT
+  //const int      skipWidth = (trTypeHor != DCT2 && width == 32) ? 16 : width > JVET_C0024_ZERO_OUT_TH ? width - JVET_C0024_ZERO_OUT_TH : 0;
+  //const int      skipHeight = (trTypeVer != DCT2 && height == 32) ? 16 : height > JVET_C0024_ZERO_OUT_TH ? height - JVET_C0024_ZERO_OUT_TH : 0;
+  const int      skipWidth = 0;
+    const int      skipHeight = 0;
+#endif
+    
+//#if RExt__DECODER_DEBUG_TOOL_STATISTICS
+//  if (trTypeHor != DCT2)
+//  {
+//    CodingStatistics::IncrementStatisticTool(CodingStatisticsClassType{ STATS__TOOL_EMT, uint32_t(width), uint32_t(height), compID });
+//  }
+//#endif
+
+  ALIGN_DATA(MEMORY_ALIGN_DEF_SIZE, TCoeff block[MAX_TU_SIZE * MAX_TU_SIZE]);
+
+  const Pel *resiBuf = resi.buf;
+  const int  resiStride = resi.stride;
+
+  for (int y = 0; y < height; y++)
+  {
+    for (int x = 0; x < width; x++)
+    {
+      block[(y * width) + x] = resiBuf[(y * resiStride) + x];
+    }
+  }
+  int shift2ori = bitDepth - 15 + (g_aucLog2[width*height] + 1) / 2;
+#if JVET_M0102_INTRA_SUBPARTITIONS
+  if (width > 1 && height > 1) // 2-D transform
+  {
+    
+    const int      shift_1st = 0;
+    const int      shift_2nd = ((g_aucLog2[width]) + bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange + COM16_C806_TRANS_PREC+(g_aucLog2[height]) + TRANSFORM_MATRIX_SHIFT + COM16_C806_TRANS_PREC- shift2ori;
+    CHECK(shift_1st < 0, "Negative shift");
+    CHECK(shift_2nd < 0, "Negative shift");
+#endif
+    TCoeff *tmp = (TCoeff *)alloca(width * height * sizeof(TCoeff));
+    
+    fastFwdTrans[trTypeHor][transformWidthIndex](block, tmp, shift_1st, height, 0, skipWidth);
+    fastFwdTrans[trTypeVer][transformHeightIndex](tmp, dstCoeff.buf, shift_2nd, width, skipWidth, skipHeight);
+#if JVET_M0102_INTRA_SUBPARTITIONS
+  }
+  else if (height == 1) //1-D horizontal transform
+  {
+    const int      shift = ((g_aucLog2[width]) + bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange + COM16_C806_TRANS_PREC;
+    CHECK(shift < 0, "Negative shift");
+    CHECKD((transformWidthIndex < 0), "There is a problem with the width.");
+    fastFwdTrans[trTypeHor][transformWidthIndex](block, dstCoeff.buf, shift, 1, 0, skipWidth);
+  }
+  else //if (iWidth == 1) //1-D vertical transform
+  {
+    int shift = ((g_aucLog2[height]) + bitDepth + TRANSFORM_MATRIX_SHIFT) - maxLog2TrDynamicRange + COM16_C806_TRANS_PREC;
+    CHECK(shift < 0, "Negative shift");
+    CHECKD((transformHeightIndex < 0), "There is a problem with the height.");
+    fastFwdTrans[trTypeVer][transformHeightIndex](block, dstCoeff.buf, shift, 1, 0, skipHeight);
+  }
+#endif
+}
+
 //! \}

@@ -603,6 +603,13 @@ struct CodingUnit : public UnitArea
   const uint8_t     checkAllowedSbt() const;
 #endif
 
+#if build_cu_tree && meansatd
+  Distortion satdrec;
+#if predfromori
+  Distortion satdori;
+#endif
+
+#endif
 #if codingparameters
   coding_parameterscy cucp;
   
@@ -727,12 +734,7 @@ struct PredictionUnit : public UnitArea, public IntraPredictionData, public Inte
   int64_t cacheId;
   bool    cacheUsed;
 #endif
-#if build_cu_tree
-  //Distortion intradist;
-  //Distortion interdist;
-  //double cost;
-  
-#endif
+
 };
 
 // ---------------------------------------------------------------------------
@@ -814,6 +816,7 @@ public:
   TCoeff *m_resiwq[MAX_NUM_TBLOCKS];
   Pel *m_spresiwoq[MAX_NUM_TBLOCKS];
   Pel *m_spresiwq[MAX_NUM_TBLOCKS];
+  double m_avgresirec;
 private:
 #endif
 #if printresiori
@@ -822,6 +825,7 @@ public:
   TCoeff *m_resiwqori[MAX_NUM_TBLOCKS];
   Pel *m_spresiwoqori[MAX_NUM_TBLOCKS];
   Pel *m_spresiwqori[MAX_NUM_TBLOCKS];
+  double m_avgresiori;
 private:
 #endif
   TCoeff *m_coeffs[ MAX_NUM_TBLOCKS ];

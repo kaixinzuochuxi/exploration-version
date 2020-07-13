@@ -2294,6 +2294,7 @@ Distortion RdCost::xGetHADs_SIMD( const DistParam &rcDtParam )
     return RdCost::xGetHADs( rcDtParam );
   }
 
+
   const Torg*  piOrg = (const Torg*)rcDtParam.org.buf;
   const Tcur*  piCur = (const Tcur*)rcDtParam.cur.buf;
   const int iRows = rcDtParam.org.height;

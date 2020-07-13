@@ -62,15 +62,24 @@
 #define printresi 0
 
 #define intermediate 0
-#define codingparameters 0
-#define Iintradistfwd 0
+#define codingparameters 1
+#if codingparameters 
+#define printframecp 1
+#define printctucp 0
+#define cmp_intradist_with_reshaper 0
+#endif
+
+#define force_use_ori_reference 1
 
 #define AdaptiveGOP 0
 
 #define test1 0
+#if test1
 #define he2017adaptive 0
 #define donotwritenal 1
 #define disablepsnr 1
+#endif
+
 ///// QPF
 #define QPfactor 1
 
@@ -125,19 +134,23 @@
 /////
 #if build_cu_tree 
 //cfg 
-#define disableintraininter 0
-#define predfromori 0
+#define disableintraininter 1
+#define predfromori 1
 #define disablefast 0
 // output
 #define outputjson 1
 #define simplify20200506 1
 #define printall 1
 #define printchormacu 0
-#define printresirec 1
+#define printresirec 0
 #define preddist 0
+#define meansatd 1
+
 #if predfromori
 #define keepbestoricost 0
-#define printresiori 0
+#if printresirec
+#define printresiori 1
+#endif
 #endif
 #endif
 
@@ -158,7 +171,7 @@
 #define disable_hierarchical_qp_clip 0
 #define disablereuse 0
 
-#define force_use_ori_reference 1
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -503,7 +516,12 @@ typedef       int64_t           Intermediate_Int;  ///< used as intermediate val
 typedef       uint64_t          Intermediate_UInt; ///< used as intermediate value in calculations
 #else
 typedef       int16_t           Pel;               ///< pixel type
+#if printresirec
+typedef       int32_t             TCoeff;            ///< transform coefficient
+#else
 typedef       int             TCoeff;            ///< transform coefficient
+#endif
+
 typedef       int16_t           TMatrixCoeff;      ///< transform matrix coefficient
 typedef       int16_t           TFilterCoeff;      ///< filter coefficient
 typedef       int             Intermediate_Int;  ///< used as intermediate value in calculations

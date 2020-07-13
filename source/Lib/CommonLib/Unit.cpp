@@ -299,7 +299,13 @@ CodingUnit& CodingUnit::operator=( const CodingUnit& other )
 #if JVET_M0102_INTRA_SUBPARTITIONS
   ispMode           = other.ispMode;
 #endif
+#if build_cu_tree && meansatd
+  satdrec= other.satdrec;
+#if predfromori
+  satdori= other.satdori;
+#endif
 
+#endif
 #if codingparameters
   cucp = other.cucp;
 
@@ -354,6 +360,14 @@ void CodingUnit::initData()
   ispMode           = 0;
 #endif
 
+
+#if build_cu_tree && meansatd
+  satdrec=0;
+#if predfromori
+  satdori=0;
+#endif
+
+#endif
 #if codingparameters
   cucp.initialize();
 
@@ -525,6 +539,7 @@ PredictionUnit& PredictionUnit::operator=(const IntraPredictionData& predData)
   //interdist = predData.interdist;
   intrabits= predData.intrabits;
 #endif
+
   return *this;
 }
 
@@ -704,12 +719,14 @@ TransformUnit::TransformUnit(const UnitArea& unit) : UnitArea(unit), cu(nullptr)
     m_resiwq[i] = nullptr;
     m_spresiwoq[i] = nullptr;
     m_spresiwq[i] = nullptr;
+    m_avgresirec=0;
 #endif
 #if printresiori
     m_resiwoqori[i] = nullptr;
     m_resiwqori[i] = nullptr;
     m_spresiwoqori[i] = nullptr;
     m_spresiwqori[i] = nullptr;
+    m_avgresiori = 0;
 #endif
   }
 
@@ -727,12 +744,14 @@ TransformUnit::TransformUnit(const ChromaFormat _chromaFormat, const Area &_area
     m_resiwq[i] = nullptr;
     m_spresiwoq[i] = nullptr;
     m_spresiwq[i] = nullptr;
+    m_avgresirec = 0;
 #endif
 #if printresiori
     m_resiwoqori[i] = nullptr;
     m_resiwqori[i] = nullptr;
     m_spresiwoqori[i] = nullptr;
     m_spresiwqori[i] = nullptr;
+    m_avgresiori = 0;
 #endif
   }
 
@@ -785,12 +804,14 @@ void TransformUnit::init(TCoeff **coeffs, Pel **pcmbuf)
     m_resiwq[i] = resiwq[i];
     m_spresiwoq[i] = spresiwoq[i];
     m_spresiwq[i] = spresiwq[i];
+    m_avgresirec = 0;
 #endif
 #if printresiori
     m_resiwoqori[i] = resiwoqori[i];
     m_resiwqori[i] = resiwqori[i];
     m_spresiwoqori[i] = spresiwoqori[i];
     m_spresiwqori[i] = spresiwqori[i];
+    m_avgresiori = 0;
 #endif
   }
 }

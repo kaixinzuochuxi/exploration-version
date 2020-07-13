@@ -983,6 +983,10 @@ void IntraSearch::estIntraPredLumaQT( CodingUnit &cu, Partitioner &partitioner )
     if (csBest->m_isTuEnc) {
       pu.intradist = csBest->dist;
       pu.intrabits= csBest->fracBits;
+//#if meansatd
+//      cu.satdrec = csBest->cus[0]->satdrec;
+//      cu.satdori = csBest->cus[0]->satdori;
+//#endif
     //  //pu.cost = csBest->cost;
     //  //pu.interdist = csBest->pus[0]->interdist;
     }
@@ -1989,7 +1993,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
  
   spresi.copyFrom(piOrg);
   
-#if Iintradistfwd
+#if cmp_intradist_with_reshaper
   if (cs.slice->getSliceType() != I_SLICE && compID == COMPONENT_Y)
     tpred.rspSignal(m_pcReshape->getInvLUT());
 #else
@@ -2015,7 +2019,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
   {
     tpred.copyFrom(piPred);
     spresi.copyFrom(piOrg);
-#if Iintradistfwd
+#if cmp_intradist_with_reshaper
     if (cs.slice->getSliceType() != I_SLICE && compID == COMPONENT_Y)
       tpred.rspSignal(m_pcReshape->getInvLUT());
 #else
@@ -2067,6 +2071,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
 #endif
 
     }
+
     else
     {
 #endif
@@ -2075,6 +2080,7 @@ void IntraSearch::xIntraCodingTUBlock(TransformUnit &tu, const ComponentID &comp
 #else
       ruiDist += m_pcRdCost->getDistPart(piOrg, piReco, bitDepth, compID, DF_SSE, &orgLuma);
 #endif
+
 
     }
   }

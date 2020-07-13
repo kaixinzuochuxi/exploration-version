@@ -51,6 +51,11 @@
 
 #include <math.h>
 #include <limits>
+#if printresirec
+#include "CommonLib/TrQuant.h"
+#include "CommonLib/TrQuant_EMT.h"
+#include "CommonLib/DepQuant.h"
+#endif
 
 
  //! \ingroup EncoderLib
@@ -7172,6 +7177,7 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
       CPelBuf org  = cs.getOrgBuf  (compID);
 
 #if printresirec
+      //printf("ok\n");
       for (TransformUnit ttu : TUTraverser(cu.firstTU, cu.lastTU->next))
       {
         const CompArea &area = ttu.blocks[compID];
@@ -7185,7 +7191,11 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
         Pel* tbuf = (Pel*)xMalloc(Pel, area.area());
         PelBuf spresi(tbuf, area.width, area.width, area.height);
         spresi.copyFrom(org);
-
+        
+        TCoeff* tcbuf = (TCoeff*)xMalloc(TCoeff, area.area());
+        CoeffBuf resi(tcbuf, area.width, area.width, area.height);
+        
+        
 
 #if JVET_M0427_INLOOP_RESHAPER
         if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
@@ -7206,36 +7216,55 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
         //{
           std::memcpy(ttu.m_spresiwq[compID], tbuf, sizeof(Pel)* area.area());
           std::memcpy(ttu.m_spresiwoq[compID], tbuf, sizeof(Pel)* area.area());
-        //}
-//        else
-//        {
-//          std::memcpy(ttu.m_spresiwq[compID], tbuf, sizeof(Pel)* area.area());
-//          tpred.copyFrom(cs.getBuf(ttu, PIC_PREDFROMORI).bufs[compID]);
-//          spresi.copyFrom(cs.picture->getBuf(ttu, PIC_TRUE_ORIGINAL).bufs[compID]);
-//
-//
-////#if JVET_M0427_INLOOP_RESHAPER
-////          if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
-////          {
-////#if JVET_M0483_IBC
-////            if (!cu.firstPU->mhIntraFlag && !CU::isIBC(cu))
-////#else
-////            if (!cu.firstPU->mhIntraFlag && !cu.ibc)
-////#endif
-////              tpred.rspSignal(m_pcReshape->getFwdLUT());
-////            
-////          }
-////#endif
-//          tpred.rspSignal(m_pcReshape->getFwdLUT());
-//          tpred.rspSignal(m_pcReshape->getInvLUT());
-//          spresi.subtract(tpred);
-//          std::memcpy(ttu.m_spresiwoq[compID], tbuf, sizeof(Pel)* area.area());
-//        }
+          std::memset(tcbuf, 0, sizeof(TCoeff)* area.area());
+         //m_pcTrQuant->xT(ttu, compID, spresi, resi, area.width, area.height);
+          //printf("OK");
+          //printf("%d\t%d", area.width, area.height);
+          const int         channelBitDepth = sps.getBitDepth(CHANNEL_TYPE_LUMA);
+          int shift2ori = 0;
+          if (area.width > 64 && area.height > 64)
+          {
+            transform(ttu, compID, spresi.subBuf(0, 0, 64, 64), resi.subBuf(0, 0, 64, area.height), 64, 64);
+            transform(ttu, compID, spresi.subBuf(64, 0, 64, 64), resi.subBuf(0, 0, 64, area.height), 64, 64);
+            transform(ttu, compID, spresi.subBuf(0, 64, 64, 64), resi.subBuf(0, 0, 64, area.height), 64, 64);
+            transform(ttu, compID, spresi.subBuf(64, 64, 64, 64), resi.subBuf(0, 0, 64, area.height), 64, 64);
+            //shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area()/4] + 1) / 2;
+          }
+          else if (area.width > 64 )
+          {
+            transform(ttu, compID, spresi.subBuf(0,0,64,area.height), resi.subBuf(0, 0, 64, area.height), 64, area.height);
+            transform(ttu, compID, spresi.subBuf(64, 0, 64, area.height), resi.subBuf(64, 0, 64, area.height), 64, area.height);
+            //shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area() / 2] + 1) / 2;
+          }
+          else if ( area.height > 64)
+          {
+            transform(ttu, compID, spresi.subBuf(0, 0, area.width, 64), resi.subBuf(0, 0, area.width, 64), area.width, 64);
+            transform(ttu, compID, spresi.subBuf(0, 64, area.width, 64), resi.subBuf(0, 64, area.width, 64), area.width, 64);
+            //shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area() / 2] + 1) / 2;
+          }
+          else
+          {
+            transform(ttu, compID, spresi, resi, area.width, area.height);
+            //shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area()] + 1) / 2;
+          }
+          
+          
+          
+          for (int i = 0; i < area.area(); i++)
+          {
 
 
+            if (shift2ori > 0)
+              ttu.m_resiwoq[compID][i] = resi.buf[i] << shift2ori;
+            else
+              ttu.m_resiwoq[compID][i] = resi.buf[i] >> (-shift2ori);
 
+
+          }
+        
         xFree(tbuf); tbuf = nullptr;
         xFree(tbuf1); tbuf1 = nullptr;
+        xFree(tcbuf); tcbuf = nullptr;
       }
 #endif
 
@@ -7262,12 +7291,13 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
 #else
           distortion += m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-#if codingparameters
-          cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-#endif // codingparameters
 #endif
 #if build_cu_tree
-          dist = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);;
+          dist = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_SSE, &orgLuma);
+#if meansatd
+          CPelBuf pred = cs.getPredBuf(compID);
+          cu.satdrec = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), COMPONENT_Y, DF_HAD, &orgLuma);
+#endif
 #endif // build_cu_tree
 #if codingparameters
           cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
@@ -7282,14 +7312,19 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 
 #else
           distortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-#if codingparameters
-          cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-#endif // codingparameters
-
 #endif
+
+
+
 #if build_cu_tree
           if (compID == COMPONENT_Y)
-          dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+          {
+            dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#if meansatd
+            CPelBuf pred = cs.getPredBuf(compID);
+            cu.satdrec = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD, &orgLuma);
+#endif
+          }
 #endif // build_cu_tree
 #if codingparameters
           cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
@@ -7305,7 +7340,13 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #endif // codingparameters
 #if build_cu_tree
         if (compID == COMPONENT_Y)
+        {
           dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+#if meansatd
+          CPelBuf pred = cs.getPredBuf(compID);
+          cu.satdrec = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD);
+#endif
+        }
 #endif // build_cu_tree
       }
     }
@@ -7624,11 +7665,15 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
         tmpRecLuma.copyFrom(reco);
         tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
         dist = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#if meansatd
+        CPelBuf pred = cs.getPredBuf(compID);
+        cu.satdrec = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD, &orgLuma);
+#endif
 #endif
 
-#if codingparameters
-        cu.cucp.D[compID] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-#endif
+//#if codingparameters
+//        cu.cucp.D[compID] = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+//#endif
       }
       else
 #endif
@@ -7640,7 +7685,13 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #endif
 #if build_cu_tree
         if (compID == COMPONENT_Y)
-        dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+        {
+          dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#if meansatd
+          CPelBuf pred = cs.getPredBuf(compID);
+          cu.satdrec = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD, &orgLuma);
+#endif
+        }
 #endif
 #if codingparameters
         cu.cucp.D[compID] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
@@ -7657,7 +7708,13 @@ void InterSearch::encodeResAndCalcRdInterCU(CodingStructure &cs, Partitioner &pa
 #endif
 #if build_cu_tree
       if (compID == COMPONENT_Y)
-      dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+      {
+        dist = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+#if meansatd
+        CPelBuf pred = cs.getPredBuf(compID);
+        cu.satdrec = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD);
+#endif
+      }
 #endif
     }
   }
@@ -8784,7 +8841,8 @@ void InterSearch::symmvdCheckBestMvp(
           Pel* tbuf = (Pel*)xMalloc(Pel, area.area());
           PelBuf spresi(tbuf, area.width, area.width, area.height);
           spresi.copyFrom(org);
-
+          TCoeff* tcbuf = (TCoeff*)xMalloc(TCoeff, area.area());
+          CoeffBuf resi(tcbuf, area.width, area.width, area.height);
 
 #if JVET_M0427_INLOOP_RESHAPER
           if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
@@ -8805,36 +8863,49 @@ void InterSearch::symmvdCheckBestMvp(
           //{
           std::memcpy(ttu.m_spresiwqori[compID], tbuf, sizeof(Pel)* area.area());
           std::memcpy(ttu.m_spresiwoqori[compID], tbuf, sizeof(Pel)* area.area());
-          //}
-  //        else
-  //        {
-  //          std::memcpy(ttu.m_spresiwqori[compID], tbuf, sizeof(Pel)* area.area());
-  //          tpred.copyFrom(cs.getBuf(ttu, PIC_PREDFROMORI).bufs[compID]);
-  //          spresi.copyFrom(cs.picture->getBuf(ttu, PIC_TRUE_ORIGINAL).bufs[compID]);
-  //
-  //
-  ////#if JVET_M0427_INLOOP_RESHAPER
-  ////          if (cs.slice->getReshapeInfo().getUseSliceReshaper() && m_pcReshape->getCTUFlag() && compID == COMPONENT_Y)
-  ////          {
-  ////#if JVET_M0483_IBC
-  ////            if (!cu.firstPU->mhIntraFlag && !CU::isIBC(cu))
-  ////#else
-  ////            if (!cu.firstPU->mhIntraFlag && !cu.ibc)
-  ////#endif
-  ////              tpred.rspSignal(m_pcReshape->getFwdLUT());
-  ////            
-  ////          }
-  ////#endif
-  //          tpred.rspSignal(m_pcReshape->getFwdLUT());
-  //          tpred.rspSignal(m_pcReshape->getInvLUT());
-  //          spresi.subtract(tpred);
-  //          std::memcpy(ttu.m_spresiwoqori[compID], tbuf, sizeof(Pel)* area.area());
-  //        }
+
+          const int         channelBitDepth = sps.getBitDepth(CHANNEL_TYPE_LUMA);
+          int shift2ori = 0;
+          if (area.width > 64 && area.height > 64)
+          {
+            transform(ttu, compID, spresi.subBuf(0, 0, 64, 64), resi.subBuf(0, 0, 64, area.height), 64, 64);
+            transform(ttu, compID, spresi.subBuf(64, 0, 64, 64), resi.subBuf(0, 0, 64, area.height), 64, 64);
+            transform(ttu, compID, spresi.subBuf(0, 64, 64, 64), resi.subBuf(0, 0, 64, area.height), 64, 64);
+            transform(ttu, compID, spresi.subBuf(64, 64, 64, 64), resi.subBuf(0, 0, 64, area.height), 64, 64);
+            //shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area() / 4] + 1) / 2;
+          }
+          else if (area.width > 64)
+          {
+            transform(ttu, compID, spresi.subBuf(0, 0, 64, area.height), resi.subBuf(0, 0, 64, area.height), 64, area.height);
+            transform(ttu, compID, spresi.subBuf(64, 0, 64, area.height), resi.subBuf(64, 0, 64, area.height), 64, area.height);
+            //shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area() / 2] + 1) / 2;
+          }
+          else if (area.height > 64)
+          {
+            transform(ttu, compID, spresi.subBuf(0, 0, area.width, 64), resi.subBuf(0, 0, area.width, 64), area.width, 64);
+            transform(ttu, compID, spresi.subBuf(0, 64, area.width, 64), resi.subBuf(0, 64, area.width, 64), area.width, 64);
+            //shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area() / 2] + 1) / 2;
+          }
+          else
+          {
+            transform(ttu, compID, spresi, resi, area.width, area.height);
+            //shift2ori = channelBitDepth - 15 + (g_aucLog2[area.area()] + 1) / 2;
+          }
+          for (int i = 0; i < area.area(); i++)
+          {
 
 
+            if (shift2ori > 0)
+              ttu.m_resiwoqori[compID][i] = resi.buf[i] << shift2ori;
+            else
+              ttu.m_resiwoqori[compID][i] = resi.buf[i] >> (-shift2ori);
+
+
+          }
 
           xFree(tbuf); tbuf = nullptr;
           xFree(tbuf1); tbuf1 = nullptr;
+          xFree(tcbuf); tcbuf = nullptr;
       }
 #endif
 #if WCG_EXT
@@ -8868,6 +8939,10 @@ void InterSearch::symmvdCheckBestMvp(
             //#endif // codingparameters
 #endif
             yori = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#if meansatd
+            CPelBuf pred = cs.getBuf(cu,PIC_PREDFROMORI).bufs[compID];
+            cu.satdori = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD, &orgLuma);
+#endif
           }
           else
           {
@@ -8884,7 +8959,13 @@ void InterSearch::symmvdCheckBestMvp(
             //#endif // codingparameters
 #endif
             if (compID == COMPONENT_Y)
+            {
               yori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#if meansatd
+              CPelBuf pred = cs.getBuf(cu, PIC_PREDFROMORI).bufs[compID];
+              cu.satdori = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD, &orgLuma);
+#endif
+            }
           }
         }
         else
@@ -8893,7 +8974,13 @@ void InterSearch::symmvdCheckBestMvp(
         
         oridistortion += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
         if (compID == COMPONENT_Y)
+        {
           yori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+#if meansatd
+          CPelBuf pred = cs.getBuf(cu, PIC_PREDFROMORI).bufs[compID];
+          cu.satdori = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD);
+#endif
+        }
         }
         //#if codingparameters 
 //        //cu.cucp.D[comp] = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
@@ -9235,7 +9322,10 @@ void InterSearch::symmvdCheckBestMvp(
           //tmpRecLuma.copyFrom(pred);
           //tmpRecLuma.rspSignal(m_pcReshape->getInvLUT());
           distori = m_pcRdCost->getDistPart(org, tmpRecLuma, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
-          
+#if meansatd
+          CPelBuf pred = cs.getBuf(cu, PIC_PREDFROMORI).bufs[compID];
+          cu.satdori = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD, &orgLuma);
+#endif
         }
         else
         {
@@ -9246,7 +9336,13 @@ void InterSearch::symmvdCheckBestMvp(
           finalDistortionori += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
 #endif
           if (compID == COMPONENT_Y)
+          {
             distori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE, &orgLuma);
+#if meansatd
+            CPelBuf pred = cs.getBuf(cu, PIC_PREDFROMORI).bufs[compID];
+            cu.satdori = m_pcRdCost->getDistPart(org, pred, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD, &orgLuma);
+#endif
+          }
         }
       }
       else
@@ -9254,7 +9350,12 @@ void InterSearch::symmvdCheckBestMvp(
       {
         finalDistortionori += m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
         if (compID == COMPONENT_Y)
+        {
           distori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_SSE);
+#if meansatd
+          cu.satdori = m_pcRdCost->getDistPart(org, reco, sps.getBitDepth(toChannelType(compID)), compID, DF_HAD);
+#endif
+        }
       }
     }
 
@@ -9292,3 +9393,6 @@ void InterSearch::symmvdCheckBestMvp(
   }
 
 #endif
+
+
+

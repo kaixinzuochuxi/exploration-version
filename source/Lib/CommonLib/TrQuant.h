@@ -140,10 +140,17 @@ private:
   TCoeff** m_mtsCoeffs;
 #endif
 
-
+#if printresirec
+public:
   // forward Transform
-  void xT               (const TransformUnit &tu, const ComponentID &compID, const CPelBuf &resi, CoeffBuf &dstCoeff, const int width, const int height);
+  void xT(const TransformUnit &tu, const ComponentID &compID, const CPelBuf &resi, CoeffBuf &dstCoeff, const int width, const int height);
+private:
+#else
+  // forward Transform
+  void xT(const TransformUnit &tu, const ComponentID &compID, const CPelBuf &resi, CoeffBuf &dstCoeff, const int width, const int height);
 
+#endif
+  
   // skipping Transform
   void xTransformSkip   (const TransformUnit &tu, const ComponentID &compID, const CPelBuf &resi, TCoeff* psCoeff);
 
@@ -207,6 +214,9 @@ private:
 #endif
 };// END CLASS DEFINITION TrQuant
 
+
 //! \}
 
 #endif // __TRQUANT__
+
+void transform(const TransformUnit &tu, const ComponentID &compID, const CPelBuf &resi, CoeffBuf &dstCoeff, const int width, const int height);

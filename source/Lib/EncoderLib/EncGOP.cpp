@@ -2807,7 +2807,7 @@ void EncGOP::compressGOP( int iPOCLast, int iNumPicRcvd, PicList& rcListPic,
       }
 
       m_pcCfg->setEncodedFlag(iGOPid, true);
-#if codingparameters 
+#if codingparameters && printframecp
       extern coding_parameterscy framecp;
       printf("codingparameters:framelevel | ");
       printf("lambda: %f,%f,%f | ", framecp.lambda[0], framecp.lambda[1], framecp.lambda[2]);
